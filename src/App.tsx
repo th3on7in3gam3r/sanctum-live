@@ -1,0 +1,241 @@
+import React, { useState, useEffect } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AppProvider, useApp } from './context/AppContext';
+import { LandingPage } from './pages/LandingPage';
+import { LoginPage } from './pages/LoginPage';
+import { OnboardingPage } from './pages/OnboardingPage';
+import { DashboardOverviewPage } from './pages/DashboardOverviewPage';
+import { PrayerRoomsListPage } from './pages/PrayerRoomsListPage';
+import { PrayerRoomDetailsPage } from './pages/PrayerRoomDetailsPage';
+import { CreatePrayerRoomPage } from './pages/CreatePrayerRoomPage';
+import { PrayerControlRoomPage } from './pages/PrayerControlRoomPage';
+import { PrayerRequestsPage } from './pages/PrayerRequestsPage';
+import { ParticipantsPage } from './pages/ParticipantsPage';
+import { HistoryPage } from './pages/HistoryPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { TermsPage } from './pages/TermsPage';
+import { PublicJoinView } from './components/public/PublicJoinView';
+import { ListenerRoomView } from './components/public/ListenerRoomView';
+import { DashboardLayout } from './components/dashboard/DashboardLayout';
+import { NotificationToastContainer } from './components/common/NotificationToast';
+import { GlobalConfirmModal } from './components/common/GlobalConfirmModal';
+
+const RouterContent: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const { hasUnsavedChanges, setHasUnsavedChanges, confirmAction } = useApp();
+
+  // Route state
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    return window.location.pathname || '/';
+  });
+
+  // Attendee state for public join
+  const [joinedAttendeeName, setJoinedAttendeeName] = useState<string | null>(() => {
+    const saved = localStorage.getItem('sanctum_active_attendee_session');
+    return saved || null;
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const nextPath = window.location.pathname || '/';
+      if (hasUnsavedChanges) {
+        window.history.pushState({}, '', currentPath);
+        confirmAction({
+          title: 'Discard unsaved changes?',
+          description: 'Your changes have not been saved.',
+          confirmText: 'Discard Changes',
+          cancelText: 'Stay Here',
+          isDestructive: true,
+          onConfirm: () => {
+            setHasUnsavedChanges(false);
+            window.history.pushState({}, '', nextPath);
+            setCurrentPath(nextPath);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          },
+        });
+        return;
+      }
+      setCurrentPath(nextPath);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [hasUnsavedChanges, currentPath, confirmAction, setHasUnsavedChanges]);
+
+  const navigate = (path: string) => {
+    const go = () => {
+      window.history.pushState({}, '', path);
+      setCurrentPath(path);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    if (hasUnsavedChanges) {
+      confirmAction({
+        title: 'Discard unsaved changes?',
+        description: 'Your changes have not been saved.',
+        confirmText: 'Discard Changes',
+        cancelText: 'Stay Here',
+        isDestructive: true,
+        onConfirm: () => {
+          setHasUnsavedChanges(false);
+          go();
+        },
+      });
+      return;
+    }
+
+    go();
+  };
+
+  // Route: /join/:slug
+  if (currentPath.startsWith('/join')) {
+    const parts = currentPath.split('/');
+    const slug = parts[2] || 'morning-prayer';
+
+    if (joinedAttendeeName) {
+      return (
+        <ListenerRoomView
+          participantName={joinedAttendeeName}
+          roomSlug={slug}
+          onLeave={() => {
+            localStorage.removeItem('sanctum_active_attendee_session');
+            setJoinedAttendeeName(null);
+            navigate(`/join/${slug}`);
+          }}
+        />
+      );
+    }
+
+    return (
+      <PublicJoinView
+        slug={slug}
+        onJoinSuccess={(name) => {
+          localStorage.setItem('sanctum_active_attendee_session', name);
+          setJoinedAttendeeName(name);
+        }}
+      />
+    );
+  }
+
+  // Standalone Public Pages
+  if (currentPath === '/login') {
+    return <LoginPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/onboarding') {
+    return <OnboardingPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/privacy') {
+    return <PrivacyPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/terms') {
+    return <TermsPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/') {
+    return <LandingPage onNavigate={navigate} />;
+  }
+
+  // Dashboard Control Room route: /dashboard/prayer-rooms/:id/control
+  if (currentPath.includes('/control')) {
+    const parts = currentPath.split('/');
+    const roomId = parts[3] || 'room_1';
+
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <PrayerControlRoomPage roomId={roomId} onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  // Dashboard Create/Edit route: /dashboard/prayer-rooms/new or /dashboard/prayer-rooms/:id/edit
+  if (currentPath === '/dashboard/prayer-rooms/new') {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <CreatePrayerRoomPage onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  if (currentPath.includes('/edit')) {
+    const parts = currentPath.split('/');
+    const roomId = parts[3];
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <CreatePrayerRoomPage roomId={roomId} onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  const roomDetailMatch = currentPath.match(/^\/dashboard\/prayer-rooms\/([^/]+)$/);
+  if (roomDetailMatch) {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <PrayerRoomDetailsPage roomId={roomDetailMatch[1]} onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  // Dashboard sub-routes
+  if (currentPath === '/dashboard/prayer-rooms') {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <PrayerRoomsListPage onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  if (currentPath === '/dashboard/prayer-requests') {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <PrayerRequestsPage onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  if (currentPath === '/dashboard/participants') {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <ParticipantsPage onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  if (currentPath === '/dashboard/history') {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <HistoryPage onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  if (currentPath === '/dashboard/settings') {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <SettingsPage onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  // Default Dashboard Overview
+  if (currentPath.startsWith('/dashboard')) {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <DashboardOverviewPage onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  // Fallback to Landing
+  return <LandingPage onNavigate={navigate} />;
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppProvider>
+        <RouterContent />
+        <NotificationToastContainer />
+        <GlobalConfirmModal />
+      </AppProvider>
+    </AuthProvider>
+  );
+}

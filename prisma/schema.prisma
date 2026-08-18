@@ -1,0 +1,319 @@
+// Sanctum Live™ — Phase 1B.1 database foundation (PostgreSQL / Prisma)
+// Client runtime lives in server/ only. Never import Prisma from src/.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  PRAYER_LEADER
+  TECHNICAL_ADMIN
+}
+
+enum SessionRole {
+  HOST
+  MODERATOR
+  SPEAKER
+  LISTENER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum RoomType {
+  AUDIO_PRAYER
+  PRAYER_LEADER_VIDEO
+  EVENT
+}
+
+enum SpeakerPermissionMode {
+  ADMIN_APPROVAL_REQUIRED
+  PRAYER_LEADERS
+  OPEN_MICROPHONE
+}
+
+enum RoomLifecycleStatus {
+  SCHEDULED
+  WAITING
+  LIVE
+  ARCHIVED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  WAITING
+  STARTING
+  LIVE
+  ENDING
+  ENDED
+  CANCELLED
+}
+
+enum RaisedHandStatus {
+  WAITING
+  INVITED
+  DISMISSED
+  RESOLVED
+}
+
+enum PrayerRequestStatus {
+  PENDING
+  ANSWERED
+  ARCHIVED
+}
+
+enum SpeakerInvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  DECLINED
+  EXPIRED
+}
+
+enum AuditAction {
+  ROOM_CREATED
+  ROOM_UPDATED
+  ROOM_ARCHIVED
+  SESSION_STARTED
+  SESSION_ENDED
+  SESSION_CANCELLED
+  PARTICIPANT_JOINED
+  PARTICIPANT_REMOVED
+  HAND_RAISED
+  SPEAKER_INVITED
+  SPEAKER_GRANTED
+  SPEAKER_REVOKED
+  SPEAKER_TRANSFERRED
+  ROLE_CHANGED
+}
+
+model Organization {
+  id                        String   @id @default(cuid())
+  name                      String
+  slug                      String   @unique
+  logoUrl                   String?
+  country                   String   @default("Uganda")
+  timezone                  String   @default("Africa/Kampala")
+  website                   String?
+  primaryContactName        String
+  primaryContactEmail       String
+  phone                     String?
+  accentColor               String?  @default("#203C32")
+  joinPageMessage           String?  @default("Join your church family in prayer.")
+  defaultRoomType           RoomType @default(AUDIO_PRAYER)
+  defaultSpeakerPermission  SpeakerPermissionMode @default(ADMIN_APPROVAL_REQUIRED)
+  defaultRecording          Boolean  @default(false)
+  defaultExpectedAttendance Int      @default(1000)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  memberships OrganizationMembership[]
+  prayerRooms PrayerRoom[]
+  auditEvents AuditEvent[]
+
+  @@index([slug])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships          OrganizationMembership[]
+  createdRooms         PrayerRoom[]             @relation("RoomCreator")
+  sessionParticipations SessionParticipant[]
+  invitedSpeakers      SpeakerInvitation[]      @relation("SpeakerInviter")
+  auditEvents          AuditEvent[]
+
+  @@index([email])
+}
+
+model OrganizationMembership {
+  id             String             @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  status         MembershipStatus   @default(ACTIVE)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+}
+
+model PrayerRoom {
+  id                 String                @id @default(cuid())
+  organizationId     String
+  name               String
+  slug               String
+  description        String?
+  roomType           RoomType              @default(AUDIO_PRAYER)
+  expectedAttendance Int                   @default(1000)
+  speakerPermission  SpeakerPermissionMode @default(ADMIN_APPROVAL_REQUIRED)
+  isRecurring        Boolean               @default(false)
+  recurrenceRule     String?
+  scheduledStart     String                @default("05:00 AM")
+  timezone           String                @default("Africa/Kampala")
+  recordingEnabled   Boolean               @default(false)
+  status             RoomLifecycleStatus   @default(SCHEDULED)
+  livekitRoomName    String?
+  permanentUrl       String
+  createdById        String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?            @relation("RoomCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  sessions     PrayerSession[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([slug])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PrayerSession {
+  id                         String        @id @default(cuid())
+  prayerRoomId               String
+  status                     SessionStatus @default(SCHEDULED)
+  scheduledStart             DateTime?
+  actualStart                DateTime?
+  endedAt                    DateTime?
+  livekitRoomName            String?
+  activeSpeakerParticipantId String?
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+
+  prayerRoom          PrayerRoom           @relation(fields: [prayerRoomId], references: [id], onDelete: Restrict)
+  participants        SessionParticipant[]
+  raisedHands         RaisedHand[]
+  prayerRequests      PrayerRequest[]
+  speakerInvitations  SpeakerInvitation[]
+  auditEvents         AuditEvent[]
+
+  @@index([prayerRoomId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model SessionParticipant {
+  id               String      @id @default(cuid())
+  sessionId        String
+  userId           String?
+  guestName        String?
+  realtimeIdentity String
+  role             SessionRole @default(LISTENER)
+  joinedAt         DateTime    @default(now())
+  leftAt           DateTime?
+  createdAt        DateTime    @default(now())
+
+  session            PrayerSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user               User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  raisedHands        RaisedHand[]
+  prayerRequests     PrayerRequest[]
+  speakerInvitations SpeakerInvitation[]
+
+  @@unique([sessionId, realtimeIdentity])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([role])
+}
+
+model RaisedHand {
+  id            String           @id @default(cuid())
+  sessionId     String
+  participantId String
+  status        RaisedHandStatus @default(WAITING)
+  raisedAt      DateTime         @default(now())
+  resolvedAt    DateTime?
+
+  session     PrayerSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant SessionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([participantId])
+  @@index([status])
+  @@index([raisedAt])
+}
+
+model SpeakerInvitation {
+  id            String                   @id @default(cuid())
+  sessionId     String
+  participantId String
+  invitedById   String?
+  status        SpeakerInvitationStatus  @default(PENDING)
+  createdAt     DateTime                 @default(now())
+  acceptedAt    DateTime?
+  revokedAt     DateTime?
+
+  session     PrayerSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant SessionParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  invitedBy   User?              @relation("SpeakerInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([participantId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PrayerRequest {
+  id            String              @id @default(cuid())
+  sessionId     String?
+  participantId String?
+  request       String
+  isPrivate     Boolean             @default(false)
+  status        PrayerRequestStatus @default(PENDING)
+  adminNote     String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  session     PrayerSession?      @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  participant SessionParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([isPrivate])
+  @@index([createdAt])
+}
+
+model AuditEvent {
+  id             String      @id @default(cuid())
+  organizationId String?
+  sessionId      String?
+  actorId        String?
+  action         AuditAction
+  targetId       String?
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+
+  organization Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  session      PrayerSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  actor        User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([sessionId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+}
