@@ -103,3 +103,24 @@ export async function updateCurrentSpaceHandler(req: Request, res: Response): Pr
     sendError(res, error);
   }
 }
+
+export async function deleteCurrentSpaceHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = await resolveActorFromRequest(req);
+    requireCanManageOrganization(actor);
+    if (!actor.organizationId) throw Unauthorized();
+
+    const current = await organizationRepository.findById(actor.organizationId);
+    if (!current) throw Unauthorized('Sanctum Space not found.');
+
+    const confirmName = typeof req.body?.confirmName === 'string' ? req.body.confirmName.trim() : '';
+    if (!confirmName || confirmName.toLowerCase() !== current.name.trim().toLowerCase()) {
+      throw Unauthorized('Type the exact church name to delete this Sanctum Space.');
+    }
+
+    await organizationRepository.deleteById(current.id);
+    res.json({ ok: true });
+  } catch (error) {
+    sendError(res, error);
+  }
+}

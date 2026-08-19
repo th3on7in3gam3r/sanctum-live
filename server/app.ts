@@ -31,7 +31,7 @@ import {
 import { clerkMiddleware } from '@clerk/express';
 import { isClerkConfigured } from './env.ts';
 import { meHandler } from './routes/me.ts';
-import { createSpaceHandler, updateCurrentSpaceHandler } from './routes/spaces.ts';
+import { createSpaceHandler, deleteCurrentSpaceHandler, updateCurrentSpaceHandler } from './routes/spaces.ts';
 import { inviteTeamMemberHandler, listTeamHandler } from './routes/team.ts';
 import { livekitWebhookHandler } from './routes/webhooks.ts';
 
@@ -54,6 +54,7 @@ export function createApp() {
   app.get('/api/me', meHandler);
   app.post('/api/spaces', createSpaceHandler);
   app.patch('/api/spaces/current', updateCurrentSpaceHandler);
+  app.delete('/api/spaces/current', deleteCurrentSpaceHandler);
   app.get('/api/team', listTeamHandler);
   app.post('/api/team/invite', inviteTeamMemberHandler);
   app.post('/api/prayer-rooms', createPrayerRoomHandler);

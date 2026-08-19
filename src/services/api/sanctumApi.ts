@@ -96,6 +96,12 @@ export const sanctumApi = {
       { method: 'PATCH', body: JSON.stringify(input) },
       staff(actor)
     ),
+  deleteCurrentSpace: (input: { confirmName: string }, actor: Actor) =>
+    apiFetch<{ ok: true }>(
+      '/api/spaces/current',
+      { method: 'DELETE', body: JSON.stringify(input) },
+      staff(actor)
+    ),
   listTeam: (actor: Actor) =>
     apiFetch<{
       members: Array<{ userId: string; name: string; email: string; role: string; status: string }>;

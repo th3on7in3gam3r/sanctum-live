@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
-import { Building, Palette, Shield, Sliders, Save, AlertTriangle, Check, RefreshCw, CreditCard, Users } from 'lucide-react';
+import { Building, Palette, Shield, Sliders, Save, AlertTriangle, Check, CreditCard, Users } from 'lucide-react';
 import { slugify } from '../lib/utils';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { ComingSoonBadge } from '../components/common/ComingSoonBadge';
@@ -14,8 +14,8 @@ interface SettingsPageProps {
   onNavigate: (path: string) => void;
 }
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavigate }) => {
-  const { organization, updateOrganization, user } = useAuth();
+export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
+  const { organization, updateOrganization, user, refreshAuth } = useAuth();
   const { addToast, confirmAction, setHasUnsavedChanges } = useApp();
   const showTeamTab = user?.role === 'OWNER';
   const actor = { userId: user?.id, organizationId: organization.id };
@@ -38,6 +38,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
   const [defaultLowBandwidth, setDefaultLowBandwidth] = useState(true);
   const [autoMuteAllOnJoin, setAutoMuteAllOnJoin] = useState(true);
   const [allowPrayerRequests, setAllowPrayerRequests] = useState(true);
+  const [confirmDeleteName, setConfirmDeleteName] = useState('');
+  const [deletingSpace, setDeletingSpace] = useState(false);
 
   const [savedDefaults, setSavedDefaults] = useState({
     defaultLowBandwidth: true,
@@ -137,6 +139,46 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
     } catch (error) {
       addToast(error instanceof ApiClientError ? error.message : 'Could not save branding.', 'error');
     }
+  };
+
+  const canConfirmDelete =
+    confirmDeleteName.trim().toLowerCase() === organization.name.trim().toLowerCase();
+
+  const handleDeleteSpace = () => {
+    if (!canConfirmDelete) {
+      addToast('Type the exact church name to confirm.', 'warning');
+      return;
+    }
+    confirmAction({
+      title: 'Delete this Sanctum Space?',
+      description: `This cannot be undone. Prayer rooms, team invites, and history for ${organization.name} will be removed. Join links for those rooms will stop working. Other churches are not affected.`,
+      confirmText: 'Delete Space',
+      cancelText: 'Keep Space',
+      isDestructive: true,
+      onConfirm: () => {
+        void (async () => {
+          setDeletingSpace(true);
+          try {
+            await sanctumApi.deleteCurrentSpace({ confirmName: organization.name }, actor);
+            setHasUnsavedChanges(false);
+            try {
+              await refreshAuth();
+            } catch {
+              /* session is still signed in; /api/me will report onboarding */
+            }
+            addToast('Sanctum Space deleted. Create a new one when you are ready.', 'info');
+            onNavigate('/onboarding');
+          } catch (error) {
+            addToast(
+              error instanceof ApiClientError ? error.message : 'Could not delete this Sanctum Space.',
+              'error'
+            );
+          } finally {
+            setDeletingSpace(false);
+          }
+        })();
+      },
+    });
   };
 
   return (
@@ -438,20 +480,36 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
               <AlertTriangle className="w-4 h-4" />
               <span>Danger Zone</span>
             </div>
-            <p className="text-xs text-[#68736D] dark:text-[#96A39D]">
-              Reset demo seed data or restore default church organization configurations.
-            </p>
-            <button
-              onClick={() => {
-                localStorage.clear();
-                window.location.reload();
-              }}
-              type="button"
-              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[#B94A48] text-white hover:bg-red-700 transition-colors cursor-pointer flex items-center gap-2"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Reset Demo State & Reload</span>
-            </button>
+            {showTeamTab ? (
+              <>
+                <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
+                  Delete this Sanctum Space permanently. Prayer rooms, team invites, and history for this church are
+                  removed. Your Sign in stays; you can create a new space. Other churches are not affected.
+                </p>
+                <label className="block text-xs font-bold uppercase text-[#16251F] dark:text-[#F8F7F3]">
+                  Type {organization.name} to confirm
+                </label>
+                <input
+                  type="text"
+                  value={confirmDeleteName}
+                  onChange={(e) => setConfirmDeleteName(e.target.value)}
+                  placeholder={organization.name}
+                  className="w-full px-4 py-3 rounded-xl border border-red-500/30 bg-white dark:bg-[#101814] text-sm font-semibold"
+                />
+                <button
+                  type="button"
+                  disabled={!canConfirmDelete || deletingSpace}
+                  onClick={handleDeleteSpace}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[#B94A48] text-white hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deletingSpace ? 'Deleting…' : 'Delete this Sanctum Space'}
+                </button>
+              </>
+            ) : (
+              <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
+                Only the Owner can delete this Sanctum Space.
+              </p>
+            )}
           </div>
         </div>
       )}

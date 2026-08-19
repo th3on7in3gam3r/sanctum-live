@@ -209,6 +209,35 @@ export const organizationRepository = {
     const prisma = requirePrisma();
     return prisma.organization.update({ where: { id }, data });
   },
+  async deleteById(organizationId: string): Promise<void> {
+    const prisma = requirePrisma();
+    const rooms = await prisma.prayerRoom.findMany({
+      where: { organizationId },
+      select: { id: true },
+    });
+    const roomIds = rooms.map((row) => row.id);
+    const sessions = roomIds.length
+      ? await prisma.prayerSession.findMany({
+          where: { prayerRoomId: { in: roomIds } },
+          select: { id: true },
+        })
+      : [];
+    const sessionIds = sessions.map((row) => row.id);
+
+    await prisma.$transaction(async (tx) => {
+      if (sessionIds.length) {
+        await tx.prayerSession.updateMany({
+          where: { id: { in: sessionIds } },
+          data: { activeSpeakerParticipantId: null },
+        });
+        await tx.prayerSession.deleteMany({ where: { id: { in: sessionIds } } });
+      }
+      if (roomIds.length) {
+        await tx.prayerRoom.deleteMany({ where: { id: { in: roomIds } } });
+      }
+      await tx.organization.delete({ where: { id: organizationId } });
+    });
+  },
 };
 
 export const membershipRepository = {
