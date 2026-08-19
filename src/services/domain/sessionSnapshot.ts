@@ -25,6 +25,38 @@ export function connectionStateToQuality(state: ConnectionState): ConnectionQual
   return 'OFFLINE';
 }
 
+export function mapServerPrayerRoom(row: Record<string, unknown>): PrayerRoom {
+  const recurrence = row.recurrenceRule;
+  const recurrenceRule =
+    recurrence === 'WEEKLY' || recurrence === 'SELECTED_DAYS' || recurrence === 'DAILY'
+      ? recurrence
+      : undefined;
+  const status = String(row.status || 'SCHEDULED');
+  return {
+    id: String(row.id),
+    organizationId: String(row.organizationId),
+    name: String(row.name),
+    slug: String(row.slug),
+    description: typeof row.description === 'string' ? row.description : undefined,
+    roomType: (typeof row.roomType === 'string' ? row.roomType : 'AUDIO_PRAYER') as PrayerRoom['roomType'],
+    expectedAttendance: Number(row.expectedAttendance || 0),
+    speakerPermission: (typeof row.speakerPermission === 'string'
+      ? row.speakerPermission
+      : 'ADMIN_APPROVAL_REQUIRED') as PrayerRoom['speakerPermission'],
+    isRecurring: Boolean(row.isRecurring),
+    recurrenceRule,
+    scheduledStart: String(row.scheduledStart || '05:00 AM'),
+    timezone: String(row.timezone || 'Africa/Kampala'),
+    recordingEnabled: Boolean(row.recordingEnabled),
+    status: status === 'LIVE' ? 'LIVE' : 'SCHEDULED',
+    isArchived: status === 'ARCHIVED',
+    livekitRoomName: typeof row.livekitRoomName === 'string' ? row.livekitRoomName : undefined,
+    permanentUrl: String(row.permanentUrl || `/join/${row.slug}`),
+    createdAt: row.createdAt ? String(row.createdAt) : new Date().toISOString(),
+    updatedAt: row.updatedAt ? String(row.updatedAt) : new Date().toISOString(),
+  };
+}
+
 export function mapServerSession(
   session: Record<string, unknown>,
   room: PrayerRoom,

@@ -115,6 +115,8 @@ export const sanctumApi = {
       { method: 'POST', body: JSON.stringify(input) },
       staff(actor)
     ),
+  listPrayerRooms: (actor: Actor) =>
+    apiFetch<{ rooms: Array<Record<string, unknown>> }>('/api/prayer-rooms', undefined, staff(actor)),
   createPrayerRoom: (input: Record<string, unknown>, actor: Actor) =>
     apiFetch<{ room: Record<string, unknown> }>('/api/prayer-rooms', {
       method: 'POST',

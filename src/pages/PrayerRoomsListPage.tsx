@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { PrayerRoomCard } from '../components/dashboard/PrayerRoomCard';
 import { EmptyState } from '../components/common/EmptyState';
-import { Plus, Search, Radio, Filter } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 
 interface PrayerRoomsListPageProps {
   onNavigate: (path: string) => void;
@@ -95,7 +95,7 @@ export const PrayerRoomsListPage: React.FC<PrayerRoomsListPageProps> = ({ onNavi
               ? `No rooms match "${searchQuery}". Try a different keyword.`
               : 'Create your first prayer altar to begin gathering your congregation.'
           }
-          actionLabel="Create Prayer Room"
+          actionText="Create Prayer Room"
           onAction={() => onNavigate('/dashboard/prayer-rooms/new')}
         />
       ) : (

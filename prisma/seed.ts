@@ -39,41 +39,6 @@ async function main() {
       },
     });
   }
-
-  const rooms = [
-    {
-      id: 'room_dawn_intercession',
-      name: 'Dawn Intercession',
-      slug: 'dawn-intercession',
-      scheduledStart: '04:00 AM',
-      expectedAttendance: 2500,
-    },
-    {
-      id: 'room_morning_prayer',
-      name: 'Morning Prayer',
-      slug: 'morning-prayer',
-      scheduledStart: '05:30 AM',
-      expectedAttendance: 2000,
-    },
-  ];
-
-  for (const room of rooms) {
-    await prisma.prayerRoom.upsert({
-      where: { organizationId_slug: { organizationId: ORG_ID, slug: room.slug } },
-      update: { name: room.name },
-      create: {
-        id: room.id,
-        organizationId: ORG_ID,
-        name: room.name,
-        slug: room.slug,
-        scheduledStart: room.scheduledStart,
-        expectedAttendance: room.expectedAttendance,
-        timezone: 'Africa/Kampala',
-        permanentUrl: `/join/${room.slug}`,
-        createdById: 'user_pastor_kenneth',
-      },
-    });
-  }
 }
 
 main()

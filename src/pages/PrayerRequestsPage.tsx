@@ -46,6 +46,10 @@ export const PrayerRequestsPage: React.FC<PrayerRequestsPageProps> = ({ onNaviga
   const selectedRequest = visibleRequests.find((req) => req.id === selectedRequestId) || null;
 
   const handleExportCSV = () => {
+    if (visibleRequests.length === 0) {
+      addToast('No prayer requests to export yet.', 'info');
+      return;
+    }
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       ['Name,Request,Private,Status,Created At,Pastoral Note']
@@ -89,7 +93,8 @@ export const PrayerRequestsPage: React.FC<PrayerRequestsPageProps> = ({ onNaviga
         <button
           onClick={handleExportCSV}
           type="button"
-          className="px-4 py-2.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] font-semibold text-xs text-[#203C32] dark:text-[#E8D8B2] hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+          disabled={visibleRequests.length === 0}
+          className="px-4 py-2.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] font-semibold text-xs text-[#203C32] dark:text-[#E8D8B2] hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
           <span>Export Requests</span>

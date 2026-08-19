@@ -78,6 +78,14 @@ export const prayerRoomRepository = {
     });
   },
 
+  async listByOrganization(organizationId: string): Promise<PrayerRoomRecord[]> {
+    const prisma = requirePrisma();
+    return prisma.prayerRoom.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'asc' },
+    });
+  },
+
   async create(input: {
     organizationId: string;
     name: string;

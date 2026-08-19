@@ -12,16 +12,20 @@ interface HistoryPageProps {
 }
 
 export const HistoryPage: React.FC<HistoryPageProps> = ({ onNavigate: _onNavigate }) => {
-  const { historySessions = [], prayerSessions = [], addToast } = useApp();
+  const { historySessions = [], addToast } = useApp();
   const [selectedSession, setSelectedSession] = useState<PrayerSession | null>(null);
 
-  const completedSessions = (historySessions.length > 0 ? historySessions : prayerSessions).filter(
+  const completedSessions = (historySessions || []).filter(
     (s) => s?.status === 'ENDED' || s?.status === 'COMPLETED'
   );
   const totalMinutes = completedSessions.reduce((acc, curr) => acc + (curr?.durationSeconds || 0), 0) / 60;
   const totalAttendees = completedSessions.reduce((acc, curr) => acc + (curr?.totalUniqueParticipants || curr?.totalParticipants || 0), 0);
 
   const handleExportHistory = () => {
+    if (completedSessions.length === 0) {
+      addToast('No gatherings to export yet.', 'info');
+      return;
+    }
     addToast('Historical prayer logs exported successfully', 'success');
   };
 
@@ -46,7 +50,8 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onNavigate: _onNavigat
         <button
           onClick={handleExportHistory}
           type="button"
-          className="px-4 py-2.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] font-semibold text-xs text-[#203C32] dark:text-[#E8D8B2] hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+          disabled={completedSessions.length === 0}
+          className="px-4 py-2.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] font-semibold text-xs text-[#203C32] dark:text-[#E8D8B2] hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Download className="w-4 h-4" />
           <span>Export Logs</span>
@@ -154,7 +159,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ onNavigate: _onNavigat
                 <div className="flex justify-between">
                   <span className="text-gray-500">Active Prayer Leader:</span>
                   <strong className="text-[#16251F] dark:text-[#F8F7F3]">
-                    {selectedSession.activeSpeakerName || 'Pastor Kenneth'}
+                    {selectedSession.activeSpeakerName || '—'}
                   </strong>
                 </div>
                 <div className="flex justify-between">

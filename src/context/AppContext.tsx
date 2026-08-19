@@ -11,11 +11,7 @@ import {
   ToastType,
   ConfirmActionOptions,
 } from '../types';
-import {
-  SEED_PRAYER_ROOMS,
-  SEED_PRAYER_REQUESTS,
-  SEED_HISTORY_SESSIONS,
-} from '../data/seedData';
+import { isDemoHistoryId, isDemoRequestId, isDemoRoomId } from '../lib/demoRecords';
 import { generateRollingSessions } from '../services/sessionScheduler';
 import { AuditLogger } from '../services/auditLogger';
 import { localPersistenceAdapter } from '../services/persistence/localPersistenceAdapter';
@@ -28,6 +24,7 @@ import type { ConnectionState } from '../types';
 import {
   connectionStateToQuality,
   isServerSessionId,
+  mapServerPrayerRoom,
   mapServerSession,
   mapSnapshotHands,
   mapSnapshotParticipants,
@@ -160,19 +157,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const [prayerRooms, setPrayerRooms] = useState<PrayerRoom[]>(() => {
-    const parsed = localPersistenceAdapter.loadRooms(SEED_PRAYER_ROOMS);
-    return dedupePrayerRooms(parsed.length ? parsed : SEED_PRAYER_ROOMS);
+    const parsed = localPersistenceAdapter.loadRooms([]);
+    return dedupePrayerRooms(parsed.filter((room) => !isDemoRoomId(room.id)));
   });
 
   const [historySessions, setHistorySessions] = useState<PrayerSession[]>(() => {
-    return localPersistenceAdapter.loadHistory(SEED_HISTORY_SESSIONS);
+    return localPersistenceAdapter
+      .loadHistory([])
+      .filter((session) => !isDemoHistoryId(session.id) && !isDemoRoomId(session.prayerRoomId));
   });
 
   const [liveSession, setLiveSession] = useState<PrayerSession | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [raisedHands, setRaisedHands] = useState<RaisedHand[]>([]);
   const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>(() => {
-    return localPersistenceAdapter.loadRequests(SEED_PRAYER_REQUESTS);
+    return localPersistenceAdapter.loadRequests([]).filter((request) => !isDemoRequestId(request.id));
   });
 
   // Rolling scheduled sessions
@@ -218,6 +217,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localPersistenceAdapter.saveRequests(prayerRequests);
   }, [prayerRequests]);
+
+  useEffect(() => {
+    setScheduledSessions(generateRollingSessions(prayerRooms, historySessions));
+  }, [prayerRooms, historySessions]);
+
+  useEffect(() => {
+    const orgId = organization?.id;
+    if (!orgId || !user?.id) return;
+
+    setPrayerRooms((prev) =>
+      dedupePrayerRooms(prev.filter((room) => room.organizationId === orgId && !isDemoRoomId(room.id)))
+    );
+    setHistorySessions((prev) =>
+      prev.filter((session) => !isDemoHistoryId(session.id) && !isDemoRoomId(session.prayerRoomId))
+    );
+    setPrayerRequests((prev) => prev.filter((request) => !isDemoRequestId(request.id)));
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await sanctumApi.listPrayerRooms({ userId: user.id, organizationId: orgId });
+        if (cancelled) return;
+        const mapped = result.rooms.map(mapServerPrayerRoom).filter((room) => !isDemoRoomId(room.id));
+        setPrayerRooms((prev) => {
+          const byId = new Map(mapped.map((room) => [room.id, room]));
+          for (const room of prev) {
+            if (room.organizationId === orgId && !byId.has(room.id) && !isDemoRoomId(room.id)) {
+              byId.set(room.id, room);
+            }
+          }
+          return dedupePrayerRooms(Array.from(byId.values()));
+        });
+      } catch {
+        /* keep local rooms for this church */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [organization?.id, user?.id]);
 
   useEffect(() => {
     localPersistenceAdapter.saveDataSaver(dataSaverMode);

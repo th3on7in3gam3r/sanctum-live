@@ -6,6 +6,20 @@ import { sendError } from '../http.ts';
 import { RoomNotFound, Unauthorized } from '../../shared/errors.ts';
 import { auditRepository, prayerRoomRepository } from '../repositories/index.ts';
 
+export async function listPrayerRoomsHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = await resolveActorFromRequest(req);
+    if (!actor.organizationId || !actor.orgRole) {
+      throw Unauthorized();
+    }
+
+    const rooms = await prayerRoomRepository.listByOrganization(actor.organizationId);
+    res.json({ rooms });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
 export async function createPrayerRoomHandler(req: Request, res: Response): Promise<void> {
   try {
     const requestedOrg = typeof req.body?.organizationId === 'string' ? req.body.organizationId : null;

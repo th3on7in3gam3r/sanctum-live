@@ -25,8 +25,15 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+      {sessions.length === 0 ? (
+        <div className="px-6 py-12">
+          <p className="text-sm text-center text-[#68736D] dark:text-[#96A39D]">
+            Completed gatherings will appear here after you end a live prayer session.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
           <thead className="bg-[#F8F7F3] dark:bg-[#101814] text-xs font-bold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D] border-b border-[#E5E6E1] dark:border-[#26362F]">
             <tr>
               <th className="px-6 py-4">Prayer Session</th>
@@ -47,7 +54,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                     hour: 'numeric',
                     minute: '2-digit',
                   }).format(new Date(s.startedAt))
-                : 'Yesterday';
+                : '—';
 
               const totalUnique = s.totalUniqueParticipants || s.totalParticipants || 0;
               const peakConcurrent = s.peakConcurrentParticipants || s.peakParticipants || 0;
@@ -67,7 +74,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                           {s.roomName}
                         </div>
                         <div className="text-xs text-[#68736D] dark:text-[#96A39D]">
-                          Led by {s.activeSpeakerName || 'Pastor Kenneth'}
+                          {s.activeSpeakerName ? `Led by ${s.activeSpeakerName}` : '—'}
                         </div>
                       </div>
                     </div>
@@ -113,7 +120,8 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
             })}
           </tbody>
         </table>
-      </div>
+        </div>
+      )}
     </div>
   );
 };
