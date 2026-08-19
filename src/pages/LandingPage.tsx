@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SanctumLogo } from '../components/common/SanctumLogo';
 import { ClerkNavAuth } from '../components/common/ClerkNavAuth';
+import { StartPrayerRoomCta } from '../components/common/StartPrayerRoomCta';
 import { LiveBadge } from '../components/common/LiveBadge';
 import {
   Sparkles,
@@ -69,7 +70,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
           </button>
 
           <button
-            onClick={() => onNavigate('/join/morning-prayer')}
+            onClick={() => onNavigate('/join')}
             type="button"
             className="hidden sm:inline-block text-sm font-medium text-[#68736D] hover:text-[#203C32] dark:hover:text-[#E8D8B2] transition-colors cursor-pointer"
           >
@@ -108,16 +109,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
 
           <div className="flex flex-col gap-5">
             <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                onClick={() => onNavigate('/onboarding')}
-                className="px-8 py-4 sm:py-5 bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] rounded-2xl font-bold text-base sm:text-lg shadow-xl shadow-[#203c3215] flex items-center justify-center gap-3 transition-all active:scale-95 cursor-pointer"
-              >
-                <span>Start a Prayer Room</span>
-                <span className="text-xl">→</span>
-              </button>
+              <StartPrayerRoomCta onNavigate={onNavigate} />
 
               <button
-                onClick={() => onNavigate('/join/morning-prayer')}
+                onClick={() => onNavigate('/join')}
                 className="px-8 py-4 sm:py-5 bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] text-[#203C32] dark:text-[#F8F7F3] hover:border-[#203C32] dark:hover:border-[#C9A35A] rounded-2xl font-bold text-base sm:text-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer"
               >
                 Join Prayer
@@ -145,11 +140,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
         {/* Right Column: Geometric Live Prayer Room Preview Card */}
         <div className="lg:col-span-6 flex justify-center lg:justify-end">
           <div className="w-full max-w-[500px] bg-white dark:bg-[#17221D] rounded-[40px] shadow-2xl border border-[#E5E6E1] dark:border-[#26362F] p-6 sm:p-8 flex flex-col gap-6 relative overflow-hidden transition-colors">
+            <span className="absolute top-5 left-6 z-20 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A]">
+              Product preview
+            </span>
             {/* Background Circular Geometric Watermark */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-[#F8F7F3] dark:bg-[#101814] rounded-full -translate-y-1/2 translate-x-1/2 opacity-60 pointer-events-none" />
 
             {/* Header: LIVE Status + Count + Time */}
-            <div className="flex items-center justify-between z-10">
+            <div className="flex items-center justify-between z-10 mt-6">
               <div className="flex items-center gap-3">
                 <div className="px-3 py-1 bg-[#D7473F] text-white text-[10px] font-black rounded-md tracking-widest flex items-center gap-1.5 shadow-xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
@@ -245,7 +243,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
 
               <button
                 type="button"
-                onClick={() => onNavigate('/join/morning-prayer')}
+                onClick={() => onNavigate('/join')}
                 className="flex-1 py-3.5 bg-[#203C32] hover:bg-[#16251F] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] text-white dark:text-[#101814] rounded-xl font-bold text-xs sm:text-sm tracking-wide transition-colors cursor-pointer"
               >
                 Prayer Request

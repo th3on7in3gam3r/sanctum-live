@@ -173,8 +173,21 @@ export const sanctumApi = {
     }>(`/api/sessions/${sessionId}`),
   getAltar: (slug: string) =>
     apiFetch<{ room: { id: string; name: string; slug: string }; session: { id: string; status: string } | null }>(
-      `/api/altar/${slug}`
+      `/api/altar/${encodeURIComponent(slug)}`
     ),
+  listLiveAltars: (organizationSlug?: string) => {
+    const query = organizationSlug ? `?organization=${encodeURIComponent(organizationSlug)}` : '';
+    return apiFetch<{
+      rooms: Array<{
+        slug: string;
+        name: string;
+        organizationName: string;
+        organizationSlug: string;
+        sessionId: string;
+        status: string;
+      }>;
+    }>(`/api/altar/live${query}`);
+  },
   leaveSession: (sessionId: string, participantId: string) =>
     apiFetch(`/api/sessions/${sessionId}/leave`, {
       method: 'POST',

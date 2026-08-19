@@ -12,6 +12,7 @@ import {
   dismissHandHandler,
   endPrayerSessionHandler,
   getAltarBySlugHandler,
+  listLiveAltarsHandler,
   getSessionSnapshotHandler,
   grantSpeakerHandler,
   inviteSpeakerHandler,
@@ -50,6 +51,7 @@ export function createApp() {
   app.get('/api/health', healthHandler);
   app.get('/api/me', meHandler);
   app.post('/api/prayer-rooms', createPrayerRoomHandler);
+  app.get('/api/altar/live', listLiveAltarsHandler);
   app.get('/api/altar/:slug', getAltarBySlugHandler);
   app.post('/api/prayer-sessions', createPrayerSessionHandler);
   app.post('/api/prayer-sessions/:id/open', openPrayerSessionHandler);

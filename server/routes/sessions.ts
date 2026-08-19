@@ -11,6 +11,7 @@ import { deriveSessionRoleFromOrgRole } from '../../shared/roles.ts';
 import { assertCanTransitionSession, isJoinableSessionStatus } from '../../shared/sessionStateMachine.ts';
 import { isLiveKitConfigured } from '../env.ts';
 import { sendError } from '../http.ts';
+import { getPrisma } from '../prisma.ts';
 import { resolveJoinRealtimeIdentity } from '../identity.ts';
 import { broadcastSessionEvent, ensureLiveKitRoom } from '../realtime/ensureLiveKitRoom.ts';
 import { getLiveKitProvider } from '../realtime/livekitProvider.ts';
@@ -234,6 +235,51 @@ export async function getSessionSnapshotHandler(req: Request, res: Response): Pr
       connectedNow,
       peakConcurrentParticipants: session.peakConcurrentParticipants,
       realtimeConfigured: isLiveKitConfigured(),
+    });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function listLiveAltarsHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      res.json({ rooms: [] });
+      return;
+    }
+
+    const organizationSlug =
+      typeof req.query.organization === 'string' ? req.query.organization.trim().toLowerCase() : '';
+
+    const sessions = await prisma.prayerSession.findMany({
+      where: {
+        status: 'LIVE',
+        ...(organizationSlug
+          ? { prayerRoom: { organization: { slug: organizationSlug } } }
+          : {}),
+      },
+      include: {
+        prayerRoom: {
+          select: {
+            name: true,
+            slug: true,
+            organization: { select: { name: true, slug: true } },
+          },
+        },
+      },
+      orderBy: { actualStart: 'desc' },
+    });
+
+    res.json({
+      rooms: sessions.map((session) => ({
+        slug: session.prayerRoom.slug,
+        name: session.prayerRoom.name,
+        organizationName: session.prayerRoom.organization.name,
+        organizationSlug: session.prayerRoom.organization.slug,
+        sessionId: session.id,
+        status: session.status,
+      })),
     });
   } catch (error) {
     sendError(res, error);

@@ -16,6 +16,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { TermsPage } from './pages/TermsPage';
 import { PublicJoinView } from './components/public/PublicJoinView';
+import { JoinFinderPage } from './pages/JoinFinderPage';
 import { ListenerRoomView } from './components/public/ListenerRoomView';
 import { DashboardLayout } from './components/dashboard/DashboardLayout';
 import { NotificationToastContainer } from './components/common/NotificationToast';
@@ -89,10 +90,17 @@ const RouterContent: React.FC = () => {
     go();
   };
 
-  // Route: /join/:slug
-  if (currentPath.startsWith('/join')) {
+  // Route: /join (paste a link) or /join/:slug (that room)
+  if (currentPath === '/join' || currentPath === '/join/') {
+    return <JoinFinderPage onNavigate={navigate} />;
+  }
+
+  if (currentPath.startsWith('/join/')) {
     const parts = currentPath.split('/');
-    const slug = parts[2] || 'morning-prayer';
+    const slug = parts[2];
+    if (!slug) {
+      return <JoinFinderPage onNavigate={navigate} />;
+    }
 
     if (joinedAttendeeName) {
       return (
