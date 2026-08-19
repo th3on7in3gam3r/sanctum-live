@@ -339,40 +339,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
       </section>
 
       {/* Geometric Balanced Deep Sanctuary Green Footer Strip */}
-      <footer className="px-6 sm:px-12 py-10 bg-[#203C32] text-[#F8F7F3] flex flex-col md:flex-row items-center justify-between gap-8 mt-12">
-        <div className="flex flex-wrap items-center gap-8 sm:gap-12 text-left">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
-              01. Reach
-            </span>
-            <span className="font-bold text-sm text-white">Share one simple link</span>
+      <footer className="px-6 sm:px-12 py-10 bg-[#203C32] text-[#F8F7F3] mt-12">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex flex-wrap items-center gap-8 sm:gap-12 text-left">
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
+                01. Reach
+              </span>
+              <span className="font-bold text-sm text-white">Share one simple link</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
+                02. Gather
+              </span>
+              <span className="font-bold text-sm text-white">Members join as listeners</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
+                03. Control
+              </span>
+              <span className="font-bold text-sm text-white">Leaders moderate speakers</span>
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
-              02. Gather
-            </span>
-            <span className="font-bold text-sm text-white">Members join as listeners</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
-              03. Control
-            </span>
-            <span className="font-bold text-sm text-white">Leaders moderate speakers</span>
+
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#E8D8B2]/80">
+            <span>Secure • Mobile First • Optimized Audio</span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => onNavigate('/privacy')} className="hover:text-white cursor-pointer">
+                Privacy
+              </button>
+              <span>•</span>
+              <button onClick={() => onNavigate('/terms')} className="hover:text-white cursor-pointer">
+                Terms
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#E8D8B2]/80">
-          <span>Secure • Mobile First • Optimized Audio</span>
-          <div className="flex items-center gap-3">
-            <button onClick={() => onNavigate('/privacy')} className="hover:text-white cursor-pointer">
-              Privacy
-            </button>
-            <span>•</span>
-            <button onClick={() => onNavigate('/terms')} className="hover:text-white cursor-pointer">
-              Terms
-            </button>
-          </div>
-        </div>
+        <p className="mt-8 pt-6 border-t border-white/10 text-center text-xs sm:text-sm text-[#E8D8B2]/90 leading-relaxed">
+          From{' '}
+          <a
+            href="https://biblefunlandstudios.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-[#C9A35A] hover:text-white transition-colors"
+          >
+            Biblefunland Studio
+          </a>
+          {' '}— another house of prayer, this time on the web.
+        </p>
       </footer>
     </div>
   );
