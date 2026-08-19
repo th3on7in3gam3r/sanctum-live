@@ -4,7 +4,6 @@
  */
 import type { Request } from 'express';
 import { clerkClient, getAuth } from '@clerk/express';
-import { claimChurchOwnerForClerkUser } from './churchOwner.ts';
 import { isClerkConfigured } from './env.ts';
 import { membershipRepository, userRepository, type UserRecord } from './repositories/index.ts';
 import { resolveActor, type ActorContext } from './authz.ts';
@@ -54,6 +53,9 @@ export async function resolvePrismaUserFromClerk(req: Request): Promise<UserReco
     || clerkUser.emailAddresses[0]?.emailAddress;
   if (!email) return null;
 
+  const displayName =
+    [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() || email.split('@')[0];
+
   const byEmail = await userRepository.findByEmail(email.toLowerCase());
   if (byEmail) {
     if (byEmail.clerkUserId && byEmail.clerkUserId !== clerkUserId) {
@@ -66,14 +68,10 @@ export async function resolvePrismaUserFromClerk(req: Request): Promise<UserReco
     return { ...byEmail, clerkUserId };
   }
 
-  const displayName =
-    [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() || email.split('@')[0];
-  const claimed = await claimChurchOwnerForClerkUser({
-    clerkUserId,
-    email: email.toLowerCase(),
+  const created = await userRepository.create({
     name: displayName,
+    email: email.toLowerCase(),
+    clerkUserId,
   });
-  if (!claimed) return null;
-  await membershipRepository.activateInvitedForUser(claimed.id);
-  return claimed;
+  return created;
 }

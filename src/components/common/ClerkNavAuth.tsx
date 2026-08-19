@@ -33,7 +33,7 @@ export const ClerkNavAuth: React.FC<ClerkNavAuthProps> = ({ onNavigate }) => {
   return (
     <div className="flex items-center gap-2 sm:gap-3">
       <Show when="signed-out">
-        <SignInButton mode="modal" forceRedirectUrl="/dashboard" appearance={clerkAppearance}>
+        <SignInButton mode="modal" forceRedirectUrl="/onboarding" appearance={clerkAppearance}>
           <button
             type="button"
             className={`${navButtonClass} border border-[#16251F] dark:border-[#E8D8B2] text-[#16251F] dark:text-[#F8F7F3] hover:bg-[#16251F] hover:text-white dark:hover:bg-[#E8D8B2] dark:hover:text-[#101814]`}
@@ -43,13 +43,21 @@ export const ClerkNavAuth: React.FC<ClerkNavAuthProps> = ({ onNavigate }) => {
         </SignInButton>
       </Show>
       <Show when="signed-in">
-        {isAuthenticated && (
+        {isAuthenticated ? (
           <button
             type="button"
             onClick={() => onNavigate('/dashboard')}
             className={`${navButtonClass} border border-[#16251F] dark:border-[#E8D8B2] text-[#16251F] dark:text-[#F8F7F3] hover:bg-[#16251F] hover:text-white dark:hover:bg-[#E8D8B2] dark:hover:text-[#101814]`}
           >
-            Dashboard
+            Sanctum Space
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onNavigate('/onboarding')}
+            className={`${navButtonClass} border border-[#16251F] dark:border-[#E8D8B2] text-[#16251F] dark:text-[#F8F7F3] hover:bg-[#16251F] hover:text-white dark:hover:bg-[#E8D8B2] dark:hover:text-[#101814]`}
+          >
+            Create space
           </button>
         )}
         <UserButton afterSignOutUrl="/" appearance={clerkAppearance} />

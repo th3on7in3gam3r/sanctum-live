@@ -153,14 +153,61 @@ export const userRepository = {
     const prisma = requirePrisma();
     await prisma.user.update({ where: { id }, data: { clerkUserId } });
   },
-  async create(input: { name: string; email: string }): Promise<UserRecord> {
+  async create(input: { name: string; email: string; clerkUserId?: string }): Promise<UserRecord> {
     const prisma = requirePrisma();
     return prisma.user.create({
       data: {
         name: input.name,
         email: input.email.toLowerCase(),
+        clerkUserId: input.clerkUserId,
       },
     });
+  },
+};
+
+export const organizationRepository = {
+  async findById(id: string) {
+    const prisma = requirePrisma();
+    return prisma.organization.findUnique({ where: { id } });
+  },
+  async findBySlug(slug: string) {
+    const prisma = requirePrisma();
+    return prisma.organization.findUnique({ where: { slug } });
+  },
+  async create(input: {
+    name: string;
+    slug: string;
+    primaryContactName: string;
+    primaryContactEmail: string;
+    logoUrl?: string | null;
+  }) {
+    const prisma = requirePrisma();
+    return prisma.organization.create({
+      data: {
+        name: input.name,
+        slug: input.slug,
+        primaryContactName: input.primaryContactName,
+        primaryContactEmail: input.primaryContactEmail,
+        logoUrl: input.logoUrl || null,
+        joinPageMessage: 'Join your church family in prayer.',
+      },
+    });
+  },
+  async update(
+    id: string,
+    data: {
+      name?: string;
+      slug?: string;
+      logoUrl?: string | null;
+      country?: string;
+      timezone?: string;
+      website?: string | null;
+      joinPageMessage?: string | null;
+      accentColor?: string | null;
+    }
+  ) {
+    const prisma = requirePrisma();
+    return prisma.organization.update({ where: { id }, data });
   },
 };
 

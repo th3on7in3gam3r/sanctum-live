@@ -8,6 +8,7 @@ import {
   canInviteSpeaker,
   canManageParticipants,
   canStartPrayerSession,
+  canManageOrganization,
   canManageTeam,
   deriveSessionRoleFromOrgRole,
   type OrganizationRole,
@@ -61,6 +62,10 @@ export function requireCanInviteSpeaker(actor: ActorContext): OrganizationRole {
 
 export function requireCanManageTeam(actor: ActorContext): OrganizationRole {
   return requireOrgPermission(actor, canManageTeam, 'Not authorized to manage church staff');
+}
+
+export function requireCanManageOrganization(actor: ActorContext): OrganizationRole {
+  return requireOrgPermission(actor, canManageOrganization, 'Not authorized to update this Sanctum Space');
 }
 
 export function sessionRoleForJoin(orgRole: OrganizationRole | null, requestedRole: unknown): SessionRole {

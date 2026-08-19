@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth as useClerkAuth } from '@clerk/react';
 import { Organization, User, Role } from '../types';
 import { SEED_ORGANIZATION } from '../data/seedData';
@@ -10,9 +10,11 @@ interface AuthContextType {
   isAuthenticated: boolean;
   authReady: boolean;
   membershipDenied: boolean;
+  needsOnboarding: boolean;
   clerkConfigured: boolean;
   login: (email: string, role?: Role) => boolean;
   logout: () => void;
+  refreshAuth: () => Promise<void>;
   switchOrganization: (org: Organization) => void;
   updateOrganization: (updates: Partial<Organization>) => void;
 }
@@ -26,11 +28,13 @@ function mapOrganization(row: Record<string, unknown> | null): Organization {
     id: String(row.id || SEED_ORGANIZATION.id),
     name: String(row.name || SEED_ORGANIZATION.name),
     slug: String(row.slug || SEED_ORGANIZATION.slug),
+    logoUrl: typeof row.logoUrl === 'string' ? row.logoUrl : undefined,
     country: String(row.country || SEED_ORGANIZATION.country),
     timezone: String(row.timezone || SEED_ORGANIZATION.timezone),
     website: typeof row.website === 'string' ? row.website : SEED_ORGANIZATION.website,
     joinPageMessage:
       typeof row.joinPageMessage === 'string' ? row.joinPageMessage : SEED_ORGANIZATION.joinPageMessage,
+    accentColor: typeof row.accentColor === 'string' ? row.accentColor : SEED_ORGANIZATION.accentColor,
   };
 }
 
@@ -39,6 +43,7 @@ const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [organization, setOrganization] = useState<Organization>(SEED_ORGANIZATION);
   const [user, setUser] = useState<User | null>(null);
   const [membershipDenied, setMembershipDenied] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
@@ -46,62 +51,75 @@ const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => setApiAccessTokenGetter(null);
   }, [getToken]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const sync = async () => {
-      if (!isLoaded) return;
-      if (!isSignedIn) {
-        if (!cancelled) {
-          setUser(null);
-          setMembershipDenied(false);
-          setAuthReady(true);
-        }
+  const applyMe = useCallback((me: Awaited<ReturnType<typeof sanctumApi.fetchMe>>) => {
+    if (me.needsOnboarding || !me.user?.role || !me.user.organizationId || !me.organization) {
+      setUser(null);
+      setNeedsOnboarding(true);
+      setMembershipDenied(false);
+      return;
+    }
+    setNeedsOnboarding(false);
+    setMembershipDenied(false);
+    setUser({
+      id: me.user.id,
+      organizationId: me.user.organizationId,
+      name: me.user.name,
+      email: me.user.email,
+      role: me.user.role as Role,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    setOrganization(mapOrganization(me.organization));
+  }, []);
+
+  const syncFromClerk = useCallback(async () => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setUser(null);
+      setMembershipDenied(false);
+      setNeedsOnboarding(false);
+      setAuthReady(true);
+      return;
+    }
+    try {
+      let token = await getToken();
+      for (let attempt = 0; !token && attempt < 8; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        token = await getToken();
+      }
+      if (!token) {
+        setUser(null);
+        setMembershipDenied(false);
+        setNeedsOnboarding(false);
+        setAuthReady(true);
         return;
       }
-      try {
-        let token = await getToken();
-        for (let attempt = 0; !token && attempt < 8; attempt += 1) {
-          await new Promise((resolve) => setTimeout(resolve, 150));
-          if (cancelled) return;
-          token = await getToken();
-        }
-        if (!token) {
-          if (!cancelled) {
-            setUser(null);
-            setMembershipDenied(false);
-            setAuthReady(true);
-          }
-          return;
-        }
-        const me = await sanctumApi.fetchMe();
-        if (cancelled) return;
-        setMembershipDenied(false);
-        setUser({
-          id: me.user.id,
-          organizationId: me.user.organizationId,
-          name: me.user.name,
-          email: me.user.email,
-          role: me.user.role as Role,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        setOrganization(mapOrganization(me.organization));
-      } catch (error) {
-        if (cancelled) return;
-        setUser(null);
-        setMembershipDenied(error instanceof ApiClientError && error.status === 403);
-      } finally {
-        if (!cancelled) setAuthReady(true);
-      }
+      const me = await sanctumApi.fetchMe();
+      applyMe(me);
+    } catch (error) {
+      setUser(null);
+      setNeedsOnboarding(false);
+      setMembershipDenied(error instanceof ApiClientError && error.status === 403);
+    } finally {
+      setAuthReady(true);
+    }
+  }, [applyMe, getToken, isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      await syncFromClerk();
+      if (cancelled) return;
     };
-    void sync();
+    void run();
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, isSignedIn, getToken]);
+  }, [syncFromClerk]);
 
   const logout = () => {
     setUser(null);
+    setNeedsOnboarding(false);
     void signOut({ redirectUrl: '/' });
   };
 
@@ -113,9 +131,11 @@ const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isAuthenticated: Boolean(user),
         authReady,
         membershipDenied,
+        needsOnboarding,
         clerkConfigured: true,
         login: () => false,
         logout,
+        refreshAuth: syncFromClerk,
         switchOrganization: setOrganization,
         updateOrganization: (updates) =>
           setOrganization((prev) => ({ ...prev, ...updates, updatedAt: new Date().toISOString() })),
@@ -136,9 +156,11 @@ const LocalAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         isAuthenticated: false,
         authReady: true,
         membershipDenied: false,
+        needsOnboarding: false,
         clerkConfigured: false,
         login: () => false,
         logout: () => undefined,
+        refreshAuth: async () => undefined,
         switchOrganization: setOrganization,
         updateOrganization: (updates) =>
           setOrganization((prev) => ({ ...prev, ...updates, updatedAt: new Date().toISOString() })),

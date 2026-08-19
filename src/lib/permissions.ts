@@ -37,7 +37,7 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapability> = {
   ADMIN: {
     role: 'ADMIN',
     label: 'Church Administrator',
-    description: 'Manage prayer rooms, congregation participants, prayer requests, and live sessions.',
+    description: 'Help run prayer rooms: invite to speak, mute, unmute, and remove listeners. Cannot invite more Admins.',
     canSpeakAutomatically: false,
     canInviteSpeakers: true,
     canMuteSpeakers: true,

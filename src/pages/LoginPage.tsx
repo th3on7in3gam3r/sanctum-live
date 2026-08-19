@@ -10,7 +10,7 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
-  const { clerkConfigured, membershipDenied } = useAuth();
+  const { clerkConfigured, membershipDenied, needsOnboarding } = useAuth();
   const { isDarkMode, toggleDarkMode } = useApp();
 
   return (
@@ -43,40 +43,43 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             Church Admin Sign In
           </h1>
           <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-1">
-            Church staff sign in here. Congregants join with a prayer link and their name — no account.
+            Create a Sanctum Space or join one you were invited to. Congregants join with a prayer link and their name —
+            no account.
           </p>
         </div>
 
         {!clerkConfigured && (
           <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs font-medium">
-            Add VITE_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY, then sign in with a church staff email such as
-            kenneth@miraclecenter.org.
+            Add VITE_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY, then sign in to create your Sanctum Space.
           </div>
         )}
 
-        {membershipDenied && (
+        {needsOnboarding && (
           <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-red-500/10 border border-[#B94A48]/30 text-[#B94A48] dark:text-red-400 text-xs font-medium leading-relaxed">
-              This Clerk account was not on a church team yet. If you are the church owner, reload and open the dashboard
-              — the first owner sign-in is linked automatically. Extra staff still need an invite in Settings → Team.
-            </div>
+            <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
+              You are signed in. Name your church to open your Sanctum Space.
+            </p>
             <button
               type="button"
-              onClick={() => {
-                window.location.assign('/dashboard');
-              }}
+              onClick={() => onNavigate('/onboarding')}
               className="w-full px-4 py-2.5 rounded-xl text-xs font-bold bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] cursor-pointer"
             >
-              Open dashboard
+              Create your Sanctum Space
             </button>
           </div>
         )}
 
-        {clerkConfigured && !membershipDenied && (
+        {membershipDenied && !needsOnboarding && (
+          <div className="p-3 rounded-xl bg-red-500/10 border border-[#B94A48]/30 text-[#B94A48] dark:text-red-400 text-xs font-medium leading-relaxed">
+            Sign in failed. Try again, or ask the space Owner to invite your email as Admin.
+          </div>
+        )}
+
+        {clerkConfigured && !membershipDenied && !needsOnboarding && (
           <div className="flex justify-center">
             <SignIn
               routing="hash"
-              forceRedirectUrl="/dashboard"
+              forceRedirectUrl="/onboarding"
               appearance={{
                 variables: {
                   colorPrimary: '#203C32',
@@ -88,17 +91,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
         )}
       </main>
 
-      {!membershipDenied && (
-        <footer className="max-w-md w-full mx-auto text-center text-xs text-[#68736D] dark:text-[#96A39D] pt-4">
-          Need to register a new church?{' '}
-          <button
-            onClick={() => onNavigate('/onboarding')}
-            className="font-bold text-[#203C32] dark:text-[#C9A35A] hover:underline"
-          >
-            Start Onboarding
-          </button>
-        </footer>
-      )}
+      <footer className="max-w-md w-full mx-auto text-center text-xs text-[#68736D] dark:text-[#96A39D] pt-4">
+        Starting a church prayer space?{' '}
+        <button
+          onClick={() => onNavigate('/onboarding')}
+          className="font-bold text-[#203C32] dark:text-[#C9A35A] hover:underline"
+        >
+          Create a Sanctum Space
+        </button>
+      </footer>
     </div>
   );
 };

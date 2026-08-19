@@ -24,7 +24,7 @@ import { GlobalConfirmModal } from './components/common/GlobalConfirmModal';
 import { loadJoinSession } from './services/realtime/joinSessionStore';
 
 const RouterContent: React.FC = () => {
-  const { isAuthenticated, authReady, membershipDenied } = useAuth();
+  const { isAuthenticated, authReady, membershipDenied, needsOnboarding } = useAuth();
   const { hasUnsavedChanges, setHasUnsavedChanges, confirmAction, leavePrayerRoom } = useApp();
 
   // Route state
@@ -92,7 +92,17 @@ const RouterContent: React.FC = () => {
 
   useEffect(() => {
     if (!authReady) return;
-    if (isAuthenticated && (currentPath === '/' || currentPath === '/login')) {
+    if (needsOnboarding && currentPath !== '/onboarding' && !currentPath.startsWith('/join')) {
+      if (
+        currentPath === '/' ||
+        currentPath === '/login' ||
+        currentPath.startsWith('/dashboard')
+      ) {
+        navigate('/onboarding');
+      }
+      return;
+    }
+    if (isAuthenticated && (currentPath === '/' || currentPath === '/login' || currentPath === '/onboarding')) {
       navigate('/dashboard');
       return;
     }
@@ -101,7 +111,7 @@ const RouterContent: React.FC = () => {
         navigate('/login');
       }
     }
-  }, [authReady, isAuthenticated, membershipDenied, currentPath]);
+  }, [authReady, isAuthenticated, membershipDenied, needsOnboarding, currentPath]);
 
   // Route: /join (paste a link) or /join/:slug (that room)
   if (currentPath === '/join' || currentPath === '/join/') {
@@ -146,6 +156,13 @@ const RouterContent: React.FC = () => {
     return <LoginPage onNavigate={navigate} />;
   }
   if (currentPath === '/onboarding') {
+    if (!authReady) {
+      return (
+        <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex items-center justify-center text-sm text-[#68736D]">
+          Checking church session…
+        </div>
+      );
+    }
     return <OnboardingPage onNavigate={navigate} />;
   }
   if (currentPath === '/privacy') {
@@ -165,6 +182,9 @@ const RouterContent: React.FC = () => {
           Checking church session…
         </div>
       );
+    }
+    if (needsOnboarding) {
+      return <OnboardingPage onNavigate={navigate} />;
     }
     if (!isAuthenticated) {
       return <LoginPage onNavigate={navigate} />;

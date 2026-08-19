@@ -68,6 +68,9 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ currentPath, onNavig
             </div>
 
             <div className="mt-4 p-3 rounded-2xl bg-black/5 dark:bg-white/5">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#68736D] dark:text-[#96A39D]">
+                Sanctum Space
+              </p>
               <p className="text-xs font-bold text-[#16251F] dark:text-[#F8F7F3]">{organization.name}</p>
               <p className="text-[11px] text-[#68736D] dark:text-[#96A39D]">Logged in as {user?.name}</p>
             </div>

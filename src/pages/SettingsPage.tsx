@@ -7,6 +7,8 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { ComingSoonBadge } from '../components/common/ComingSoonBadge';
 import { RealtimeEngineStatus } from '../components/common/RealtimeEngineStatus';
 import { TeamInvitePanel } from '../components/dashboard/TeamInvitePanel';
+import { LogoUrlField } from '../components/common/LogoUrlField';
+import { ApiClientError, sanctumApi } from '../services/api/sanctumApi';
 
 interface SettingsPageProps {
   onNavigate: (path: string) => void;
@@ -15,7 +17,8 @@ interface SettingsPageProps {
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavigate }) => {
   const { organization, updateOrganization, user } = useAuth();
   const { addToast, confirmAction, setHasUnsavedChanges } = useApp();
-  const showTeamTab = user?.role === 'OWNER' || user?.role === 'ADMIN';
+  const showTeamTab = user?.role === 'OWNER';
+  const actor = { userId: user?.id, organizationId: organization.id };
 
   const [activeTab, setActiveTab] = useState<
     'GENERAL' | 'BRANDING' | 'DEFAULTS' | 'SECURITY' | 'BILLING' | 'TEAM'
@@ -28,6 +31,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
   const [website, setWebsite] = useState(organization.website || '');
 
   const [joinPageMessage, setJoinPageMessage] = useState(organization.joinPageMessage || 'Join your church family in prayer.');
+  const [logoUrl, setLogoUrl] = useState(organization.logoUrl || '');
   const [primaryColor, setPrimaryColor] = useState(organization.primaryColor || '#203C32');
   const [accentColor, setAccentColor] = useState(organization.accentColor || '#C9A35A');
 
@@ -49,6 +53,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
       timezone !== organization.timezone ||
       website !== (organization.website || '') ||
       joinPageMessage !== (organization.joinPageMessage || 'Join your church family in prayer.') ||
+      logoUrl !== (organization.logoUrl || '') ||
       primaryColor !== (organization.primaryColor || '#203C32') ||
       accentColor !== (organization.accentColor || '#C9A35A') ||
       defaultLowBandwidth !== savedDefaults.defaultLowBandwidth ||
@@ -62,6 +67,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
     timezone,
     website,
     joinPageMessage,
+    logoUrl,
     primaryColor,
     accentColor,
     defaultLowBandwidth,
@@ -89,28 +95,48 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
     });
   };
 
-  const handleSaveGeneral = (e: React.FormEvent) => {
+  const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateOrganization({
-      name,
-      slug: slug || slugify(name),
-      country,
-      timezone,
-      website,
-    });
-    addToast('Church general settings updated', 'success');
-    setHasUnsavedChanges(false);
+    const nextSlug = slug || slugify(name);
+    try {
+      const result = await sanctumApi.updateCurrentSpace(
+        { name, slug: nextSlug, country, timezone, website },
+        actor
+      );
+      updateOrganization({
+        name,
+        slug: nextSlug,
+        country,
+        timezone,
+        website,
+        ...(result.organization as Partial<typeof organization>),
+      });
+      addToast('Sanctum Space settings saved', 'success');
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      addToast(error instanceof ApiClientError ? error.message : 'Could not save settings.', 'error');
+    }
   };
 
-  const handleSaveBranding = (e: React.FormEvent) => {
+  const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateOrganization({
-      joinPageMessage,
-      primaryColor,
-      accentColor,
-    });
-    addToast('Branding preferences saved', 'success');
-    setHasUnsavedChanges(false);
+    try {
+      const result = await sanctumApi.updateCurrentSpace(
+        { joinPageMessage, accentColor, logoUrl },
+        actor
+      );
+      updateOrganization({
+        joinPageMessage,
+        primaryColor,
+        accentColor,
+        logoUrl: logoUrl.trim() || undefined,
+        ...(result.organization as Partial<typeof organization>),
+      });
+      addToast('Branding saved', 'success');
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      addToast(error instanceof ApiClientError ? error.message : 'Could not save branding.', 'error');
+    }
   };
 
   return (
@@ -118,10 +144,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
-          Ministry & Sanctuary Settings
+          Sanctum Space settings
         </h1>
         <p className="text-xs sm:text-sm text-[#68736D] dark:text-[#96A39D] mt-1">
-          Customize your church's permanent prayer links, congregation welcome messages, and default gathering policies.
+          Church name, logo, join-page welcome, and the Admins who help run this space.
         </p>
       </div>
 
@@ -257,6 +283,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
                 Displayed prominently to all congregants right above the Name field.
               </p>
             </div>
+
+            <LogoUrlField value={logoUrl} onChange={setLogoUrl} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div>

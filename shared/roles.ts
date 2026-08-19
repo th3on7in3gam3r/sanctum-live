@@ -18,9 +18,9 @@ export type OrgPermission =
   | 'prayerRequest.manage'
   | 'team.manage';
 
-export const INVITEABLE_ORG_ROLES = ['ADMIN', 'PRAYER_LEADER', 'TECHNICAL_ADMIN'] as const;
+export const INVITEABLE_ORG_ROLES = ['ADMIN'] as const;
 
-export function isInviteableOrgRole(role: string): role is Exclude<OrganizationRole, 'OWNER'> {
+export function isInviteableOrgRole(role: string): role is 'ADMIN' {
   return (INVITEABLE_ORG_ROLES as readonly string[]).includes(role);
 }
 
@@ -54,7 +54,6 @@ export const ORGANIZATION_PERMISSIONS: Record<OrganizationRole, readonly OrgPerm
     'participant.mute',
     'prayerRequest.viewPrivate',
     'prayerRequest.manage',
-    'team.manage',
   ],
   PRAYER_LEADER: [
     'session.start',
@@ -81,6 +80,10 @@ export function hasOrgPermission(role: OrganizationRole, permission: OrgPermissi
 
 export function canManageTeam(role: OrganizationRole): boolean {
   return hasOrgPermission(role, 'team.manage');
+}
+
+export function canManageOrganization(role: OrganizationRole): boolean {
+  return hasOrgPermission(role, 'organization.manage');
 }
 
 export function canCreatePrayerRoom(role: OrganizationRole): boolean {

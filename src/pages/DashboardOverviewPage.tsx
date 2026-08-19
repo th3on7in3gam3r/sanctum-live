@@ -61,7 +61,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             Good morning, {user?.name?.split(' ')[0] || 'Pastor'}
           </h1>
           <p className="text-xs sm:text-sm text-[#68736D] dark:text-[#96A39D] mt-1">
-            Here's what's happening in your prayer ministry at <strong className="text-[#203C32] dark:text-[#C9A35A]">{organization?.name || 'Sanctum Sanctuary'}</strong>.
+            Here's what's happening in your Sanctum Space at <strong className="text-[#203C32] dark:text-[#C9A35A]">{organization?.name || 'Sanctum Space'}</strong>.
           </p>
         </div>
 

@@ -83,14 +83,14 @@ describe('permission matrix', () => {
     expect(canInviteSpeaker('TECHNICAL_ADMIN')).toBe(true);
   });
 
-  it('lets only Owner and Admin invite church staff', () => {
+  it('lets only Owner invite Admins to the Sanctum Space', () => {
     expect(canManageTeam('OWNER')).toBe(true);
-    expect(canManageTeam('ADMIN')).toBe(true);
+    expect(canManageTeam('ADMIN')).toBe(false);
     expect(canManageTeam('PRAYER_LEADER')).toBe(false);
     expect(canManageTeam('TECHNICAL_ADMIN')).toBe(false);
     expect(isInviteableOrgRole('ADMIN')).toBe(true);
-    expect(isInviteableOrgRole('PRAYER_LEADER')).toBe(true);
-    expect(isInviteableOrgRole('TECHNICAL_ADMIN')).toBe(true);
+    expect(isInviteableOrgRole('PRAYER_LEADER')).toBe(false);
+    expect(isInviteableOrgRole('TECHNICAL_ADMIN')).toBe(false);
     expect(isInviteableOrgRole('OWNER')).toBe(false);
   });
 

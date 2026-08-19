@@ -59,10 +59,21 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         {/* Organization Switcher Card */}
         <div className="p-3 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#203C32] dark:bg-[#C9A35A] text-white dark:text-[#101814] flex items-center justify-center font-bold text-xs">
-              <Building className="w-4 h-4" />
-            </div>
+            {organization.logoUrl ? (
+              <img
+                src={organization.logoUrl}
+                alt=""
+                className="w-8 h-8 rounded-xl object-cover bg-[#203C32]"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-xl bg-[#203C32] dark:bg-[#C9A35A] text-white dark:text-[#101814] flex items-center justify-center font-bold text-xs">
+                <Building className="w-4 h-4" />
+              </div>
+            )}
             <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#68736D] dark:text-[#96A39D]">
+                Sanctum Space
+              </p>
               <h4 className="text-xs font-bold text-[#16251F] dark:text-[#F8F7F3] truncate">
                 {organization.name}
               </h4>

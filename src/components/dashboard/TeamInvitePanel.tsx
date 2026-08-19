@@ -3,7 +3,6 @@ import { Mail, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { ApiClientError, sanctumApi } from '../../services/api/sanctumApi';
-import { INVITEABLE_ORG_ROLES } from '../../../shared/roles.ts';
 
 const ROLE_LABELS: Record<string, string> = {
   OWNER: 'Owner',
@@ -25,7 +24,6 @@ export const TeamInvitePanel: React.FC = () => {
   const { addToast } = useApp();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<(typeof INVITEABLE_ORG_ROLES)[number]>('ADMIN');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -55,7 +53,7 @@ export const TeamInvitePanel: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      const result = await sanctumApi.inviteTeamMember({ email: trimmed, role }, actor);
+      const result = await sanctumApi.inviteTeamMember({ email: trimmed, role: 'ADMIN' }, actor);
       setEmail('');
       addToast(
         result.clerkInviteSent
@@ -74,16 +72,16 @@ export const TeamInvitePanel: React.FC = () => {
   return (
     <div className="bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 border border-[#E5E6E1] dark:border-[#26362F] space-y-6">
       <div>
-        <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">Church team</h3>
+        <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">Sanctum Space team</h3>
         <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-1 leading-relaxed">
-          Congregation never signs in. Add pastors and admins by email. They Sign in with that same address — no public
-          Sign up onto the dashboard.
+          Only you, the Owner, can invite Admins. Admins can invite people to speak, mute, unmute, and remove listeners
+          in a live prayer room. Congregation never signs in.
         </p>
       </div>
 
       <form onSubmit={handleInvite} className="space-y-3">
         <label className="block text-xs font-bold uppercase text-[#16251F] dark:text-[#F8F7F3]">
-          Invite staff by email
+          Invite an Admin by email
         </label>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
@@ -91,20 +89,9 @@ export const TeamInvitePanel: React.FC = () => {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="pastor@yourchurch.org"
+            placeholder="admin@yourchurch.org"
             className="flex-1 px-4 py-3 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-sm font-semibold"
           />
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as (typeof INVITEABLE_ORG_ROLES)[number])}
-            className="px-4 py-3 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-sm font-semibold"
-          >
-            {INVITEABLE_ORG_ROLES.map((option) => (
-              <option key={option} value={option}>
-                {ROLE_LABELS[option]}
-              </option>
-            ))}
-          </select>
           <button
             type="submit"
             disabled={submitting}
@@ -115,7 +102,7 @@ export const TeamInvitePanel: React.FC = () => {
           </button>
         </div>
         <p className="text-[11px] text-[#68736D] dark:text-[#96A39D]">
-          Tell them to open Sign in and use this email. Owner cannot be invited this way.
+          Tell them to Sign in with this email. They skip onboarding and enter this Sanctum Space.
         </p>
       </form>
 

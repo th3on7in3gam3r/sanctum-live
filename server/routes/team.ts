@@ -44,7 +44,7 @@ export async function inviteTeamMemberHandler(req: Request, res: Response): Prom
     if (!isInviteableOrgRole(role)) {
       res.status(400).json({
         error: 'INVALID_INVITE',
-        message: 'Invite as Admin, Prayer Leader, or Technical Admin.',
+        message: 'Invite an Admin to help run this Sanctum Space.',
       });
       return;
     }

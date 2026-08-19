@@ -75,9 +75,27 @@ export const sanctumApi = {
   fetchHealth,
   fetchMe: () =>
     apiFetch<{
-      user: { id: string; name: string; email: string; role: string; organizationId: string };
+      needsOnboarding?: boolean;
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        role: string | null;
+        organizationId: string | null;
+      };
       organization: Record<string, unknown> | null;
     }>('/api/me', undefined, { withAuth: true }),
+  createSpace: (input: { name: string; slug?: string; logoUrl?: string }) =>
+    apiFetch<{
+      organization: Record<string, unknown>;
+      user: { id: string; name: string; email: string; role: string; organizationId: string };
+    }>('/api/spaces', { method: 'POST', body: JSON.stringify(input) }, { withAuth: true }),
+  updateCurrentSpace: (input: Record<string, unknown>, actor: Actor) =>
+    apiFetch<{ organization: Record<string, unknown> }>(
+      '/api/spaces/current',
+      { method: 'PATCH', body: JSON.stringify(input) },
+      staff(actor)
+    ),
   listTeam: (actor: Actor) =>
     apiFetch<{
       members: Array<{ userId: string; name: string; email: string; role: string; status: string }>;

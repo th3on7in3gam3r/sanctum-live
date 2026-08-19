@@ -11,7 +11,7 @@ registerSanctumServiceWorker();
 const tree = (
   <StrictMode>
     {clerkPublishableKey ? (
-      <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/" signInFallbackRedirectUrl="/dashboard">
+      <ClerkProvider publishableKey={clerkPublishableKey} afterSignOutUrl="/" signInFallbackRedirectUrl="/onboarding">
         <App />
       </ClerkProvider>
     ) : (
