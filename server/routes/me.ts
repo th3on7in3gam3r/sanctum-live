@@ -9,7 +9,7 @@ export async function meHandler(req: Request, res: Response): Promise<void> {
   try {
     const prismaUser = await resolvePrismaUserFromClerk(req);
     if (!prismaUser) {
-      throw Unauthorized('Sign in with Clerk using a seeded church email.');
+      throw Unauthorized('Sign in with a church staff email your pastor added to the team.');
     }
     const actor = await resolveActorFromRequest(req);
     if (!actor.orgRole || !actor.organizationId) {

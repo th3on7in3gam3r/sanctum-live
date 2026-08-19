@@ -1,5 +1,5 @@
 import React from 'react';
-import { Show, SignInButton, SignUpButton, UserButton } from '@clerk/react';
+import { Show, SignInButton, UserButton } from '@clerk/react';
 import { useAuth } from '../../context/AuthContext';
 
 const clerkAppearance = {
@@ -41,14 +41,6 @@ export const ClerkNavAuth: React.FC<ClerkNavAuthProps> = ({ onNavigate }) => {
             Sign in
           </button>
         </SignInButton>
-        <SignUpButton mode="modal" forceRedirectUrl="/dashboard" appearance={clerkAppearance}>
-          <button
-            type="button"
-            className={`${navButtonClass} bg-[#203C32] text-[#F8F7F3] dark:bg-[#C9A35A] dark:text-[#101814] hover:bg-[#16251F] dark:hover:bg-[#D6B36E]`}
-          >
-            Sign up
-          </button>
-        </SignUpButton>
       </Show>
       <Show when="signed-in">
         {isAuthenticated && (

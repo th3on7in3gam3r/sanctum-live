@@ -31,6 +31,7 @@ import {
 import { clerkMiddleware } from '@clerk/express';
 import { isClerkConfigured } from './env.ts';
 import { meHandler } from './routes/me.ts';
+import { inviteTeamMemberHandler, listTeamHandler } from './routes/team.ts';
 import { livekitWebhookHandler } from './routes/webhooks.ts';
 
 export function createApp() {
@@ -50,6 +51,8 @@ export function createApp() {
 
   app.get('/api/health', healthHandler);
   app.get('/api/me', meHandler);
+  app.get('/api/team', listTeamHandler);
+  app.post('/api/team/invite', inviteTeamMemberHandler);
   app.post('/api/prayer-rooms', createPrayerRoomHandler);
   app.get('/api/altar/live', listLiveAltarsHandler);
   app.get('/api/altar/:slug', getAltarBySlugHandler);

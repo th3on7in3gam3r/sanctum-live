@@ -1,5 +1,5 @@
 import React from 'react';
-import { Show, SignUpButton } from '@clerk/react';
+import { Show, SignInButton } from '@clerk/react';
 import { useAuth } from '../../context/AuthContext';
 
 const clerkAppearance = {
@@ -31,12 +31,12 @@ export const StartPrayerRoomCta: React.FC<StartPrayerRoomCtaProps> = ({ onNaviga
   return (
     <>
       <Show when="signed-out">
-        <SignUpButton mode="modal" forceRedirectUrl="/dashboard" appearance={clerkAppearance}>
+        <SignInButton mode="modal" forceRedirectUrl="/dashboard" appearance={clerkAppearance}>
           <button type="button" className={heroButtonClass}>
             <span>Start a Prayer Room</span>
             <span className="text-xl">→</span>
           </button>
-        </SignUpButton>
+        </SignInButton>
       </Show>
       <Show when="signed-in">
         <button

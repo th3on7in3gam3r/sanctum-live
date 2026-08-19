@@ -4,8 +4,10 @@ import { buildLiveKitTokenGrants } from '../shared/livekitGrants.ts';
 import {
   canInviteSpeaker,
   canManageParticipants,
+  canManageTeam,
   canPublishAudio,
   canViewPrivatePrayerRequests,
+  isInviteableOrgRole,
   isSessionModerator,
 } from '../shared/roles.ts';
 import { canTransitionSession, type SessionLifecycleState } from '../shared/sessionStateMachine.ts';
@@ -79,6 +81,17 @@ describe('permission matrix', () => {
   it('lets Technical Admin manage participants without pastoral privacy access', () => {
     expect(canManageParticipants('TECHNICAL_ADMIN')).toBe(true);
     expect(canInviteSpeaker('TECHNICAL_ADMIN')).toBe(true);
+  });
+
+  it('lets only Owner and Admin invite church staff', () => {
+    expect(canManageTeam('OWNER')).toBe(true);
+    expect(canManageTeam('ADMIN')).toBe(true);
+    expect(canManageTeam('PRAYER_LEADER')).toBe(false);
+    expect(canManageTeam('TECHNICAL_ADMIN')).toBe(false);
+    expect(isInviteableOrgRole('ADMIN')).toBe(true);
+    expect(isInviteableOrgRole('PRAYER_LEADER')).toBe(true);
+    expect(isInviteableOrgRole('TECHNICAL_ADMIN')).toBe(true);
+    expect(isInviteableOrgRole('OWNER')).toBe(false);
   });
 
   it('treats moderator as distinct from speaker', () => {

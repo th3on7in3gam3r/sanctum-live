@@ -24,7 +24,7 @@ import { GlobalConfirmModal } from './components/common/GlobalConfirmModal';
 import { loadJoinSession } from './services/realtime/joinSessionStore';
 
 const RouterContent: React.FC = () => {
-  const { isAuthenticated, authReady } = useAuth();
+  const { isAuthenticated, authReady, membershipDenied } = useAuth();
   const { hasUnsavedChanges, setHasUnsavedChanges, confirmAction, leavePrayerRoom } = useApp();
 
   // Route state
@@ -89,6 +89,19 @@ const RouterContent: React.FC = () => {
 
     go();
   };
+
+  useEffect(() => {
+    if (!authReady) return;
+    if (isAuthenticated && (currentPath === '/' || currentPath === '/login')) {
+      navigate('/dashboard');
+      return;
+    }
+    if (membershipDenied && currentPath !== '/login' && !currentPath.startsWith('/join')) {
+      if (currentPath === '/' || currentPath.startsWith('/dashboard') || currentPath === '/onboarding') {
+        navigate('/login');
+      }
+    }
+  }, [authReady, isAuthenticated, membershipDenied, currentPath]);
 
   // Route: /join (paste a link) or /join/:slug (that room)
   if (currentPath === '/join' || currentPath === '/join/') {

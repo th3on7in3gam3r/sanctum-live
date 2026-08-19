@@ -153,6 +153,15 @@ export const userRepository = {
     const prisma = requirePrisma();
     await prisma.user.update({ where: { id }, data: { clerkUserId } });
   },
+  async create(input: { name: string; email: string }): Promise<UserRecord> {
+    const prisma = requirePrisma();
+    return prisma.user.create({
+      data: {
+        name: input.name,
+        email: input.email.toLowerCase(),
+      },
+    });
+  },
 };
 
 export const membershipRepository = {
@@ -166,6 +175,43 @@ export const membershipRepository = {
     const prisma = requirePrisma();
     return prisma.organizationMembership.findMany({
       where: { userId, status: 'ACTIVE' },
+    });
+  },
+  async listByOrganization(organizationId: string): Promise<
+    Array<MembershipRecord & { user: { id: string; name: string; email: string } }>
+  > {
+    const prisma = requirePrisma();
+    return prisma.organizationMembership.findMany({
+      where: { organizationId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+  },
+  async upsertInvite(input: {
+    organizationId: string;
+    userId: string;
+    role: OrganizationRole;
+  }): Promise<MembershipRecord> {
+    const prisma = requirePrisma();
+    return prisma.organizationMembership.upsert({
+      where: { organizationId_userId: { organizationId: input.organizationId, userId: input.userId } },
+      create: {
+        organizationId: input.organizationId,
+        userId: input.userId,
+        role: input.role,
+        status: 'INVITED',
+      },
+      update: {
+        role: input.role,
+        status: 'INVITED',
+      },
+    });
+  },
+  async activateInvitedForUser(userId: string): Promise<void> {
+    const prisma = requirePrisma();
+    await prisma.organizationMembership.updateMany({
+      where: { userId, status: 'INVITED' },
+      data: { status: 'ACTIVE' },
     });
   },
 };

@@ -43,25 +43,25 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             Church Admin Sign In
           </h1>
           <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-1">
-            Clerk sessions authenticate. Church memberships still authorize Open Sanctuary and Start Prayer.
+            Church staff sign in here. Congregants join with a prayer link and their name — no account.
           </p>
         </div>
 
         {!clerkConfigured && (
           <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 text-xs font-medium">
-            Add VITE_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY, then sign in with a seeded email such as
+            Add VITE_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY, then sign in with a church staff email such as
             kenneth@miraclecenter.org.
           </div>
         )}
 
         {membershipDenied && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-[#B94A48]/30 text-[#B94A48] dark:text-red-400 text-xs font-medium">
-            This Clerk account is signed in but is not a church member. Use a seeded email such as
-            kenneth@miraclecenter.org.
+          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-[#B94A48]/30 text-[#B94A48] dark:text-red-400 text-xs font-medium leading-relaxed">
+            This account is not on a church team. Ask your apostle, pastor, or admin to add your email in Settings →
+            Team, then sign in with that same email.
           </div>
         )}
 
-        {clerkConfigured && (
+        {clerkConfigured && !membershipDenied && (
           <div className="flex justify-center">
             <SignIn
               routing="hash"

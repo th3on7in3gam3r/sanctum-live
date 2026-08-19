@@ -1,21 +1,25 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
-import { Building, Palette, Shield, Sliders, Save, AlertTriangle, Check, RefreshCw, CreditCard } from 'lucide-react';
+import { Building, Palette, Shield, Sliders, Save, AlertTriangle, Check, RefreshCw, CreditCard, Users } from 'lucide-react';
 import { slugify } from '../lib/utils';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { ComingSoonBadge } from '../components/common/ComingSoonBadge';
 import { RealtimeEngineStatus } from '../components/common/RealtimeEngineStatus';
+import { TeamInvitePanel } from '../components/dashboard/TeamInvitePanel';
 
 interface SettingsPageProps {
   onNavigate: (path: string) => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavigate }) => {
-  const { organization, updateOrganization } = useAuth();
+  const { organization, updateOrganization, user } = useAuth();
   const { addToast, confirmAction, setHasUnsavedChanges } = useApp();
+  const showTeamTab = user?.role === 'OWNER' || user?.role === 'ADMIN';
 
-  const [activeTab, setActiveTab] = useState<'GENERAL' | 'BRANDING' | 'DEFAULTS' | 'SECURITY' | 'BILLING'>('GENERAL');
+  const [activeTab, setActiveTab] = useState<
+    'GENERAL' | 'BRANDING' | 'DEFAULTS' | 'SECURITY' | 'BILLING' | 'TEAM'
+  >('GENERAL');
 
   const [name, setName] = useState(organization.name);
   const [slug, setSlug] = useState(organization.slug);
@@ -126,6 +130,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
         {[
           { id: 'GENERAL', label: 'General Info', icon: Building },
           { id: 'BRANDING', label: 'Branding & Join Page', icon: Palette },
+          ...(showTeamTab ? [{ id: 'TEAM' as const, label: 'Team', icon: Users }] : []),
           { id: 'DEFAULTS', label: 'Prayer Defaults', icon: Sliders },
           { id: 'SECURITY', label: 'Security & Privacy', icon: Shield },
           { id: 'BILLING', label: 'Billing', icon: CreditCard },
@@ -422,6 +427,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
           </div>
         </div>
       )}
+
+      {activeTab === 'TEAM' && showTeamTab && <TeamInvitePanel />}
 
       {activeTab === 'BILLING' && (
         <div className="bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 border border-[#E5E6E1] dark:border-[#26362F] space-y-3">

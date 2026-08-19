@@ -62,14 +62,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
 
         <div className="flex items-center gap-3 sm:gap-6">
           <button
-            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-            type="button"
-            className="hidden sm:inline-block text-sm font-medium text-[#68736D] hover:text-[#203C32] dark:hover:text-[#E8D8B2] transition-colors cursor-pointer"
-          >
-            See How It Works
-          </button>
-
-          <button
             onClick={() => onNavigate('/join')}
             type="button"
             className="hidden sm:inline-block text-sm font-medium text-[#68736D] hover:text-[#203C32] dark:hover:text-[#E8D8B2] transition-colors cursor-pointer"
@@ -118,6 +110,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
                 Join Prayer
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+              className="text-sm font-medium text-[#68736D] dark:text-[#96A39D] hover:text-[#203C32] dark:hover:text-[#E8D8B2] transition-colors cursor-pointer text-left"
+            >
+              See how it works
+            </button>
 
             {/* Trust badge with overlapping geometric avatar circles */}
             <div className="flex items-center gap-4 py-2 text-xs sm:text-sm font-medium text-[#68736D] dark:text-[#96A39D]">

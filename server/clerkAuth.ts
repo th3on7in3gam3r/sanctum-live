@@ -43,7 +43,10 @@ export async function resolvePrismaUserFromClerk(req: Request): Promise<UserReco
   if (!clerkUserId) return null;
 
   const existing = await userRepository.findByClerkUserId(clerkUserId);
-  if (existing) return existing;
+  if (existing) {
+    await membershipRepository.activateInvitedForUser(existing.id);
+    return existing;
+  }
 
   const clerkUser = await clerkClient.users.getUser(clerkUserId);
   const email = clerkUser.emailAddresses.find((item) => item.id === clerkUser.primaryEmailAddressId)?.emailAddress
@@ -55,5 +58,6 @@ export async function resolvePrismaUserFromClerk(req: Request): Promise<UserReco
   if (!byEmail.clerkUserId) {
     await userRepository.setClerkUserId(byEmail.id, clerkUserId);
   }
+  await membershipRepository.activateInvitedForUser(byEmail.id);
   return { ...byEmail, clerkUserId };
 }

@@ -78,6 +78,19 @@ export const sanctumApi = {
       user: { id: string; name: string; email: string; role: string; organizationId: string };
       organization: Record<string, unknown> | null;
     }>('/api/me', undefined, { withAuth: true }),
+  listTeam: (actor: Actor) =>
+    apiFetch<{
+      members: Array<{ userId: string; name: string; email: string; role: string; status: string }>;
+    }>('/api/team', undefined, staff(actor)),
+  inviteTeamMember: (input: { email: string; role: string }, actor: Actor) =>
+    apiFetch<{
+      member: { userId: string; name: string; email: string; role: string; status: string };
+      clerkInviteSent: boolean;
+    }>(
+      '/api/team/invite',
+      { method: 'POST', body: JSON.stringify(input) },
+      staff(actor)
+    ),
   createPrayerRoom: (input: Record<string, unknown>, actor: Actor) =>
     apiFetch<{ room: Record<string, unknown> }>('/api/prayer-rooms', {
       method: 'POST',
