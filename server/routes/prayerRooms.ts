@@ -1,17 +1,18 @@
 import type { Request, Response } from 'express';
-import { RoomNotFound, Unauthorized } from '../../shared/errors.ts';
+import { requireCanCreateRoom } from '../authz.ts';
+import { resolveActorFromRequest } from '../clerkAuth.ts';
 import { env } from '../env.ts';
 import { sendError } from '../http.ts';
+import { RoomNotFound, Unauthorized } from '../../shared/errors.ts';
 import { auditRepository, prayerRoomRepository } from '../repositories/index.ts';
-import { readActorHeaders, requireCanCreateRoom, resolveActor } from '../authz.ts';
 
 export async function createPrayerRoomHandler(req: Request, res: Response): Promise<void> {
   try {
-    const { userId, organizationId } = readActorHeaders(req.headers as Record<string, unknown>);
-    const orgId = typeof req.body?.organizationId === 'string' ? req.body.organizationId : organizationId;
-    const actor = await resolveActor(orgId, userId);
+    const requestedOrg = typeof req.body?.organizationId === 'string' ? req.body.organizationId : null;
+    const actor = await resolveActorFromRequest(req, requestedOrg);
     requireCanCreateRoom(actor);
 
+    const orgId = actor.organizationId;
     if (!orgId) {
       throw RoomNotFound();
     }

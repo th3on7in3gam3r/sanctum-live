@@ -1,6 +1,7 @@
 import React from 'react';
 import { SanctumLogo } from '../common/SanctumLogo';
 import { RoleBadge } from '../common/RoleBadge';
+import { UserButton } from '@clerk/react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import {
@@ -16,6 +17,7 @@ import {
   Moon,
   ExternalLink,
 } from 'lucide-react';
+import { promptInstall } from '../../pwa';
 import { cn } from '../../lib/utils';
 
 interface DashboardSidebarProps {
@@ -109,16 +111,21 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <span>Open Public Join Page</span>
           <ExternalLink className="w-3.5 h-3.5" />
         </button>
+        <button
+          type="button"
+          onClick={() => void promptInstall()}
+          className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer text-left"
+        >
+          Install app
+        </button>
 
         {/* User Card */}
         <div className="flex items-center justify-between p-2 rounded-xl bg-black/5 dark:bg-white/5">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-[#203C32] text-[#E8D8B2] flex items-center justify-center font-bold text-xs uppercase">
-              {user?.name.substring(0, 2) || 'PK'}
-            </div>
+            <UserButton afterSignOutUrl="/" />
             <div className="min-w-0">
               <p className="text-xs font-bold text-[#16251F] dark:text-[#F8F7F3] truncate">
-                {user?.name || 'Pastor Kenneth'}
+                {user?.name || 'Church administrator'}
               </p>
               {user && <RoleBadge role={user.role} size="sm" className="scale-85 origin-left" />}
             </div>

@@ -43,3 +43,9 @@ export function isTerminalSessionState(state: SessionLifecycleState): boolean {
 export function isPreEndedSessionState(state: SessionLifecycleState): boolean {
   return state === 'SCHEDULED' || state === 'WAITING' || state === 'STARTING';
 }
+
+export const JOINABLE_SESSION_STATUSES: readonly SessionLifecycleState[] = ['WAITING', 'STARTING', 'LIVE'];
+
+export function isJoinableSessionStatus(status: string): boolean {
+  return JOINABLE_SESSION_STATUSES.includes(status as SessionLifecycleState);
+}

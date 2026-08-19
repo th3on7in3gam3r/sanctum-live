@@ -1,0 +1,100 @@
+import type {
+  ConnectionQuality,
+  ConnectionState,
+  Participant,
+  PrayerRoom,
+  PrayerSession,
+  RaisedHand,
+  Role,
+} from '../../types';
+
+export function isServerSessionId(sessionId: string | undefined | null): sessionId is string {
+  return Boolean(sessionId && !sessionId.startsWith('session_'));
+}
+
+export function mapSessionRole(role: string | undefined): Role {
+  if (role === 'SPEAKER') return 'SPEAKER';
+  if (role === 'HOST') return 'ADMIN';
+  if (role === 'MODERATOR') return 'PRAYER_LEADER';
+  return 'LISTENER';
+}
+
+export function connectionStateToQuality(state: ConnectionState): ConnectionQuality {
+  if (state === 'CONNECTED') return 'GOOD';
+  if (state === 'CONNECTING' || state === 'RECONNECTING' || state === 'DEGRADED') return 'RECONNECTING';
+  return 'OFFLINE';
+}
+
+export function mapServerSession(
+  session: Record<string, unknown>,
+  room: PrayerRoom,
+  extras?: Partial<PrayerSession>
+): PrayerSession {
+  const status = String(session.status || 'SCHEDULED') as PrayerSession['status'];
+  const peak = Number(session.peakConcurrentParticipants || extras?.peakConcurrentParticipants || 0);
+  const connected = extras?.totalParticipants ?? extras?.totalUniqueParticipants ?? 0;
+  return {
+    id: String(session.id),
+    prayerRoomId: String(session.prayerRoomId || room.id),
+    roomName: room.name,
+    organizationName: extras?.organizationName || 'Miracle Center Kampala',
+    status,
+    waitingRoomOpenedAt:
+      status === 'WAITING' ? extras?.waitingRoomOpenedAt || new Date().toISOString() : extras?.waitingRoomOpenedAt,
+    startedAt: session.actualStart ? String(session.actualStart) : extras?.startedAt,
+    endedAt: session.endedAt ? String(session.endedAt) : extras?.endedAt,
+    durationSeconds: extras?.durationSeconds ?? 0,
+    totalUniqueParticipants: connected,
+    peakConcurrentParticipants: peak,
+    totalParticipants: connected,
+    peakParticipants: peak,
+    listenersWaitingCount: extras?.listenersWaitingCount ?? connected,
+    activeSpeakerName: extras?.activeSpeakerName,
+    activeSpeakerTitle: extras?.activeSpeakerTitle,
+    speakerDurationSeconds: extras?.speakerDurationSeconds ?? 0,
+    createdAt: session.createdAt ? String(session.createdAt) : new Date().toISOString(),
+  };
+}
+
+export function mapSnapshotParticipants(
+  rows: Array<Record<string, unknown>>,
+  sessionId: string,
+  quality: ConnectionQuality
+): Participant[] {
+  return rows
+    .filter((row) => !row.leftAt)
+    .map((row) => ({
+      id: String(row.id),
+      sessionId,
+      externalIdentity: typeof row.realtimeIdentity === 'string' ? row.realtimeIdentity : undefined,
+      displayName: String(row.guestName || row.realtimeIdentity || 'Attendee'),
+      role: mapSessionRole(typeof row.role === 'string' ? row.role : undefined),
+      joinedAt: row.joinedAt ? String(row.joinedAt) : new Date().toISOString(),
+      isHandRaised: false,
+      isMuted: String(row.role) !== 'SPEAKER',
+      connectionQuality: quality,
+    }));
+}
+
+export function mapSnapshotHands(
+  rows: Array<Record<string, unknown>>,
+  sessionId: string,
+  participants: Participant[]
+): RaisedHand[] {
+  return rows.map((row) => {
+    const participantId = String(row.participantId || '');
+    const nested = row.participant as Record<string, unknown> | undefined;
+    const fromParticipant = participants.find((participant) => participant.id === participantId);
+    return {
+      id: String(row.id),
+      sessionId,
+      participantId,
+      displayName: String(
+        nested?.guestName || nested?.realtimeIdentity || fromParticipant?.displayName || 'Attendee'
+      ),
+      status: (typeof row.status === 'string' ? row.status : 'WAITING') as RaisedHand['status'],
+      raisedAt: row.raisedAt ? String(row.raisedAt) : new Date().toISOString(),
+      waitingSeconds: 0,
+    };
+  });
+}

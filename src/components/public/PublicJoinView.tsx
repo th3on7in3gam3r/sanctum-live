@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SanctumLogo } from '../common/SanctumLogo';
 import { ParticipantCount } from '../common/ParticipantCount';
 import { PrayerSessionStatus } from '../common/PrayerSessionStatus';
 import { PrayerCountdown } from '../common/PrayerCountdown';
-import { SanctuaryWaitingView } from './SanctuaryWaitingView';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { resolveAltarLink } from '../../services/altarLinkResolver';
-import { ShieldCheck, HelpCircle, Sparkles, Moon, Sun, Calendar, Clock } from 'lucide-react';
+import { sanctumApi, ApiClientError } from '../../services/api/sanctumApi';
+import { ShieldCheck, HelpCircle, Sparkles, Moon, Sun, Clock } from 'lucide-react';
+import type { SessionLifecycleStatus } from '../../types';
 
 interface PublicJoinViewProps {
   slug: string;
@@ -15,39 +16,45 @@ interface PublicJoinViewProps {
 }
 
 export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSuccess }) => {
-  const { prayerRooms, liveSession, historySessions, dataSaverMode, setDataSaverMode, isDarkMode, toggleDarkMode, joinPrayerRoom } = useApp();
+  const { prayerRooms, liveSession, historySessions, dataSaverMode, setDataSaverMode, isDarkMode, toggleDarkMode, joinPrayerRoom, connectedNow } = useApp();
   const { organization } = useAuth();
-  
+
   const [name, setName] = useState(() => {
     return localStorage.getItem('sanctum_last_attendee_name') || '';
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [inWaitingRoom, setInWaitingRoom] = useState(false);
+  const [altarStatus, setAltarStatus] = useState<SessionLifecycleStatus | 'NOT_FOUND' | null>(null);
+  const [altarRoomName, setAltarRoomName] = useState<string | null>(null);
 
-  // Find room by slug
-  const room = prayerRooms.find((r) => r.slug === slug) || prayerRooms[0];
-  const resolution = resolveAltarLink(room, liveSession, historySessions);
+  const room = prayerRooms.find((r) => r.slug === slug);
+  const resolution = room ? resolveAltarLink(room, liveSession, historySessions) : null;
+  const serverStatus = altarStatus;
+  const status = serverStatus || resolution?.status || 'SCHEDULED';
+  const isLive = status === 'LIVE' || status === 'STARTING';
+  const isWaiting = status === 'WAITING';
+  const attendeeCount = isLive || isWaiting ? connectedNow || undefined : undefined;
+  const displayName = altarRoomName || room?.name || 'Prayer Gathering';
 
-  const isLive = resolution.status === 'LIVE';
-  const isWaiting = resolution.status === 'WAITING';
-  const attendeeCount = isLive ? liveSession?.totalParticipants : undefined;
-
-  // If attendee entered waiting room and session is in WAITING state
-  if (inWaitingRoom && isWaiting) {
-    return (
-      <SanctuaryWaitingView
-        room={room}
-        session={resolution.activeSession}
-        participantName={name || 'Member'}
-        onSessionLive={() => {
-          onJoinSuccess(name.trim() || 'Member');
-        }}
-        onBack={() => setInWaitingRoom(false)}
-      />
-    );
-  }
+  useEffect(() => {
+    let cancelled = false;
+    sanctumApi
+      .getAltar(slug)
+      .then((result) => {
+        if (cancelled) return;
+        setAltarRoomName(result.room?.name || null);
+        const next = result.session?.status;
+        setAltarStatus((next as SessionLifecycleStatus) || 'SCHEDULED');
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setAltarStatus(error instanceof ApiClientError && error.status === 404 ? 'NOT_FOUND' : 'SCHEDULED');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,13 +70,10 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
     setIsSubmitting(true);
     try {
       localStorage.setItem('sanctum_last_attendee_name', name.trim());
-      await joinPrayerRoom(room.slug, name.trim());
-      
-      if (isWaiting) {
-        setInWaitingRoom(true);
-      } else {
-        onJoinSuccess(name.trim());
-      }
+      await joinPrayerRoom(slug, name.trim());
+      onJoinSuccess(name.trim());
+    } catch {
+      setError('Could not join this prayer gathering. The sanctuary may not be open yet.');
     } finally {
       setIsSubmitting(false);
     }
@@ -83,7 +87,6 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
 
   return (
     <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex flex-col justify-between p-4 sm:p-6 select-none transition-colors">
-      {/* Top Header bar with Logo & Theme toggle */}
       <header className="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-4">
         <SanctumLogo size="md" showTagline />
         <button
@@ -95,22 +98,19 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         </button>
       </header>
 
-      {/* Main Sanctuary Join Card */}
       <main className="w-full max-w-md mx-auto my-auto bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 shadow-xl border border-[#E5E6E1] dark:border-[#26362F] text-center">
-        {/* Status Pill & Attendee Count */}
         <div className="flex flex-wrap items-center justify-center gap-2.5 mb-5">
-          <PrayerSessionStatus status={resolution.status} size="md" />
+          <PrayerSessionStatus status={status === 'NOT_FOUND' ? 'SCHEDULED' : status} size="md" />
           <ParticipantCount
             count={attendeeCount}
             emptyLabel={isLive ? 'Waiting for participants' : 'Prayer has not started'}
           />
         </div>
 
-        {/* Room & Church Title */}
         <h1 className="text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
-          {room?.name || 'Morning Prayer'}
+          {displayName}
         </h1>
-        
+
         <p className="text-sm font-semibold text-[#203C32] dark:text-[#C9A35A] mt-1">
           {organization.name}
         </p>
@@ -119,8 +119,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           {todayFormatted} • {room?.scheduledStart || '05:00 AM'} ({room?.timezone || 'EAT'})
         </p>
 
-        {/* Scheduled Countdown Box if not LIVE */}
-        {!isLive && !isWaiting && resolution.nextScheduledDate && (
+        {!isLive && !isWaiting && resolution?.nextScheduledDate && (
           <div className="my-5 p-4 rounded-2xl bg-[#203C32]/5 dark:bg-[#C9A35A]/10 border border-[#203C32]/10 dark:border-[#C9A35A]/20 flex flex-col items-center gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D] flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-[#C9A35A]" />
@@ -133,16 +132,14 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           </div>
         )}
 
-        {/* Warm invitation subtext */}
         <div className="my-4 p-3.5 rounded-2xl bg-[#203C32]/5 dark:bg-[#203C32]/20 border border-[#203C32]/10 dark:border-[#203C32]/30">
           <p className="text-xs text-[#203C32] dark:text-[#E8D8B2] font-medium leading-relaxed">
             {isWaiting
-              ? 'The sanctuary doors are open. Enter to pray and wait in quiet contemplation.'
+              ? 'The Sanctuary is Open. Prayer will begin shortly.'
               : (organization.joinPageMessage || 'Join your church family in corporate prayer.')}
           </p>
         </div>
 
-        {/* Join Form */}
         <form onSubmit={handleJoin} className="space-y-4 text-left">
           {error && (
             <div className="p-3 rounded-xl bg-red-500/10 border border-[#B94A48]/30 text-[#B94A48] dark:text-red-400 text-xs font-medium">
@@ -182,7 +179,6 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           </button>
         </form>
 
-        {/* Privacy & Safe Joining Guarantees */}
         <div className="mt-6 pt-5 border-t border-[#E5E6E1] dark:border-[#26362F] space-y-2">
           <div className="flex items-center justify-center gap-1.5 text-xs text-[#68736D] dark:text-[#96A39D]">
             <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
@@ -194,7 +190,6 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         </div>
       </main>
 
-      {/* Simplified Mobile-Friendly Footer */}
       <footer className="w-full max-w-md mx-auto pt-6 pb-2 text-center text-xs text-[#68736D] dark:text-[#96A39D]">
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <button
@@ -208,7 +203,6 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
 
           <span>•</span>
 
-          {/* Data Saver Mode Selector */}
           <div className="inline-flex items-center gap-1.5">
             <span>Data Saver:</span>
             <select
@@ -231,7 +225,6 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         </div>
       </footer>
 
-      {/* Connection Help Modal */}
       {showHelpModal && (
         <div
           role="dialog"

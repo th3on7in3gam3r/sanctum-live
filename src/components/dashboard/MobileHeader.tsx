@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SanctumLogo } from '../common/SanctumLogo';
+import { UserButton } from '@clerk/react';
 import { useAuth } from '../../context/AuthContext';
 import { Menu, X, Sun, Moon, LogOut, Radio, LayoutDashboard, FileText, Users, History, Settings } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -34,6 +35,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ currentPath, onNavig
       <header className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-[#17221D] border-b border-[#E5E6E1] dark:border-[#26362F] sticky top-0 z-40">
         <SanctumLogo size="sm" />
         <div className="flex items-center gap-2">
+          <UserButton afterSignOutUrl="/" />
           <button
             onClick={toggleDarkMode}
             aria-label="Toggle theme"

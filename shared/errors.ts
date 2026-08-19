@@ -7,7 +7,10 @@ export type SanctumErrorCode =
   | 'DATABASE_UNAVAILABLE'
   | 'SPEAKER_FLOOR_OCCUPIED'
   | 'PARTICIPANT_NOT_FOUND'
-  | 'DUPLICATE_SLUG';
+  | 'DUPLICATE_SLUG'
+  | 'SESSION_NOT_JOINABLE'
+  | 'INVITATION_INVALID'
+  | 'SESSION_NOT_LIVE';
 
 export class SanctumError extends Error {
   readonly code: SanctumErrorCode;
@@ -64,3 +67,17 @@ export const DuplicateSlug = (slug: string) =>
     409,
     { slug }
   );
+
+export const SessionNotJoinable = (status?: string) =>
+  new SanctumError(
+    'SESSION_NOT_JOINABLE',
+    'This prayer gathering is not open to join yet, or has already ended.',
+    409,
+    status ? { status } : undefined
+  );
+
+export const InvitationInvalid = (message = 'Speaker invitation is not active.') =>
+  new SanctumError('INVITATION_INVALID', message, 409);
+
+export const SessionNotLive = () =>
+  new SanctumError('SESSION_NOT_LIVE', 'Prayer has not started.', 409);

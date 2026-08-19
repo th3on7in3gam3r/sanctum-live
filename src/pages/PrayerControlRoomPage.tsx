@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerSessionStatus } from '../components/common/PrayerSessionStatus';
@@ -14,6 +14,7 @@ import { DevelopmentPreviewBadge } from '../components/common/DevelopmentPreview
 import { RealtimeEngineStatus } from '../components/common/RealtimeEngineStatus';
 import { TestPrayerRoomModal } from '../components/dashboard/TestPrayerRoomModal';
 import { PrePrayerCheckModal } from '../components/dashboard/PrePrayerCheckModal';
+import { PrayerChatPanel } from '../components/public/PrayerChatPanel';
 import { resolveAltarLink } from '../services/altarLinkResolver';
 import {
   Sliders,
@@ -24,8 +25,10 @@ import {
   Search,
   ExternalLink,
   ShieldCheck,
+  MessageCircle,
 } from 'lucide-react';
 import { Role } from '../types';
+import { hasPermission } from '../lib/permissions';
 
 interface PrayerControlRoomPageProps {
   roomId: string;
@@ -54,22 +57,28 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
     startPrayerSession,
     addToast,
     confirmAction,
+    connectedNow,
+    connectionState,
+    connectControlRoom,
   } = useApp();
 
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
   const room = (prayerRooms || []).find((r) => r?.id === roomId) || (prayerRooms || [])[0];
+  const visiblePrayerRequests = (prayerRequests || []).filter(
+    (req) => !req.isPrivate || hasPermission(user?.role || 'LISTENER', 'canViewPrivateRequests')
+  );
 
   const resolution = resolveAltarLink(room, liveSession, historySessions);
   const isLive = resolution.status === 'LIVE';
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | Role>('ALL');
-  const [activeTab, setActiveTab] = useState<'CONSOLE' | 'PARTICIPANTS' | 'REQUESTS'>('CONSOLE');
+  const [activeTab, setActiveTab] = useState<'CONSOLE' | 'PARTICIPANTS' | 'REQUESTS' | 'CHAT'>('CONSOLE');
   const [showTestRoomModal, setShowTestRoomModal] = useState(false);
   const [showPrePrayerModal, setShowPrePrayerModal] = useState(false);
 
   // Filter participants
-  const speakers = (participants || []).filter((p) => p && (p.role === 'SPEAKER' || p.role === 'PRAYER_LEADER'));
+  const speakers = (participants || []).filter((p) => p && p.role === 'SPEAKER');
   const filteredParticipants = (participants || []).filter((p) => {
     if (!p) return false;
     const matchesSearch =
@@ -82,7 +91,14 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   });
 
   const sessionDuration = liveSession?.durationSeconds || 0;
-  const totalCount = isLive ? (liveSession?.totalParticipants ?? participants.length) : undefined;
+  const liveConnected = connectionState === 'CONNECTED';
+  const totalCount = isLive || resolution.status === 'WAITING' ? connectedNow || undefined : undefined;
+
+  useEffect(() => {
+    if (room?.id && (resolution.status === 'LIVE' || resolution.status === 'WAITING')) {
+      void connectControlRoom(room.id);
+    }
+  }, [room?.id, liveSession?.id, resolution.status]);
 
   const handleEndSessionClick = () => {
     confirmAction({
@@ -149,7 +165,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
         <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap self-end lg:self-auto">
           {isLive ? (
             <>
-              <ParticipantCount count={totalCount} size="sm" emptyLabel="Waiting for participants" />
+              <ParticipantCount count={totalCount} size="sm" emptyLabel="Connected now: waiting" />
               <PrayerTimer seconds={sessionDuration} size="sm" />
             </>
           ) : (
@@ -171,11 +187,25 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                 <ShieldCheck className="w-4 h-4" />
                 <span>Pre-Prayer Check™</span>
               </button>
+
+              {resolution.status === 'WAITING' && (
+                <button
+                  onClick={() => void startPrayerSession(room.id)}
+                  type="button"
+                  className="px-3.5 py-2 rounded-xl font-bold text-xs bg-[#D7473F] hover:bg-[#C23C35] text-white shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Mic className="w-4 h-4" />
+                  <span>Start Prayer</span>
+                </button>
+              )}
             </div>
           )}
 
           <button
-            onClick={() => onNavigate(`/join/${room?.slug}`)}
+            onClick={() => {
+              if (!room?.slug) return;
+              window.open(`/join/${room.slug}`, '_blank', 'noopener,noreferrer');
+            }}
             type="button"
             className="px-3 py-2 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-1 cursor-pointer"
           >
@@ -233,7 +263,20 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
-          <span>Prayer Requests ({prayerRequests.length})</span>
+          <span>Prayer Requests ({visiblePrayerRequests.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('CHAT')}
+          type="button"
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'CHAT'
+              ? 'bg-[#203C32] text-white dark:bg-[#C9A35A] dark:text-[#101814]'
+              : 'text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5'
+          }`}
+        >
+          <MessageCircle className="w-3.5 h-3.5" />
+          <span>Chat</span>
         </button>
       </div>
 
@@ -253,10 +296,15 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
                   <Mic className="w-4 h-4 text-[#C9A35A]" />
-                  <span>Configured Speakers ({speakers.length})</span>
+                  <span>Current Speaker ({speakers.filter((item) => item.role === 'SPEAKER').length})</span>
                 </h3>
-                <DevelopmentPreviewBadge />
-                <RealtimeEngineStatus />
+                {liveConnected ? (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                    Media Engine Connected
+                  </span>
+                ) : (
+                  <DevelopmentPreviewBadge />
+                )}
               </div>
 
               <div className="space-y-3">
@@ -294,7 +342,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                   <RaisedHandRow
                     key={hand.id}
                     hand={hand}
-                    onInvite={(pId) => inviteSpeaker(pId)}
+                    onInviteToPray={(pId) => inviteSpeaker(pId)}
                     onDismiss={(hId) => dismissRaisedHand(hId)}
                   />
                 ))}
@@ -312,7 +360,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-[#C9A35A]" />
-                  <span>Incoming Requests ({prayerRequests.length})</span>
+                  <span>Incoming Requests ({visiblePrayerRequests.length})</span>
                 </h3>
                 <button
                   onClick={() => onNavigate('/dashboard/prayer-requests')}
@@ -323,7 +371,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               </div>
 
               <div className="space-y-3 max-h-[480px] overflow-y-auto">
-                {prayerRequests.slice(0, 6).map((req) => (
+                {visiblePrayerRequests.slice(0, 6).map((req) => (
                   <div
                     key={req.id}
                     className="p-3.5 rounded-2xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] text-xs space-y-1.5"
@@ -344,7 +392,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                   </div>
                 ))}
 
-                {prayerRequests.length === 0 && (
+                {visiblePrayerRequests.length === 0 && (
                   <div className="p-8 text-center bg-white dark:bg-[#17221D] rounded-2xl border border-[#E5E6E1] dark:border-[#26362F] text-xs text-[#68736D] dark:text-[#96A39D]">
                     No incoming prayer requests yet.
                   </div>
@@ -418,7 +466,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {prayerRequests.map((req) => (
+            {visiblePrayerRequests.map((req) => (
               <div
                 key={req.id}
                 className="p-4 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] space-y-2 text-xs"
@@ -438,6 +486,10 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             ))}
           </div>
         </div>
+      )}
+
+      {activeTab === 'CHAT' && (
+        <PrayerChatPanel sessionId={liveSession?.id} senderName={user?.name || 'Prayer Leader'} />
       )}
 
       <div className="pt-2 flex items-center justify-end">

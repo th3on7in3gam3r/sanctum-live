@@ -103,7 +103,7 @@ export class SpeakerFloorService {
     }
 
     const participant = await this.requireParticipant(currentId, input.sessionId);
-    await this.store.setParticipantRole(participant.id, 'LISTENER');
+    await this.store.setParticipantRole(participant.id, participant.baseRole || 'LISTENER');
     await this.store.setActiveSpeaker(session.id, null);
     await this.syncLiveKitPublish(session.livekitRoomName, participant.realtimeIdentity, false);
     await this.store.writeAudit({
@@ -127,7 +127,7 @@ export class SpeakerFloorService {
 
     if (previousId && previousId !== next.id) {
       const previous = await this.requireParticipant(previousId, input.sessionId);
-      await this.store.setParticipantRole(previous.id, 'LISTENER');
+      await this.store.setParticipantRole(previous.id, previous.baseRole || 'LISTENER');
       await this.syncLiveKitPublish(session.livekitRoomName, previous.realtimeIdentity, false);
     }
 

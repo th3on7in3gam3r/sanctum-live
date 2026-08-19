@@ -33,6 +33,7 @@ export interface PrayerSessionRecord {
   endedAt: Date | null;
   livekitRoomName: string | null;
   activeSpeakerParticipantId: string | null;
+  peakConcurrentParticipants: number;
 }
 
 export interface SessionParticipantRecord {
@@ -42,6 +43,8 @@ export interface SessionParticipantRecord {
   guestName: string | null;
   realtimeIdentity: string;
   role: SessionRole;
+  baseRole: SessionRole;
+  leftAt: Date | null;
 }
 
 export interface MembershipRecord {
@@ -61,6 +64,11 @@ export const prayerRoomRepository = {
   async findById(id: string): Promise<PrayerRoomRecord | null> {
     const prisma = requirePrisma();
     return prisma.prayerRoom.findUnique({ where: { id } });
+  },
+
+  async findBySlug(slug: string): Promise<PrayerRoomRecord | null> {
+    const prisma = requirePrisma();
+    return prisma.prayerRoom.findFirst({ where: { slug }, orderBy: { createdAt: 'asc' } });
   },
 
   async findByOrgAndSlug(organizationId: string, slug: string): Promise<PrayerRoomRecord | null> {
@@ -119,11 +127,45 @@ export const prayerRoomRepository = {
   },
 };
 
+export interface UserRecord {
+  id: string;
+  clerkUserId: string | null;
+  name: string;
+  email: string;
+}
+
+export const userRepository = {
+  async findById(id: string): Promise<UserRecord | null> {
+    const prisma = requirePrisma();
+    return prisma.user.findUnique({ where: { id } });
+  },
+  async findByEmail(email: string): Promise<UserRecord | null> {
+    const prisma = requirePrisma();
+    return prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+    });
+  },
+  async findByClerkUserId(clerkUserId: string): Promise<UserRecord | null> {
+    const prisma = requirePrisma();
+    return prisma.user.findUnique({ where: { clerkUserId } });
+  },
+  async setClerkUserId(id: string, clerkUserId: string): Promise<void> {
+    const prisma = requirePrisma();
+    await prisma.user.update({ where: { id }, data: { clerkUserId } });
+  },
+};
+
 export const membershipRepository = {
   async find(organizationId: string, userId: string): Promise<MembershipRecord | null> {
     const prisma = requirePrisma();
     return prisma.organizationMembership.findUnique({
       where: { organizationId_userId: { organizationId, userId } },
+    });
+  },
+  async listActiveByUser(userId: string): Promise<MembershipRecord[]> {
+    const prisma = requirePrisma();
+    return prisma.organizationMembership.findMany({
+      where: { userId, status: 'ACTIVE' },
     });
   },
 };
@@ -170,8 +212,45 @@ export const sessionRepository = {
         endedAt: data.endedAt,
         livekitRoomName: data.livekitRoomName,
         activeSpeakerParticipantId: data.activeSpeakerParticipantId,
+        peakConcurrentParticipants: data.peakConcurrentParticipants,
       },
     }) as Promise<PrayerSessionRecord>;
+  },
+
+  async findJoinableByRoom(prayerRoomId: string): Promise<PrayerSessionRecord | null> {
+    const prisma = requirePrisma();
+    return prisma.prayerSession.findFirst({
+      where: { prayerRoomId, status: { in: ['WAITING', 'STARTING', 'LIVE'] } },
+      orderBy: { createdAt: 'desc' },
+    }) as Promise<PrayerSessionRecord | null>;
+  },
+
+  async findOpenableByRoom(prayerRoomId: string): Promise<PrayerSessionRecord | null> {
+    const prisma = requirePrisma();
+    return prisma.prayerSession.findFirst({
+      where: { prayerRoomId, status: { in: ['SCHEDULED', 'WAITING'] } },
+      orderBy: { createdAt: 'desc' },
+    }) as Promise<PrayerSessionRecord | null>;
+  },
+
+  async findByLiveKitRoomName(livekitRoomName: string): Promise<PrayerSessionRecord | null> {
+    const prisma = requirePrisma();
+    return prisma.prayerSession.findFirst({
+      where: { livekitRoomName },
+      orderBy: { createdAt: 'desc' },
+    }) as Promise<PrayerSessionRecord | null>;
+  },
+
+  async bumpPeakConcurrent(id: string, connectedNow: number): Promise<void> {
+    const prisma = requirePrisma();
+    const session = await prisma.prayerSession.findUnique({ where: { id } });
+    if (!session) return;
+    if (connectedNow > session.peakConcurrentParticipants) {
+      await prisma.prayerSession.update({
+        where: { id },
+        data: { peakConcurrentParticipants: connectedNow },
+      });
+    }
   },
 };
 
@@ -200,6 +279,7 @@ export const participantRepository = {
     guestName?: string | null;
     realtimeIdentity: string;
     role: SessionRole;
+    baseRole?: SessionRole;
   }): Promise<SessionParticipantRecord> {
     const prisma = requirePrisma();
     return prisma.sessionParticipant.create({
@@ -209,6 +289,7 @@ export const participantRepository = {
         guestName: input.guestName ?? null,
         realtimeIdentity: input.realtimeIdentity,
         role: input.role,
+        baseRole: input.baseRole ?? input.role,
       },
     });
   },
@@ -222,6 +303,19 @@ export const participantRepository = {
     const prisma = requirePrisma();
     await prisma.sessionParticipant.update({ where: { id }, data: { leftAt: new Date() } });
   },
+
+  async markRejoined(id: string): Promise<SessionParticipantRecord> {
+    const prisma = requirePrisma();
+    return prisma.sessionParticipant.update({ where: { id }, data: { leftAt: null } });
+  },
+
+  async listBySession(sessionId: string) {
+    const prisma = requirePrisma();
+    return prisma.sessionParticipant.findMany({
+      where: { sessionId },
+      orderBy: { joinedAt: 'asc' },
+    });
+  },
 };
 
 export const raisedHandRepository = {
@@ -231,11 +325,60 @@ export const raisedHandRepository = {
       data: { sessionId, participantId, status: 'WAITING' },
     });
   },
+
+  async upsertWaiting(sessionId: string, participantId: string) {
+    const prisma = requirePrisma();
+    const existing = await prisma.raisedHand.findFirst({
+      where: { sessionId, participantId, status: { in: ['WAITING', 'INVITED'] } },
+      orderBy: { raisedAt: 'desc' },
+    });
+    if (existing) return existing;
+    return prisma.raisedHand.create({
+      data: { sessionId, participantId, status: 'WAITING' },
+    });
+  },
+
+  async findById(id: string) {
+    const prisma = requirePrisma();
+    return prisma.raisedHand.findUnique({ where: { id } });
+  },
+
+  async findOpenForParticipant(sessionId: string, participantId: string) {
+    const prisma = requirePrisma();
+    return prisma.raisedHand.findFirst({
+      where: { sessionId, participantId, status: { in: ['WAITING', 'INVITED'] } },
+      orderBy: { raisedAt: 'desc' },
+    });
+  },
+
+  async updateStatus(id: string, status: 'WAITING' | 'INVITED' | 'DISMISSED' | 'RESOLVED') {
+    const prisma = requirePrisma();
+    return prisma.raisedHand.update({
+      where: { id },
+      data: {
+        status,
+        resolvedAt: status === 'DISMISSED' || status === 'RESOLVED' ? new Date() : null,
+      },
+    });
+  },
+
+  async listWaiting(sessionId: string) {
+    const prisma = requirePrisma();
+    return prisma.raisedHand.findMany({
+      where: { sessionId, status: { in: ['WAITING', 'INVITED'] } },
+      orderBy: { raisedAt: 'asc' },
+      include: { participant: true },
+    });
+  },
 };
 
 export const speakerInvitationRepository = {
   async create(input: { sessionId: string; participantId: string; invitedById?: string | null }) {
     const prisma = requirePrisma();
+    const existing = await prisma.speakerInvitation.findFirst({
+      where: { sessionId: input.sessionId, participantId: input.participantId, status: 'PENDING' },
+    });
+    if (existing) return existing;
     return prisma.speakerInvitation.create({
       data: {
         sessionId: input.sessionId,
@@ -246,6 +389,27 @@ export const speakerInvitationRepository = {
     });
   },
 
+  async findById(id: string) {
+    const prisma = requirePrisma();
+    return prisma.speakerInvitation.findUnique({ where: { id } });
+  },
+
+  async findPendingForParticipant(sessionId: string, participantId: string) {
+    const prisma = requirePrisma();
+    return prisma.speakerInvitation.findFirst({
+      where: { sessionId, participantId, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
+  },
+
+  async listPending(sessionId: string) {
+    const prisma = requirePrisma();
+    return prisma.speakerInvitation.findMany({
+      where: { sessionId, status: 'PENDING' },
+      orderBy: { createdAt: 'asc' },
+    });
+  },
+
   async updateStatus(id: string, status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'DECLINED' | 'EXPIRED') {
     const prisma = requirePrisma();
     return prisma.speakerInvitation.update({
@@ -253,9 +417,30 @@ export const speakerInvitationRepository = {
       data: {
         status,
         acceptedAt: status === 'ACCEPTED' ? new Date() : undefined,
-        revokedAt: status === 'REVOKED' ? new Date() : undefined,
+        revokedAt: status === 'REVOKED' || status === 'DECLINED' || status === 'EXPIRED' ? new Date() : undefined,
       },
     });
+  },
+};
+
+export const webhookEventRepository = {
+  async recordIfNew(eventId: string, eventType: string, roomName: string | null, payload: unknown): Promise<boolean> {
+    const prisma = requirePrisma();
+    try {
+      await prisma.webhookEvent.create({
+        data: {
+          eventId,
+          eventType,
+          roomName,
+          payload: payload as object,
+        },
+      });
+      return true;
+    } catch (error) {
+      const code = typeof error === 'object' && error && 'code' in error ? String((error as { code: string }).code) : '';
+      if (code === 'P2002') return false;
+      throw error;
+    }
   },
 };
 

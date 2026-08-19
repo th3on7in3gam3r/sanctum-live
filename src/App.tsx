@@ -20,10 +20,11 @@ import { ListenerRoomView } from './components/public/ListenerRoomView';
 import { DashboardLayout } from './components/dashboard/DashboardLayout';
 import { NotificationToastContainer } from './components/common/NotificationToast';
 import { GlobalConfirmModal } from './components/common/GlobalConfirmModal';
+import { loadJoinSession } from './services/realtime/joinSessionStore';
 
 const RouterContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  const { hasUnsavedChanges, setHasUnsavedChanges, confirmAction } = useApp();
+  const { isAuthenticated, authReady } = useAuth();
+  const { hasUnsavedChanges, setHasUnsavedChanges, confirmAction, leavePrayerRoom } = useApp();
 
   // Route state
   const [currentPath, setCurrentPath] = useState<string>(() => {
@@ -32,8 +33,9 @@ const RouterContent: React.FC = () => {
 
   // Attendee state for public join
   const [joinedAttendeeName, setJoinedAttendeeName] = useState<string | null>(() => {
-    const saved = localStorage.getItem('sanctum_active_attendee_session');
-    return saved || null;
+    const storedJoin = loadJoinSession();
+    if (!storedJoin) return null;
+    return localStorage.getItem('sanctum_active_attendee_session') || storedJoin.guestName || null;
   });
 
   useEffect(() => {
@@ -94,10 +96,11 @@ const RouterContent: React.FC = () => {
 
     if (joinedAttendeeName) {
       return (
-        <ListenerRoomView
+          <ListenerRoomView
           participantName={joinedAttendeeName}
           roomSlug={slug}
           onLeave={() => {
+            void leavePrayerRoom();
             localStorage.removeItem('sanctum_active_attendee_session');
             setJoinedAttendeeName(null);
             navigate(`/join/${slug}`);
@@ -134,7 +137,18 @@ const RouterContent: React.FC = () => {
     return <LandingPage onNavigate={navigate} />;
   }
 
-  // Dashboard Control Room route: /dashboard/prayer-rooms/:id/control
+  if (currentPath.startsWith('/dashboard')) {
+    if (!authReady) {
+      return (
+        <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex items-center justify-center text-sm text-[#68736D]">
+          Checking church session…
+        </div>
+      );
+    }
+    if (!isAuthenticated) {
+      return <LoginPage onNavigate={navigate} />;
+    }
+  }
   if (currentPath.includes('/control')) {
     const parts = currentPath.split('/');
     const roomId = parts[3] || 'room_1';

@@ -4,6 +4,7 @@ export interface ApiHealth {
   ok: boolean;
   database: 'configured' | 'unavailable';
   livekit: 'configured' | 'unavailable';
+  clerk?: 'configured' | 'unavailable';
   realtimeEngine: 'configured' | 'not_configured';
 }
 
@@ -18,12 +19,27 @@ export class ApiClientError extends Error {
   }
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+type Actor = { userId?: string; organizationId?: string };
+
+let getAccessToken: (() => Promise<string | null>) | null = null;
+
+export function setApiAccessTokenGetter(getter: (() => Promise<string | null>) | null): void {
+  getAccessToken = getter;
+}
+
+async function apiFetch<T>(
+  path: string,
+  init?: RequestInit,
+  options?: { withAuth?: boolean; organizationId?: string }
+): Promise<T> {
+  const token = options?.withAuth && getAccessToken ? await getAccessToken() : null;
   const response = await fetch(path, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       ...(init?.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.organizationId ? { 'x-organization-id': options.organizationId } : {}),
     },
   });
 
@@ -36,6 +52,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
   return body as T;
+}
+
+function staff(actor?: Actor) {
+  return { withAuth: true as const, organizationId: actor?.organizationId };
 }
 
 export async function fetchHealth(): Promise<ApiHealth | null> {
@@ -53,43 +73,36 @@ export function healthToEngineStatus(health: ApiHealth | null): RealtimeEngineSt
 
 export const sanctumApi = {
   fetchHealth,
-  createPrayerRoom: (input: Record<string, unknown>, actor: { userId?: string; organizationId?: string }) =>
+  fetchMe: () =>
+    apiFetch<{
+      user: { id: string; name: string; email: string; role: string; organizationId: string };
+      organization: Record<string, unknown> | null;
+    }>('/api/me', undefined, { withAuth: true }),
+  createPrayerRoom: (input: Record<string, unknown>, actor: Actor) =>
     apiFetch<{ room: Record<string, unknown> }>('/api/prayer-rooms', {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
       body: JSON.stringify(input),
-    }),
-  createPrayerSession: (input: Record<string, unknown>, actor: { userId?: string; organizationId?: string }) =>
+    }, staff(actor)),
+  createPrayerSession: (input: Record<string, unknown>, actor: Actor) =>
     apiFetch<{ session: Record<string, unknown> }>('/api/prayer-sessions', {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
       body: JSON.stringify(input),
-    }),
-  startPrayerSession: (sessionId: string, actor: { userId?: string; organizationId?: string }) =>
-    apiFetch(`/api/prayer-sessions/${sessionId}/start`, {
+    }, staff(actor)),
+  startPrayerSession: (sessionId: string, actor: Actor) =>
+    apiFetch<{ session: Record<string, unknown> }>(`/api/prayer-sessions/${sessionId}/start`, {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
       body: JSON.stringify({}),
-    }),
-  endPrayerSession: (sessionId: string, actor: { userId?: string; organizationId?: string }) =>
+    }, staff(actor)),
+  endPrayerSession: (sessionId: string, actor: Actor) =>
     apiFetch(`/api/prayer-sessions/${sessionId}/end`, {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
       body: JSON.stringify({}),
-    }),
-  joinSession: (sessionId: string, input: { guestName?: string; userId?: string; role?: string }) =>
+    }, staff(actor)),
+  joinSession: (
+    sessionId: string,
+    input: { guestName?: string; userId?: string; role?: string },
+    actor?: Actor
+  ) =>
     apiFetch<{
       participant: {
         id: string;
@@ -100,58 +113,104 @@ export const sanctumApi = {
       token: string | null;
       livekitUrl: string | null;
       realtimeConfigured: boolean;
-    }>(`/api/sessions/${sessionId}/join`, {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }),
+    }>(
+      `/api/sessions/${sessionId}/join`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ ...input, asGuest: !actor?.userId }),
+      },
+      actor?.userId ? staff(actor) : undefined
+    ),
   raiseHand: (sessionId: string, participantId: string) =>
     apiFetch(`/api/sessions/${sessionId}/raise-hand`, {
       method: 'POST',
       body: JSON.stringify({ participantId }),
     }),
-  inviteSpeaker: (sessionId: string, participantId: string, actor: { userId?: string; organizationId?: string }) =>
+  inviteSpeaker: (sessionId: string, participantId: string, actor: Actor) =>
     apiFetch(`/api/sessions/${sessionId}/speaker/invite`, {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
       body: JSON.stringify({ participantId }),
-    }),
-  grantSpeaker: (sessionId: string, participantId: string, actor: { userId?: string; organizationId?: string }) =>
+    }, staff(actor)),
+  grantSpeaker: (sessionId: string, participantId: string, actor: Actor) =>
     apiFetch(`/api/sessions/${sessionId}/speaker/grant`, {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
       body: JSON.stringify({ participantId }),
-    }),
-  revokeSpeaker: (sessionId: string, participantId: string, actor: { userId?: string; organizationId?: string }) =>
+    }, staff(actor)),
+  revokeSpeaker: (sessionId: string, participantId: string, actor: Actor, realtimeIdentity?: string) =>
     apiFetch(`/api/sessions/${sessionId}/speaker/revoke`, {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
-      body: JSON.stringify({ participantId }),
-    }),
-  transferSpeaker: (sessionId: string, participantId: string, actor: { userId?: string; organizationId?: string }) =>
+      body: JSON.stringify({ participantId, realtimeIdentity }),
+    }, actor.userId ? staff(actor) : undefined),
+  transferSpeaker: (sessionId: string, participantId: string, actor: Actor) =>
     apiFetch(`/api/sessions/${sessionId}/speaker/transfer`, {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
       body: JSON.stringify({ participantId }),
-    }),
-  removeParticipant: (sessionId: string, participantId: string, actor: { userId?: string; organizationId?: string }) =>
+    }, staff(actor)),
+  removeParticipant: (sessionId: string, participantId: string, actor: Actor) =>
     apiFetch(`/api/sessions/${sessionId}/participants/${participantId}/remove`, {
       method: 'POST',
-      headers: {
-        ...(actor.userId ? { 'x-user-id': actor.userId } : {}),
-        ...(actor.organizationId ? { 'x-organization-id': actor.organizationId } : {}),
-      },
       body: JSON.stringify({}),
+    }, staff(actor)),
+  openPrayerSession: (sessionId: string, actor: Actor) =>
+    apiFetch<{ session: Record<string, unknown> }>(`/api/prayer-sessions/${sessionId}/open`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }, staff(actor)),
+  openSessionForRoom: (roomId: string, actor: Actor) =>
+    apiFetch<{ session: Record<string, unknown> }>(`/api/prayer-rooms/${roomId}/open-session`, {
+      method: 'POST',
+      body: JSON.stringify({ prayerRoomId: roomId }),
+    }, staff(actor)),
+  getSession: (sessionId: string) =>
+    apiFetch<{
+      session: Record<string, unknown>;
+      activeSpeaker: Record<string, unknown> | null;
+      participants: Array<Record<string, unknown>>;
+      raisedHands: Array<Record<string, unknown>>;
+      connectedNow: number;
+      peakConcurrentParticipants: number;
+      realtimeConfigured: boolean;
+    }>(`/api/sessions/${sessionId}`),
+  getAltar: (slug: string) =>
+    apiFetch<{ room: { id: string; name: string; slug: string }; session: { id: string; status: string } | null }>(
+      `/api/altar/${slug}`
+    ),
+  leaveSession: (sessionId: string, participantId: string) =>
+    apiFetch(`/api/sessions/${sessionId}/leave`, {
+      method: 'POST',
+      body: JSON.stringify({ participantId }),
     }),
+  lowerHand: (sessionId: string, participantId: string) =>
+    apiFetch(`/api/sessions/${sessionId}/lower-hand`, {
+      method: 'POST',
+      body: JSON.stringify({ participantId }),
+    }),
+  dismissHand: (sessionId: string, handId: string, actor: Actor) =>
+    apiFetch(`/api/sessions/${sessionId}/hands/${handId}/dismiss`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }, staff(actor)),
+  acceptSpeaker: (
+    sessionId: string,
+    input: { participantId: string; invitationId?: string; realtimeIdentity?: string }
+  ) =>
+    apiFetch(`/api/sessions/${sessionId}/speaker/accept`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  declineSpeaker: (sessionId: string, participantId: string) =>
+    apiFetch(`/api/sessions/${sessionId}/speaker/decline`, {
+      method: 'POST',
+      body: JSON.stringify({ participantId }),
+    }),
+  muteParticipant: (sessionId: string, participantId: string, actor: Actor) =>
+    apiFetch(`/api/sessions/${sessionId}/participants/${participantId}/mute`, {
+      method: 'POST',
+      body: JSON.stringify({ participantId }),
+    }, staff(actor)),
+  unmuteParticipant: (sessionId: string, participantId: string, actor: Actor) =>
+    apiFetch(`/api/sessions/${sessionId}/participants/${participantId}/unmute`, {
+      method: 'POST',
+      body: JSON.stringify({ participantId }),
+    }, staff(actor)),
 };

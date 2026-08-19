@@ -1,0 +1,17 @@
+{
+  "name": "Sanctum Live",
+  "short_name": "Sanctum",
+  "description": "Corporate prayer without barriers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F7F3",
+  "theme_color": "#203C32",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

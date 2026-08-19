@@ -23,7 +23,7 @@ export function buildLiveKitTokenGrants(options: {
     room: options.roomName,
     canPublish,
     canSubscribe: true,
-    canPublishData: options.sessionRole !== 'LISTENER',
+    canPublishData: true,
     canPublishSources: canPublish ? ['microphone'] : [],
     roomAdmin,
   };

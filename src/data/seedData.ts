@@ -69,6 +69,26 @@ export const SEED_USERS: User[] = [
     createdAt: '2026-02-01T00:00:00.000Z',
     updatedAt: '2026-08-18T00:00:00.000Z',
   },
+  {
+    id: 'user_leader_sarah',
+    organizationId: 'org_miracle_center_kampala',
+    name: 'Sarah Prayer Leader',
+    email: 'sarah@miraclecenter.org',
+    role: 'PRAYER_LEADER',
+    avatarUrl: '',
+    createdAt: '2026-03-01T00:00:00.000Z',
+    updatedAt: '2026-08-18T00:00:00.000Z',
+  },
+  {
+    id: 'user_tech_daniel',
+    organizationId: 'org_miracle_center_kampala',
+    name: 'Daniel Technical',
+    email: 'daniel@miraclecenter.org',
+    role: 'TECHNICAL_ADMIN',
+    avatarUrl: '',
+    createdAt: '2026-03-02T00:00:00.000Z',
+    updatedAt: '2026-08-18T00:00:00.000Z',
+  },
 ];
 
 export const SEED_PRAYER_ROOMS: PrayerRoom[] = [

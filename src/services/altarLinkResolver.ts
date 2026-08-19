@@ -60,10 +60,10 @@ export function resolveAltarLink(
 
   // 1. LIVE Session check (highest priority)
   const activeSession =
-    (liveSession && liveSession.prayerRoomId === targetRoom.id && liveSession.status === 'LIVE'
+    (liveSession && liveSession.prayerRoomId === targetRoom.id && (liveSession.status === 'LIVE' || liveSession.status === 'STARTING')
       ? liveSession
       : null) ||
-    roomSessions.find((s) => s.status === 'LIVE') ||
+    roomSessions.find((s) => s.status === 'LIVE' || s.status === 'STARTING') ||
     null;
 
   if (activeSession) {

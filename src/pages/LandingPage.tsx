@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SanctumLogo } from '../components/common/SanctumLogo';
+import { ClerkNavAuth } from '../components/common/ClerkNavAuth';
 import { LiveBadge } from '../components/common/LiveBadge';
 import {
   Sparkles,
@@ -14,7 +15,6 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { useAuth } from '../context/AuthContext';
 
 interface LandingPageProps {
   onNavigate: (path: string) => void;
@@ -22,7 +22,6 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
   const { isDarkMode, toggleDarkMode, addToast } = useApp();
-  const { isAuthenticated } = useAuth();
 
   // Interactive Live Preview State
   const [amenCount, setAmenCount] = useState(1420);
@@ -85,12 +84,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
             {isDarkMode ? <Sun className="w-4 h-4 text-[#C9A35A]" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <button
-            onClick={() => onNavigate(isAuthenticated ? '/dashboard' : '/login')}
-            className="px-5 sm:px-6 py-2 sm:py-2.5 border border-[#16251F] dark:border-[#E8D8B2] rounded-full text-xs sm:text-sm font-semibold text-[#16251F] dark:text-[#F8F7F3] hover:bg-[#16251F] hover:text-white dark:hover:bg-[#E8D8B2] dark:hover:text-[#101814] transition-colors cursor-pointer"
-          >
-            Church Login
-          </button>
+          <ClerkNavAuth onNavigate={onNavigate} />
         </div>
       </nav>
 

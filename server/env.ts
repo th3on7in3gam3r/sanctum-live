@@ -13,6 +13,8 @@ export interface ServerEnv {
   livekitUrl: string | null;
   livekitApiKey: string | null;
   livekitApiSecret: string | null;
+  clerkPublishableKey: string | null;
+  clerkSecretKey: string | null;
 }
 
 function readOptional(name: string): string | null {
@@ -35,6 +37,8 @@ export const env: ServerEnv = {
   livekitUrl: readOptional('LIVEKIT_URL'),
   livekitApiKey: readOptional('LIVEKIT_API_KEY'),
   livekitApiSecret: readOptional('LIVEKIT_API_SECRET'),
+  clerkPublishableKey: readOptional('CLERK_PUBLISHABLE_KEY') || readOptional('VITE_CLERK_PUBLISHABLE_KEY'),
+  clerkSecretKey: readOptional('CLERK_SECRET_KEY'),
 };
 
 export function getDatabaseStatus(): ServiceStatus {
@@ -51,4 +55,12 @@ export function isLiveKitConfigured(): boolean {
 
 export function isDatabaseConfigured(): boolean {
   return getDatabaseStatus() === 'configured';
+}
+
+export function getClerkStatus(): ServiceStatus {
+  return env.clerkPublishableKey && env.clerkSecretKey ? 'configured' : 'unavailable';
+}
+
+export function isClerkConfigured(): boolean {
+  return getClerkStatus() === 'configured';
 }

@@ -37,7 +37,7 @@ export const SanctuaryWaitingView: React.FC<SanctuaryWaitingViewProps> = ({
   onSessionLive,
   onBack,
 }) => {
-  const { isDarkMode, toggleDarkMode, liveSession } = useApp();
+  const { isDarkMode, toggleDarkMode, liveSession, connectedNow, connectionState } = useApp();
   const [scriptureIndex, setScriptureIndex] = useState(0);
 
   // Auto transition if liveSession becomes LIVE
@@ -103,7 +103,11 @@ export const SanctuaryWaitingView: React.FC<SanctuaryWaitingViewProps> = ({
         {/* Waiting badge with live counter */}
         <div className="py-3 px-4 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-center gap-2 text-xs font-semibold text-[#16251F] dark:text-[#F8F7F3]">
           <Users className="w-4 h-4 text-[#C9A35A]" />
-          <span>Waiting for participants</span>
+          <span>
+            {connectionState === 'CONNECTED' && connectedNow > 0
+              ? `${connectedNow} gathered in the sanctuary`
+              : 'Waiting for participants'}
+          </span>
         </div>
 
         {/* Welcome Attendee Greeting */}
@@ -130,13 +134,15 @@ export const SanctuaryWaitingView: React.FC<SanctuaryWaitingViewProps> = ({
 
       {/* Footer / Dev simulation button */}
       <footer className="w-full max-w-md mx-auto text-center pt-2">
-        <button
-          type="button"
-          onClick={onSessionLive}
-          className="text-[11px] font-medium text-[#68736D] hover:text-[#203C32] dark:hover:text-[#C9A35A] underline cursor-pointer"
-        >
-          Simulate Prayer Starting →
-        </button>
+        {connectionState !== 'CONNECTED' ? (
+          <button
+            type="button"
+            onClick={onSessionLive}
+            className="text-[11px] font-medium text-[#68736D] hover:text-[#203C32] dark:hover:text-[#C9A35A] underline cursor-pointer"
+          >
+            Simulate Prayer Starting →
+          </button>
+        ) : null}
       </footer>
     </div>
   );

@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
-import { Building, Palette, Shield, Sliders, Save, AlertTriangle, Check, RefreshCw } from 'lucide-react';
+import { Building, Palette, Shield, Sliders, Save, AlertTriangle, Check, RefreshCw, CreditCard } from 'lucide-react';
 import { slugify } from '../lib/utils';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
+import { ComingSoonBadge } from '../components/common/ComingSoonBadge';
 import { RealtimeEngineStatus } from '../components/common/RealtimeEngineStatus';
 
 interface SettingsPageProps {
@@ -14,7 +15,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
   const { organization, updateOrganization } = useAuth();
   const { addToast, confirmAction, setHasUnsavedChanges } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'GENERAL' | 'BRANDING' | 'DEFAULTS' | 'SECURITY'>('GENERAL');
+  const [activeTab, setActiveTab] = useState<'GENERAL' | 'BRANDING' | 'DEFAULTS' | 'SECURITY' | 'BILLING'>('GENERAL');
 
   const [name, setName] = useState(organization.name);
   const [slug, setSlug] = useState(organization.slug);
@@ -127,6 +128,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
           { id: 'BRANDING', label: 'Branding & Join Page', icon: Palette },
           { id: 'DEFAULTS', label: 'Prayer Defaults', icon: Sliders },
           { id: 'SECURITY', label: 'Security & Privacy', icon: Shield },
+          { id: 'BILLING', label: 'Billing', icon: CreditCard },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -418,6 +420,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate: _onNavig
               <span>Reset Demo State & Reload</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'BILLING' && (
+        <div className="bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 border border-[#E5E6E1] dark:border-[#26362F] space-y-3">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">Church billing</h3>
+            <ComingSoonBadge />
+          </div>
+          <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
+            Donations, plans, and invoices stay paused so Dawn Intercession can run on audio first. Membership
+            access is not sold from this screen yet.
+          </p>
         </div>
       )}
     </div>

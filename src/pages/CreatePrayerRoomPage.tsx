@@ -104,7 +104,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
@@ -157,13 +157,15 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
     try {
       if (existing) {
         updatePrayerRoom(existing.id, formData);
+        setHasUnsavedChanges(false);
+        onNavigate(`/dashboard/prayer-rooms/${existing.id}`);
       } else {
-        createPrayerRoom(formData);
+        const created = await createPrayerRoom(formData);
+        setHasUnsavedChanges(false);
+        onNavigate(`/dashboard/prayer-rooms/${created.id}`);
       }
-      setHasUnsavedChanges(false);
-      onNavigate(existing ? `/dashboard/prayer-rooms/${existing.id}` : '/dashboard/prayer-rooms');
-    } catch (err: any) {
-      addToast(err.message || 'Failed to save prayer room', 'error');
+    } catch {
+      /* createPrayerRoom already surfaces the error */
     } finally {
       setIsSubmitting(false);
     }
@@ -332,14 +334,13 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRoomType('PRAYER_LEADER_VIDEO')}
-                    className={`p-2.5 rounded-xl border text-left text-xs font-semibold cursor-pointer ${
-                      roomType === 'PRAYER_LEADER_VIDEO'
-                        ? 'border-[#203C32] dark:border-[#C9A35A] bg-[#203C32]/5 dark:bg-[#C9A35A]/10 text-[#203C32] dark:text-[#E8D8B2]'
-                        : 'border-[#E5E6E1] dark:border-[#26362F] text-[#68736D]'
-                    }`}
+                    disabled
+                    className="p-2.5 rounded-xl border text-left text-xs font-semibold border-[#E5E6E1] dark:border-[#26362F] text-[#68736D] opacity-70 cursor-not-allowed"
                   >
                     Leader Video
+                    <span className="block text-[9px] uppercase tracking-wider text-amber-700 dark:text-amber-300 mt-1">
+                      Coming Soon
+                    </span>
                   </button>
                 </div>
               </div>

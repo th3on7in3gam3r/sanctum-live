@@ -127,6 +127,7 @@ model Organization {
 
 model User {
   id           String   @id @default(cuid())
+  clerkUserId  String?  @unique
   name         String
   email        String   @unique
   passwordHash String?
@@ -202,6 +203,7 @@ model PrayerSession {
   endedAt                    DateTime?
   livekitRoomName            String?
   activeSpeakerParticipantId String?
+  peakConcurrentParticipants Int           @default(0)
   createdAt                  DateTime      @default(now())
   updatedAt                  DateTime      @updatedAt
 
@@ -224,6 +226,7 @@ model SessionParticipant {
   guestName        String?
   realtimeIdentity String
   role             SessionRole @default(LISTENER)
+  baseRole         SessionRole @default(LISTENER)
   joinedAt         DateTime    @default(now())
   leftAt           DateTime?
   createdAt        DateTime    @default(now())
@@ -315,5 +318,17 @@ model AuditEvent {
   @@index([sessionId])
   @@index([actorId])
   @@index([action])
+  @@index([createdAt])
+}
+
+model WebhookEvent {
+  id        String   @id @default(cuid())
+  eventId   String   @unique
+  eventType String
+  roomName  String?
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([eventType])
   @@index([createdAt])
 }

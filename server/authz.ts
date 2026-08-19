@@ -1,3 +1,7 @@
+/**
+ * Clerk sessions authenticate. OrganizationMembership rows authorize.
+ * Prototype `x-user-id` spoofing is no longer accepted.
+ */
 import { Unauthorized } from '../shared/errors.ts';
 import {
   canCreatePrayerRoom,
@@ -14,12 +18,6 @@ export interface ActorContext {
   userId: string | null;
   organizationId: string | null;
   orgRole: OrganizationRole | null;
-}
-
-export function readActorHeaders(headers: Record<string, unknown>): { userId: string | null; organizationId: string | null } {
-  const userId = typeof headers['x-user-id'] === 'string' ? headers['x-user-id'] : null;
-  const organizationId = typeof headers['x-organization-id'] === 'string' ? headers['x-organization-id'] : null;
-  return { userId, organizationId };
 }
 
 export async function resolveActor(organizationId: string | null, userId: string | null): Promise<ActorContext> {

@@ -52,13 +52,12 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate }) =>
   const [roomType, setRoomType] = useState<'AUDIO_PRAYER' | 'LEADER_VIDEO'>('AUDIO_PRAYER');
   const [speakerPermissionMode, setSpeakerPermissionMode] = useState<'ADMIN_APPROVAL_REQUIRED' | 'PRAYER_LEADERS_ONLY'>('ADMIN_APPROVAL_REQUIRED');
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 1 && !churchName.trim()) {
       addToast('Please enter your church name', 'warning');
       return;
     }
     if (step === 4) {
-      // Save all information
       updateOrganization({
         name: churchName,
         slug: churchSlug || slugify(churchName),
@@ -67,22 +66,28 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate }) =>
         website,
       });
 
-      createPrayerRoom({
-        name: roomName,
-        slug: slugify(roomName),
-        description: roomDescription,
-        expectedAttendance: Number(expectedAttendance) || 1000,
-        roomType,
-        isRecurring: schedulePattern === 'DAILY',
-        recurrenceRule: schedulePattern === 'DAILY' ? 'Daily' : 'Weekly',
-        scheduledStart: scheduledTime,
-        timezone,
-        speakerPermissionMode,
-        isPermanentLinkEnabled: true,
-        recordingEnabled: false,
-      });
-
-      addToast('Prayer room created and church registered!', 'success');
+      const roomSlug = slugify(roomName);
+      try {
+        await createPrayerRoom({
+          organizationId: organization.id,
+          name: roomName,
+          slug: roomSlug,
+          description: roomDescription,
+          expectedAttendance: Number(expectedAttendance) || 1000,
+          roomType: roomType === 'LEADER_VIDEO' ? 'PRAYER_LEADER_VIDEO' : 'AUDIO_PRAYER',
+          isRecurring: schedulePattern === 'DAILY' || schedulePattern === 'WEEKLY',
+          recurrenceRule: schedulePattern === 'DAILY' ? 'DAILY' : schedulePattern === 'WEEKLY' ? 'WEEKLY' : undefined,
+          scheduledStart: scheduledTime,
+          timezone,
+          speakerPermission:
+            speakerPermissionMode === 'PRAYER_LEADERS_ONLY' ? 'PRAYER_LEADERS' : 'ADMIN_APPROVAL_REQUIRED',
+          recordingEnabled: false,
+          permanentUrl: `/join/${roomSlug}`,
+          status: 'SCHEDULED',
+        });
+      } catch {
+        return;
+      }
     }
     setStep((prev) => Math.min(prev + 1, 5));
   };
@@ -362,14 +367,13 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ onNavigate }) =>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setRoomType('LEADER_VIDEO')}
-                    className={`p-3 rounded-xl border text-left text-xs font-semibold ${
-                      roomType === 'LEADER_VIDEO'
-                        ? 'border-[#203C32] dark:border-[#C9A35A] bg-[#203C32]/5 dark:bg-[#C9A35A]/10 font-bold'
-                        : 'border-[#E5E6E1] dark:border-[#26362F]'
-                    }`}
+                    disabled
+                    className="p-3 rounded-xl border text-left text-xs font-semibold border-[#E5E6E1] dark:border-[#26362F] opacity-70 cursor-not-allowed"
                   >
                     Prayer Leader Video
+                    <span className="block text-[9px] uppercase tracking-wider text-amber-700 dark:text-amber-300 mt-1">
+                      Coming Soon
+                    </span>
                   </button>
                 </div>
               </div>

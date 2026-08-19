@@ -13,9 +13,6 @@ import {
 } from '../types';
 import {
   SEED_PRAYER_ROOMS,
-  SEED_LIVE_SESSION,
-  SEED_PARTICIPANTS,
-  SEED_RAISED_HANDS,
   SEED_PRAYER_REQUESTS,
   SEED_HISTORY_SESSIONS,
 } from '../data/seedData';
@@ -23,7 +20,18 @@ import { generateRollingSessions } from '../services/sessionScheduler';
 import { AuditLogger } from '../services/auditLogger';
 import { localPersistenceAdapter } from '../services/persistence/localPersistenceAdapter';
 import { sessionApiAdapter } from '../services/domain/sessionApiAdapter';
-import { sanctumApi } from '../services/api/sanctumApi';
+import { ApiClientError, sanctumApi } from '../services/api/sanctumApi';
+import { livekitRealtimeProvider } from '../services/realtime/livekitRealtimeProvider';
+import { saveJoinSession, loadJoinSession, clearJoinSession } from '../services/realtime/joinSessionStore';
+import { useAuth } from './AuthContext';
+import type { ConnectionState } from '../types';
+import {
+  connectionStateToQuality,
+  isServerSessionId,
+  mapServerSession,
+  mapSnapshotHands,
+  mapSnapshotParticipants,
+} from '../services/domain/sessionSnapshot';
 
 export type Toast = ToastItem;
 
@@ -57,7 +65,7 @@ export interface AppContextType {
   closeConfirmModal: () => void;
 
   // Prayer Room operations
-  createPrayerRoom: (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>) => PrayerRoom;
+  createPrayerRoom: (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PrayerRoom>;
   updatePrayerRoom: (id: string, updates: Partial<PrayerRoom>) => void;
   deletePrayerRoom: (id: string) => void;
 
@@ -98,11 +106,25 @@ export interface AppContextType {
   // Simulation helpers for testing
   simulateParticipantJoin: (name?: string) => void;
   simulateIncomingPrayerRequest: (customRequest?: string) => void;
+  connectionState: ConnectionState;
+  connectedNow: number;
+  audioBlocked: boolean;
+  localParticipantId: string | null;
+  pendingSpeakerInvite: { invitationId?: string; participantId: string } | null;
+  prayerComplete: boolean;
+  enablePrayerAudio: () => Promise<void>;
+  reconnectToPrayer: (opts?: { silent?: boolean }) => Promise<void>;
+  acceptSpeakerInvite: () => Promise<void>;
+  declineSpeakerInvite: () => Promise<void>;
+  connectControlRoom: (roomId: string) => Promise<void>;
+  leavePrayerRoom: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, organization } = useAuth();
+  const actor = { userId: user?.id, organizationId: organization?.id };
   /**
    * Enforces org-scoped Permanent Altar Link uniqueness in the prototype store.
    * Future database constraint (already in prisma/schema.prisma):
@@ -146,9 +168,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localPersistenceAdapter.loadHistory(SEED_HISTORY_SESSIONS);
   });
 
-  const [liveSession, setLiveSession] = useState<PrayerSession | null>(SEED_LIVE_SESSION);
-  const [participants, setParticipants] = useState<Participant[]>(SEED_PARTICIPANTS);
-  const [raisedHands, setRaisedHands] = useState<RaisedHand[]>(SEED_RAISED_HANDS);
+  const [liveSession, setLiveSession] = useState<PrayerSession | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [raisedHands, setRaisedHands] = useState<RaisedHand[]>([]);
   const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>(() => {
     return localPersistenceAdapter.loadRequests(SEED_PRAYER_REQUESTS);
   });
@@ -170,6 +192,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Concurrency guard to prevent duplicate actions
   const isMutatingRef = useRef(false);
+  const liveSessionIdRef = useRef<string | null>(null);
+  const localParticipantIdRef = useRef<string | null>(null);
+  const connectedRoomRef = useRef<string | null>(null);
+
+  const [connectionState, setConnectionState] = useState<ConnectionState>('DISCONNECTED');
+  const [connectedNow, setConnectedNow] = useState(0);
+  const [audioBlocked, setAudioBlocked] = useState(false);
+  const [localParticipantId, setLocalParticipantId] = useState<string | null>(null);
+  const [pendingSpeakerInvite, setPendingSpeakerInvite] = useState<{
+    invitationId?: string;
+    participantId: string;
+  } | null>(null);
+  const [prayerComplete, setPrayerComplete] = useState(false);
 
   // Prototype shell persistence adapter (not the production database).
   useEffect(() => {
@@ -222,6 +257,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearInterval(interval);
   }, [liveSession?.status]);
 
+  useEffect(() => {
+    liveSessionIdRef.current = liveSession && isServerSessionId(liveSession.id) ? liveSession.id : null;
+  }, [liveSession?.id]);
+
+  useEffect(() => {
+    localParticipantIdRef.current = localParticipantId;
+  }, [localParticipantId]);
+
   const addToast = useCallback(
     (
       toastOrMessage: string | Omit<ToastItem, 'id'>,
@@ -259,6 +302,160 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const applySnapshot = useCallback(
+    async (sessionId: string, roomHint?: PrayerRoom) => {
+      if (!isServerSessionId(sessionId)) return;
+      try {
+        const snapshot = await sanctumApi.getSession(sessionId);
+        const room =
+          roomHint ||
+          prayerRooms.find((item) => item.id === String(snapshot.session.prayerRoomId)) ||
+          prayerRooms[0];
+        if (!room) return;
+        const quality = connectionStateToQuality(livekitRealtimeProvider.connectionState);
+        const mappedParticipants = mapSnapshotParticipants(snapshot.participants, sessionId, quality);
+        const speaker = snapshot.activeSpeaker as { guestName?: string; realtimeIdentity?: string; id?: string } | null;
+        const hands = mapSnapshotHands(snapshot.raisedHands, sessionId, mappedParticipants).map((hand) => ({
+          ...hand,
+          waitingSeconds: 0,
+        }));
+        mappedParticipants.forEach((participant) => {
+          participant.isHandRaised = hands.some((hand) => hand.participantId === participant.id);
+        });
+        setParticipants(mappedParticipants);
+        setRaisedHands(hands);
+        setConnectedNow(snapshot.connectedNow);
+        setLiveSession((prev) =>
+          mapServerSession(snapshot.session, room, {
+            organizationName: prev?.organizationName,
+            durationSeconds: prev?.id === sessionId ? prev.durationSeconds : 0,
+            speakerDurationSeconds: prev?.id === sessionId ? prev.speakerDurationSeconds : 0,
+            totalParticipants: snapshot.connectedNow,
+            totalUniqueParticipants: snapshot.connectedNow,
+            listenersWaitingCount: snapshot.connectedNow,
+            activeSpeakerName: speaker?.guestName || speaker?.realtimeIdentity,
+            activeSpeakerTitle: speaker ? 'Current speaker' : 'Waiting for the next prayer leader.',
+          })
+        );
+        const roomStatus =
+          snapshot.session.status === 'LIVE' || snapshot.session.status === 'STARTING'
+            ? 'LIVE'
+            : snapshot.session.status === 'WAITING'
+              ? 'WAITING'
+              : 'SCHEDULED';
+        setPrayerRooms((prev) =>
+          prev.map((item) => (item.id === room.id ? { ...item, status: roomStatus as PrayerRoom['status'] } : item))
+        );
+      } catch {
+        /* Snapshot refresh is best-effort. */
+      }
+    },
+    [prayerRooms]
+  );
+
+  const connectLiveKit = useCallback(
+    async (params: {
+      sessionId: string;
+      guestName: string;
+      asGuest: boolean;
+      roomSlug: string;
+    }) => {
+      const join = await sessionApiAdapter.join(
+        params.sessionId,
+        params.guestName,
+        params.asGuest ? undefined : actor
+      );
+      if (!join.ok || !join.token || !join.livekitUrl || !join.participant) {
+        throw new Error(join.reason || 'LiveKit connection unavailable in this environment.');
+      }
+      await livekitRealtimeProvider.joinRoom({
+        roomSlug: params.sessionId,
+        displayName: params.guestName,
+        role: 'LISTENER',
+        token: join.token,
+        livekitUrl: join.livekitUrl,
+      });
+      saveJoinSession({
+        sessionId: params.sessionId,
+        participantId: join.participant.id,
+        realtimeIdentity: join.participant.realtimeIdentity,
+        token: join.token,
+        livekitUrl: join.livekitUrl,
+        guestName: params.guestName,
+        asGuest: params.asGuest,
+      });
+      connectedRoomRef.current = params.sessionId;
+      setLocalParticipantId(join.participant.id);
+      localParticipantIdRef.current = join.participant.id;
+      setConnectionState(livekitRealtimeProvider.connectionState);
+      setAudioBlocked(livekitRealtimeProvider.audioBlocked);
+      setConnectedNow(livekitRealtimeProvider.connectedCount);
+      await applySnapshot(params.sessionId);
+      return join.participant;
+    },
+    [actor.userId, actor.organizationId, applySnapshot]
+  );
+
+  useEffect(() => {
+    return livekitRealtimeProvider.subscribe((event) => {
+      const nextState = event.metadata?.connectionState as ConnectionState | undefined;
+      if (nextState) {
+        setConnectionState(nextState);
+        setAudioBlocked(livekitRealtimeProvider.audioBlocked);
+      }
+      if (typeof event.metadata?.connectedNow === 'number') {
+        setConnectedNow(event.metadata.connectedNow);
+        setLiveSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                totalParticipants: event.metadata!.connectedNow as number,
+                totalUniqueParticipants: event.metadata!.connectedNow as number,
+                listenersWaitingCount: event.metadata!.connectedNow as number,
+              }
+            : prev
+        );
+      }
+      if (event.type === 'SPEAKER_INVITED') {
+        const identity = livekitRealtimeProvider.getIdentity();
+        const matchesIdentity = event.metadata?.realtimeIdentity === identity;
+        const matchesParticipant = event.participantId === localParticipantIdRef.current;
+        if (matchesIdentity || matchesParticipant) {
+          setPendingSpeakerInvite({
+            invitationId: typeof event.metadata?.invitationId === 'string' ? event.metadata.invitationId : undefined,
+            participantId: event.participantId || String(localParticipantIdRef.current || ''),
+          });
+        }
+      }
+      if (event.type === 'SESSION_STARTED') {
+        setLiveSession((prev) =>
+          prev ? { ...prev, status: 'LIVE', startedAt: prev.startedAt || new Date().toISOString() } : prev
+        );
+      }
+      if (event.type === 'SESSION_ENDED') {
+        setPrayerComplete(true);
+        setPendingSpeakerInvite(null);
+        void livekitRealtimeProvider.leaveRoom('', '');
+        connectedRoomRef.current = null;
+        setConnectionState('DISCONNECTED');
+        setLiveSession((prev) => (prev ? { ...prev, status: 'ENDED', endedAt: new Date().toISOString() } : prev));
+      }
+      if (
+        event.type === 'FLOOR_CHANGED' ||
+        event.type === 'HAND_RAISED' ||
+        event.type === 'HAND_LOWERED' ||
+        event.type === 'HAND_DISMISSED' ||
+        event.type === 'PARTICIPANT_JOINED' ||
+        event.type === 'PARTICIPANT_LEFT' ||
+        event.type === 'PARTICIPANT_REMOVED' ||
+        event.type === 'SPEAKER_DECLINED'
+      ) {
+        const sessionId = liveSessionIdRef.current;
+        if (sessionId) void applySnapshot(sessionId);
+      }
+    });
+  }, [applySnapshot]);
+
   const confirmAction = useCallback((options: ConfirmActionOptions) => {
     setConfirmModalConfig(options);
   }, []);
@@ -278,7 +475,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Prayer Room CRUD
   // Org-scoped slug uniqueness is enforced here until the Prisma unique index is live.
-  const createPrayerRoom = (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>): PrayerRoom => {
+  const createPrayerRoom = async (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>): Promise<PrayerRoom> => {
     if (isMutatingRef.current) {
       throw new Error('Prayer room creation already in progress.');
     }
@@ -288,12 +485,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         throw new Error('This Permanent Altar Link is already in use.');
       }
 
+      const created = await sanctumApi.createPrayerRoom(
+        {
+          organizationId: data.organizationId,
+          name: data.name,
+          slug: data.slug,
+          description: data.description,
+          roomType: data.roomType,
+          expectedAttendance: data.expectedAttendance,
+          speakerPermission: data.speakerPermission,
+          isRecurring: data.isRecurring,
+          recurrenceRule: data.recurrenceRule,
+          scheduledStart: data.scheduledStart,
+          timezone: data.timezone,
+          recordingEnabled: data.recordingEnabled,
+        },
+        actor
+      );
+      const roomRow = created.room as Record<string, unknown>;
       const newRoom: PrayerRoom = {
         ...data,
-        id: `room_${Date.now()}`,
+        id: String(roomRow.id),
         status: 'SCHEDULED',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: roomRow.createdAt ? String(roomRow.createdAt) : new Date().toISOString(),
+        updatedAt: roomRow.updatedAt ? String(roomRow.updatedAt) : new Date().toISOString(),
+        permanentUrl: String(roomRow.permanentUrl || data.permanentUrl || `/join/${data.slug}`),
       };
       setPrayerRooms((prev) => {
         if (isSlugTaken(prev, data.organizationId, data.slug)) {
@@ -301,29 +517,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return [newRoom, ...prev];
       });
-      void sanctumApi
-        .createPrayerRoom(
-          {
-            organizationId: data.organizationId,
-            name: data.name,
-            slug: data.slug,
-            description: data.description,
-            roomType: data.roomType,
-            expectedAttendance: data.expectedAttendance,
-            speakerPermission: data.speakerPermission,
-            isRecurring: data.isRecurring,
-            scheduledStart: data.scheduledStart,
-            timezone: data.timezone,
-            recordingEnabled: data.recordingEnabled,
-          },
-          { organizationId: data.organizationId }
-        )
-        .catch(() => {
-          /* Database unavailable is expected until DATABASE_URL is set. */
-        });
       addToast(`Created prayer room "${newRoom.name}"`, 'success');
       AuditLogger.log('ROOM_SETTINGS_CHANGED', { roomName: newRoom.name, note: 'Created new prayer room' });
       return newRoom;
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Could not create the prayer room on the server.';
+      addToast(message, 'error');
+      throw new Error(message);
     } finally {
       isMutatingRef.current = false;
     }
@@ -360,95 +565,122 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast(`Prayer room "${target?.name || 'Altar'}" deleted`, 'info');
   };
 
+  const connectControlRoom = async (roomId: string) => {
+    const room = prayerRooms.find((r) => r.id === roomId) || prayerRooms[0];
+    const sessionId =
+      liveSession && liveSession.prayerRoomId === room?.id && isServerSessionId(liveSession.id)
+        ? liveSession.id
+        : liveSessionIdRef.current;
+    if (!room || !sessionId) return;
+    if (connectedRoomRef.current === sessionId && livekitRealtimeProvider.connectionState === 'CONNECTED') {
+      return;
+    }
+    try {
+      await connectLiveKit({
+        sessionId,
+        guestName: user?.name || 'Prayer Leader',
+        asGuest: false,
+        roomSlug: room.slug,
+      });
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Control Room could not connect to prayer audio.', 'warning');
+    }
+  };
+
   // LIFECYCLE: Open Sanctuary (WAITING State)
-  const openSanctuary = (roomId: string) => {
+  const openSanctuary = async (roomId: string) => {
     if (isMutatingRef.current) return;
     isMutatingRef.current = true;
     try {
       const room = prayerRooms.find((r) => r.id === roomId) || prayerRooms[0];
       if (!room) return;
+      setPrayerComplete(false);
 
-      const waitingSession: PrayerSession = {
-        id: `session_${Date.now()}`,
-        prayerRoomId: room.id,
-        roomName: room.name,
-        organizationName: 'Miracle Center Kampala',
-        status: 'WAITING',
-        waitingRoomOpenedAt: new Date().toISOString(),
-        durationSeconds: 0,
-        totalUniqueParticipants: 0,
-        peakConcurrentParticipants: 0,
-        totalParticipants: 0,
-        peakParticipants: 0,
-        listenersWaitingCount: 0,
-        createdAt: new Date().toISOString(),
-      };
-
-      setLiveSession(waitingSession);
-      setPrayerRooms((prev) =>
-        prev.map((r) => (r.id === room.id ? { ...r, status: 'WAITING' } : r))
-      );
-
-      AuditLogger.log('SANCTUARY_OPENED', {
-        sessionId: waitingSession.id,
-        roomName: room.name,
-        note: 'Sanctuary waiting room opened for attendees',
-      });
-
-      addToast(`Sanctuary opened for "${room.name}". Members can now enter waiting sanctuary.`, 'info');
+      try {
+        const opened = await sanctumApi.openSessionForRoom(room.id, actor);
+        const mapped = mapServerSession(opened.session, room, {
+          listenersWaitingCount: 0,
+          totalParticipants: 0,
+          totalUniqueParticipants: 0,
+        });
+        setLiveSession(mapped);
+        liveSessionIdRef.current = mapped.id;
+        setPrayerRooms((prev) => prev.map((r) => (r.id === room.id ? { ...r, status: 'WAITING' } : r)));
+        await connectControlRoom(room.id);
+        AuditLogger.log('SANCTUARY_OPENED', {
+          sessionId: mapped.id,
+          roomName: room.name,
+          note: 'Sanctuary waiting room opened for attendees',
+        });
+        addToast(`Sanctuary opened for "${room.name}". Members can now enter waiting sanctuary.`, 'info');
+      } catch (error) {
+        addToast(
+          error instanceof ApiClientError
+            ? error.message
+            : 'LiveKit connection unavailable in this environment.',
+          'warning'
+        );
+      }
     } finally {
       isMutatingRef.current = false;
     }
   };
 
   // LIFECYCLE: Start Live Session (LIVE State)
-  const startPrayerSession = (roomId: string) => {
+  const startPrayerSession = async (roomId: string) => {
     if (isMutatingRef.current) return;
     isMutatingRef.current = true;
     try {
       const room = prayerRooms.find((r) => r.id === roomId) || prayerRooms[0];
       if (!room) return;
 
-      // Prevent starting if already live
-      if (liveSession && liveSession.status === 'LIVE' && liveSession.prayerRoomId === room.id) {
+      if (liveSession && liveSession.status === 'LIVE' && liveSession.prayerRoomId === room.id && isServerSessionId(liveSession.id)) {
         addToast(`Prayer session is already LIVE for ${room.name}`, 'info');
+        await connectControlRoom(room.id);
         return;
       }
 
-      const newSession: PrayerSession = {
-        id: liveSession?.id || `session_${Date.now()}`,
-        prayerRoomId: room.id,
-        roomName: room.name,
-        organizationName: 'Miracle Center Kampala',
-        status: 'LIVE',
-        startedAt: new Date().toISOString(),
-        durationSeconds: 0,
-        totalUniqueParticipants: participants.length,
-        peakConcurrentParticipants: participants.length,
-        totalParticipants: participants.length,
-        peakParticipants: participants.length,
-        activeSpeakerName: undefined,
-        activeSpeakerTitle: undefined,
-        speakerDurationSeconds: 0,
-        totalPrayerRequests: prayerRequests.length,
-        totalRaisedHands: raisedHands.length,
-        totalSpeakerInvitations: 0,
-        totalSpeakers: 1,
-        createdAt: new Date().toISOString(),
-      };
+      let sessionId =
+        liveSession && liveSession.prayerRoomId === room.id && isServerSessionId(liveSession.id)
+          ? liveSession.id
+          : null;
 
-      setLiveSession(newSession);
-      setPrayerRooms((prev) =>
-        prev.map((r) => (r.id === room.id ? { ...r, status: 'LIVE' } : r))
-      );
-
-      AuditLogger.log('SESSION_STARTED', {
-        sessionId: newSession.id,
-        roomName: room.name,
-        note: 'Live prayer session started by Pastor Kenneth',
-      });
-
-      addToast(`🔴 Live prayer session started for "${room.name}"`, 'success');
+      try {
+        if (!sessionId) {
+          const opened = await sanctumApi.openSessionForRoom(room.id, actor);
+          sessionId = String(opened.session.id);
+          setLiveSession(mapServerSession(opened.session, room));
+          liveSessionIdRef.current = sessionId;
+        }
+        const started = await sanctumApi.startPrayerSession(sessionId, actor);
+        const session = started.session || {
+          id: sessionId,
+          status: 'LIVE',
+          prayerRoomId: room.id,
+        };
+        setLiveSession(
+          mapServerSession(session, room, {
+            startedAt: new Date().toISOString(),
+            totalParticipants: connectedNow,
+            totalUniqueParticipants: connectedNow,
+          })
+        );
+        setPrayerRooms((prev) => prev.map((r) => (r.id === room.id ? { ...r, status: 'LIVE' } : r)));
+        await connectControlRoom(room.id);
+        AuditLogger.log('SESSION_STARTED', {
+          sessionId,
+          roomName: room.name,
+          note: 'Live prayer session started',
+        });
+        addToast(`Live prayer session started for "${room.name}"`, 'success');
+      } catch (error) {
+        addToast(
+          error instanceof ApiClientError
+            ? error.message
+            : 'LiveKit connection unavailable in this environment.',
+          'warning'
+        );
+      }
     } finally {
       isMutatingRef.current = false;
     }
@@ -464,25 +696,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
 
-      const actualAdminId =
-        adminId || (sessionIdOrAdminId?.startsWith('admin_') || sessionIdOrAdminId?.startsWith('user_') ? sessionIdOrAdminId : 'user_pastor_kenneth');
-
-      const apiResult = await sessionApiAdapter.endSession(liveSession.id, { userId: actualAdminId });
+      const apiResult = await sessionApiAdapter.endSession(liveSession.id, {
+        userId: adminId || actor.userId || sessionIdOrAdminId,
+        organizationId: actor.organizationId,
+      });
       if (!apiResult.ok) {
         addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
       }
+
+      await livekitRealtimeProvider.leaveRoom(liveSession.id, localParticipantId || '');
+      connectedRoomRef.current = null;
+      setConnectionState('DISCONNECTED');
+      setPrayerComplete(true);
 
       const endedSession: PrayerSession = {
         ...liveSession,
         status: 'ENDED',
         endedAt: new Date().toISOString(),
+        peakConcurrentParticipants: Math.max(liveSession.peakConcurrentParticipants, connectedNow),
       };
 
-      // Save to completed history
       setHistorySessions((prev) => [endedSession, ...prev]);
-      setLiveSession(null);
-
-      // Return room to scheduled status
+      setLiveSession(endedSession);
       setPrayerRooms((prev) =>
         prev.map((r) => (r.id === liveSession.prayerRoomId ? { ...r, status: 'SCHEDULED' } : r))
       );
@@ -513,43 +748,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Moderation: Invite to speak
-  const inviteToPray = async (participantId: string, adminId: string = 'user_pastor_kenneth') => {
+  const inviteToPray = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
     const participant = participants.find((p) => p.id === participantId);
     const hand = raisedHands.find((h) => h.participantId === participantId);
     const name = participant?.displayName || hand?.displayName || 'Attendee';
 
-    const apiResult = await sessionApiAdapter.inviteSpeaker(liveSession?.id, participantId, { userId: adminId });
+    const apiResult = await sessionApiAdapter.inviteSpeaker(liveSession?.id, participantId, {
+      userId: adminId || actor.userId,
+      organizationId: actor.organizationId,
+    });
     if (!apiResult.ok) {
       addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
+      return;
     }
 
-    // Update participant role to SPEAKER
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participantId
-          ? { ...p, role: 'SPEAKER', isHandRaised: false, isMuted: false, speakingTimeSeconds: 0 }
-          : p
-      )
+    setRaisedHands((prev) =>
+      prev.map((item) => (item.participantId === participantId ? { ...item, status: 'INVITED' } : item))
     );
-
-    // Remove from raised hands queue
-    setRaisedHands((prev) => prev.filter((h) => h.participantId !== participantId));
-
-    // Update active speaker in session
-    if (liveSession) {
-      setLiveSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              activeSpeakerName: name,
-              activeSpeakerTitle: 'Invited Speaker',
-              speakerDurationSeconds: 0,
-              totalSpeakerInvitations: (prev.totalSpeakerInvitations || 0) + 1,
-              totalSpeakers: (prev.totalSpeakers || 1) + 1,
-            }
-          : null
-      );
-    }
 
     AuditLogger.log('PARTICIPANT_INVITED_TO_SPEAK', {
       targetId: participantId,
@@ -557,11 +772,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       note: `Invited ${name} to speak in prayer`,
     });
 
-    addToast(`Invited ${name} to speak in prayer`, 'success');
+    addToast(`Invited ${name} to pray. Waiting for them to accept.`, 'success');
   };
 
-  const dismissHand = (raisedHandId: string) => {
+  const dismissHand = async (raisedHandId: string) => {
     const hand = raisedHands.find((h) => h.id === raisedHandId);
+    const apiResult = await sessionApiAdapter.dismissHand(liveSession?.id, raisedHandId, actor);
+    if (!apiResult.ok && isServerSessionId(liveSession?.id)) {
+      addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
+    }
     setRaisedHands((prev) => prev.filter((h) => h.id !== raisedHandId));
     if (hand) {
       setParticipants((prev) =>
@@ -571,9 +790,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const muteSpeaker = async (participantId: string, adminId: string = 'user_pastor_kenneth') => {
+  const muteSpeaker = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
     const target = participants.find((p) => p.id === participantId);
-    addToast('Mute is applied in the Control Room preview until LiveKit is configured.', 'warning');
+    const apiResult = await sessionApiAdapter.muteParticipant(liveSession?.id, participantId, {
+      userId: adminId || actor.userId,
+      organizationId: actor.organizationId,
+    });
+    if (!apiResult.ok) {
+      addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
+    }
     setParticipants((prev) =>
       prev.map((p) => (p.id === participantId ? { ...p, isMuted: true } : p))
     );
@@ -581,46 +806,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast(`Muted ${target?.displayName || 'speaker'}`, 'warning');
   };
 
-  const unmuteParticipant = async (participantId: string) => {
+  const unmuteParticipant = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
+    const target = participants.find((p) => p.id === participantId);
+    const apiResult = await sessionApiAdapter.unmuteParticipant(liveSession?.id, participantId, {
+      userId: adminId || actor.userId,
+      organizationId: actor.organizationId,
+    });
+    if (!apiResult.ok) {
+      addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
+      return;
+    }
     setParticipants((prev) =>
       prev.map((p) => (p.id === participantId ? { ...p, isMuted: false } : p))
     );
-    addToast('Participant unmuted', 'success');
+    addToast(`Unmuted ${target?.displayName || 'speaker'}`, 'success');
   };
 
-  const endSpeaker = async (participantId: string, adminId: string = 'user_pastor_kenneth') => {
+  const endSpeaker = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
     const target = participants.find((p) => p.id === participantId);
-    const apiResult = await sessionApiAdapter.revokeSpeaker(liveSession?.id, participantId, { userId: adminId });
+    const stored = loadJoinSession();
+    const guestPath = stored?.asGuest === true && stored.participantId === participantId;
+    const apiResult = await sessionApiAdapter.revokeSpeaker(
+      liveSession?.id,
+      participantId,
+      guestPath ? {} : { userId: adminId || actor.userId, organizationId: actor.organizationId },
+      stored?.realtimeIdentity
+    );
     if (!apiResult.ok) {
       addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
     }
-
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participantId ? { ...p, role: 'LISTENER', isMuted: true } : p
-      )
-    );
-
-    // Reset active speaker back to Lead Pastor
-    if (liveSession) {
-      setLiveSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              activeSpeakerName: undefined,
-              activeSpeakerTitle: undefined,
-            }
-          : null
-      );
+    if (participantId === localParticipantId) {
+      await livekitRealtimeProvider.disableMicrophone();
     }
+    if (liveSession?.id) await applySnapshot(liveSession.id);
 
     AuditLogger.log('PARTICIPANT_RETURNED_TO_LISTENER', { targetId: participantId, targetName: target?.displayName });
     addToast(`Concluded prayer turn for ${target?.displayName || 'speaker'}`, 'info');
   };
 
-  const removeParticipant = async (participantId: string, adminId: string = 'user_pastor_kenneth') => {
+  const removeParticipant = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
     const target = participants.find((p) => p.id === participantId);
-    const apiResult = await sessionApiAdapter.removeParticipant(liveSession?.id, participantId, { userId: adminId });
+    const apiResult = await sessionApiAdapter.removeParticipant(liveSession?.id, participantId, {
+      userId: adminId || actor.userId,
+      organizationId: actor.organizationId,
+    });
     if (!apiResult.ok) {
       addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
     }
@@ -653,46 +882,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Public attendee join
   const joinPrayerRoom = async (roomSlug: string, name: string) => {
-    const room = prayerRooms.find((r) => r.slug === roomSlug) || prayerRooms[0];
-    const apiJoin = await sessionApiAdapter.join(liveSession?.id, name.trim());
-    const newParticipantId = apiJoin.participant?.id || `p_att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const realtimeIdentity = apiJoin.participant?.realtimeIdentity;
+    setPrayerComplete(false);
 
-    const newParticipant: Participant = {
-      id: newParticipantId,
-      sessionId: liveSession?.id || 'session_preview',
-      externalIdentity: realtimeIdentity,
-      displayName: name.trim(),
-      role: 'LISTENER',
-      joinedAt: new Date().toISOString(),
-      isHandRaised: false,
-      isMuted: true,
-      country: 'UG',
-      connectionQuality: 'OFFLINE',
-    };
-
-    setParticipants((prev) => [...prev, newParticipant]);
-
-    if (liveSession) {
-      setLiveSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              totalUniqueParticipants: (prev.totalUniqueParticipants || prev.totalParticipants || 0) + 1,
-              totalParticipants: (prev.totalParticipants || 0) + 1,
-              peakConcurrentParticipants: Math.max(
-                prev.peakConcurrentParticipants || prev.peakParticipants || 0,
-                (prev.totalUniqueParticipants || prev.totalParticipants || 0) + 1
-              ),
-              peakParticipants: Math.max(prev.peakParticipants || 0, (prev.totalParticipants || 0) + 1),
-            }
-          : null
-      );
+    let altar;
+    try {
+      altar = await sanctumApi.getAltar(roomSlug);
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        addToast(error.message, 'warning');
+        throw error;
+      }
+      addToast('This prayer gathering is not open to join yet, or has already ended.', 'warning');
+      throw error;
+    }
+    if (!altar.session?.id) {
+      addToast('This prayer gathering is not open to join yet, or has already ended.', 'warning');
+      throw new Error('SESSION_NOT_JOINABLE');
     }
 
-    if (!apiJoin.ok) {
-      addToast('Realtime Engine: Not configured. Joined development preview only.', 'warning');
-    }
+    const room =
+      prayerRooms.find((r) => r.slug === roomSlug) ||
+      prayerRooms.find((r) => r.id === altar.room.id) || {
+        id: altar.room.id,
+        organizationId: organization?.id || '',
+        name: altar.room.name,
+        slug: altar.room.slug,
+        expectedAttendance: 0,
+        roomType: 'AUDIO_PRAYER' as const,
+        speakerPermission: 'ADMIN_APPROVAL_REQUIRED' as const,
+        isRecurring: false,
+        scheduledStart: '',
+        timezone: 'Africa/Kampala',
+        recordingEnabled: false,
+        status: 'WAITING' as const,
+        permanentUrl: `/join/${altar.room.slug}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+    setLiveSession((prev) =>
+      mapServerSession(
+        { id: altar.session!.id, status: altar.session!.status, prayerRoomId: room.id },
+        room,
+        prev || undefined
+      )
+    );
+
+    const participant = await connectLiveKit({
+      sessionId: altar.session.id,
+      guestName: name.trim(),
+      asGuest: true,
+      roomSlug,
+    });
 
     addToast({
       type: 'participant_join',
@@ -701,32 +942,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       meta: { participantName: name, roomName: room?.name },
     });
 
-    return { participantId: newParticipantId, role: 'LISTENER' as Role };
+    return { participantId: participant.id, role: 'LISTENER' as Role };
   };
 
   const raiseHandAttendee = async (participantId: string, name: string) => {
-    const newHand: RaisedHand = {
-      id: `hand_${Date.now()}`,
-      sessionId: liveSession?.id || 'session_live',
-      participantId,
-      displayName: name,
-      status: 'WAITING',
-      raisedAt: new Date().toISOString(),
-      waitingSeconds: 0,
-    };
-
     const apiResult = await sessionApiAdapter.raiseHand(liveSession?.id, participantId);
     if (!apiResult.ok) {
       addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
+      return;
     }
-
-    setRaisedHands((prev) => {
-      if (prev.some((h) => h.participantId === participantId)) return prev;
-      return [...prev, newHand];
-    });
-    setParticipants((prev) =>
-      prev.map((p) => (p.id === participantId ? { ...p, isHandRaised: true } : p))
-    );
+    if (liveSession?.id) await applySnapshot(liveSession.id);
 
     addToast({
       type: 'hand_raised',
@@ -737,11 +962,103 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const lowerHandAttendee = async (participantId: string) => {
+    const apiResult = await sessionApiAdapter.lowerHand(liveSession?.id, participantId);
+    if (!apiResult.ok && isServerSessionId(liveSession?.id)) {
+      addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
+    }
     setRaisedHands((prev) => prev.filter((h) => h.participantId !== participantId));
     setParticipants((prev) =>
       prev.map((p) => (p.id === participantId ? { ...p, isHandRaised: false } : p))
     );
     addToast('Hand lowered', 'info');
+  };
+
+  const enablePrayerAudio = async () => {
+    const started = await livekitRealtimeProvider.tryStartAudio();
+    setAudioBlocked(!started);
+    if (started) addToast('Prayer audio enabled', 'success');
+  };
+
+  const reconnectToPrayer = async (opts?: { silent?: boolean }) => {
+    const stored = loadJoinSession();
+    if (!stored) {
+      if (!opts?.silent) addToast('Reconnect is unavailable. Join the gathering again.', 'warning');
+      return;
+    }
+    try {
+      await livekitRealtimeProvider.joinRoom({
+        roomSlug: stored.sessionId,
+        displayName: stored.guestName,
+        role: 'LISTENER',
+        token: stored.token,
+        livekitUrl: stored.livekitUrl,
+      });
+      connectedRoomRef.current = stored.sessionId;
+      setLocalParticipantId(stored.participantId);
+      localParticipantIdRef.current = stored.participantId;
+      setConnectionState(livekitRealtimeProvider.connectionState);
+      setAudioBlocked(livekitRealtimeProvider.audioBlocked);
+      setConnectedNow(livekitRealtimeProvider.connectedCount);
+      await applySnapshot(stored.sessionId);
+      if (!opts?.silent) addToast('Reconnected to prayer', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Reconnect failed', 'error');
+    }
+  };
+
+  const acceptSpeakerInvite = async () => {
+    const stored = loadJoinSession();
+    const participantId = pendingSpeakerInvite?.participantId || localParticipantId || stored?.participantId;
+    if (!participantId || !liveSession?.id) return;
+    const apiResult = await sessionApiAdapter.acceptSpeaker(liveSession.id, {
+      participantId,
+      invitationId: pendingSpeakerInvite?.invitationId,
+      realtimeIdentity: stored?.realtimeIdentity,
+    });
+    if (!apiResult.ok) {
+      addToast(apiResult.reason || 'Invitation is no longer active.', 'warning');
+      return;
+    }
+    try {
+      await livekitRealtimeProvider.enableMicrophone();
+    } catch {
+      const storedJoin = loadJoinSession();
+      await sessionApiAdapter.revokeSpeaker(
+        liveSession.id,
+        participantId,
+        storedJoin?.asGuest ? {} : actor,
+        storedJoin?.realtimeIdentity
+      );
+      addToast('Microphone permission is required to lead in prayer. Invitation released.', 'warning');
+      setPendingSpeakerInvite(null);
+      return;
+    }
+    setPendingSpeakerInvite(null);
+    await applySnapshot(liveSession.id);
+    addToast("You're now live! Lead the church in prayer.", 'success');
+  };
+
+  const declineSpeakerInvite = async () => {
+    const participantId = pendingSpeakerInvite?.participantId || localParticipantId;
+    if (participantId && liveSession?.id) {
+      await sessionApiAdapter.declineSpeaker(liveSession.id, participantId);
+    }
+    setPendingSpeakerInvite(null);
+    addToast('Declined speaker invitation', 'info');
+  };
+
+  const leavePrayerRoom = async () => {
+    const stored = loadJoinSession();
+    if (stored) {
+      await sessionApiAdapter.leaveSession(stored.sessionId, stored.participantId);
+      await livekitRealtimeProvider.leaveRoom(stored.sessionId, stored.participantId);
+    }
+    clearJoinSession();
+    connectedRoomRef.current = null;
+    setLocalParticipantId(null);
+    setPendingSpeakerInvite(null);
+    setConnectionState('DISCONNECTED');
+    setAudioBlocked(false);
   };
 
   const sendReactionAttendee = (emoji: 'AMEN' | 'PRAISE_GOD') => {
@@ -902,6 +1219,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addNoteToPrayerRequest: addPrayerRequestNote,
         simulateParticipantJoin,
         simulateIncomingPrayerRequest,
+        connectionState,
+        connectedNow,
+        audioBlocked,
+        localParticipantId,
+        pendingSpeakerInvite,
+        prayerComplete,
+        enablePrayerAudio,
+        reconnectToPrayer,
+        acceptSpeakerInvite,
+        declineSpeakerInvite,
+        connectControlRoom,
+        leavePrayerRoom,
       }}
     >
       {children}

@@ -64,9 +64,9 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
           <div className="flex items-center gap-3">
             <PrayerSessionStatus status={resolution.status} size="md" />
             <ParticipantCount
-              count={attendeeCount}
+              count={isLive || isWaiting ? liveSession?.totalParticipants || attendeeCount : undefined}
               size="sm"
-              emptyLabel={isLive ? 'Waiting for participants' : 'Prayer has not started'}
+              emptyLabel={isLive || isWaiting ? 'Waiting for participants' : 'Prayer has not started'}
             />
           </div>
 
@@ -107,14 +107,14 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
         {/* Right Section: Action CTAs */}
         <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0">
           {/* Main primary CTA */}
-          {isLive ? (
+          {isLive || isWaiting ? (
             <button
               onClick={() => onOpenControlRoom(room.id)}
               type="button"
               className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-[#D7473F] hover:bg-[#C23C35] text-white shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sliders className="w-4 h-4" />
-              <span>Live Control Room™</span>
+              <span>{isLive ? 'Live Control Room™' : 'Open Control Room'}</span>
             </button>
           ) : (
             <div className="flex flex-col gap-2">

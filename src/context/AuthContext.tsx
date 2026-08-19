@@ -1,11 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useAuth as useClerkAuth } from '@clerk/react';
 import { Organization, User, Role } from '../types';
-import { SEED_ORGANIZATION, SEED_USERS } from '../data/seedData';
+import { SEED_ORGANIZATION } from '../data/seedData';
+import { ApiClientError, sanctumApi, setApiAccessTokenGetter } from '../services/api/sanctumApi';
 
 interface AuthContextType {
   user: User | null;
   organization: Organization;
   isAuthenticated: boolean;
+  authReady: boolean;
+  membershipDenied: boolean;
+  clerkConfigured: boolean;
   login: (email: string, role?: Role) => boolean;
   logout: () => void;
   switchOrganization: (org: Organization) => void;
@@ -14,75 +19,76 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [organization, setOrganization] = useState<Organization>(() => {
-    try {
-      const stored = localStorage.getItem('sanctum_org');
-      return stored ? JSON.parse(stored) : SEED_ORGANIZATION;
-    } catch {
-      return SEED_ORGANIZATION;
-    }
-  });
-
-  const [user, setUser] = useState<User | null>(() => {
-    try {
-      const stored = localStorage.getItem('sanctum_user');
-      return stored ? JSON.parse(stored) : SEED_USERS[0]; // Default to Pastor Kenneth
-    } catch {
-      return SEED_USERS[0];
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sanctum_org', JSON.stringify(organization));
-    } catch {}
-  }, [organization]);
-
-  useEffect(() => {
-    try {
-      if (user) {
-        localStorage.setItem('sanctum_user', JSON.stringify(user));
-      } else {
-        localStorage.removeItem('sanctum_user');
-      }
-    } catch {}
-  }, [user]);
-
-  const login = (email: string, _role?: Role): boolean => {
-    const matchedUser = SEED_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (matchedUser) {
-      setUser(matchedUser);
-      return true;
-    }
-    // Create new admin user if not found in seed
-    const newUser: User = {
-      id: `user_${Date.now()}`,
-      organizationId: organization.id,
-      name: email.split('@')[0].replace('.', ' ').toUpperCase(),
-      email,
-      role: 'ADMIN',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setUser(newUser);
-    return true;
+function mapOrganization(row: Record<string, unknown> | null): Organization {
+  if (!row) return SEED_ORGANIZATION;
+  return {
+    ...SEED_ORGANIZATION,
+    id: String(row.id || SEED_ORGANIZATION.id),
+    name: String(row.name || SEED_ORGANIZATION.name),
+    slug: String(row.slug || SEED_ORGANIZATION.slug),
+    country: String(row.country || SEED_ORGANIZATION.country),
+    timezone: String(row.timezone || SEED_ORGANIZATION.timezone),
+    website: typeof row.website === 'string' ? row.website : SEED_ORGANIZATION.website,
+    joinPageMessage:
+      typeof row.joinPageMessage === 'string' ? row.joinPageMessage : SEED_ORGANIZATION.joinPageMessage,
   };
+}
+
+const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isLoaded, isSignedIn, getToken, signOut } = useClerkAuth();
+  const [organization, setOrganization] = useState<Organization>(SEED_ORGANIZATION);
+  const [user, setUser] = useState<User | null>(null);
+  const [membershipDenied, setMembershipDenied] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    setApiAccessTokenGetter(() => getToken());
+    return () => setApiAccessTokenGetter(null);
+  }, [getToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const sync = async () => {
+      if (!isLoaded) return;
+      if (!isSignedIn) {
+        if (!cancelled) {
+          setUser(null);
+          setMembershipDenied(false);
+          setAuthReady(true);
+        }
+        return;
+      }
+      try {
+        const me = await sanctumApi.fetchMe();
+        if (cancelled) return;
+        setMembershipDenied(false);
+        setUser({
+          id: me.user.id,
+          organizationId: me.user.organizationId,
+          name: me.user.name,
+          email: me.user.email,
+          role: me.user.role as Role,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        setOrganization(mapOrganization(me.organization));
+      } catch (error) {
+        if (cancelled) return;
+        setUser(null);
+        setMembershipDenied(error instanceof ApiClientError && error.status === 403);
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    };
+    void sync();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn]);
 
   const logout = () => {
     setUser(null);
-  };
-
-  const switchOrganization = (org: Organization) => {
-    setOrganization(org);
-  };
-
-  const updateOrganization = (updates: Partial<Organization>) => {
-    setOrganization((prev) => ({
-      ...prev,
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    }));
+    void signOut({ redirectUrl: '/' });
   };
 
   return (
@@ -90,16 +96,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         organization,
-        isAuthenticated: !!user,
-        login,
+        isAuthenticated: Boolean(user),
+        authReady,
+        membershipDenied,
+        clerkConfigured: true,
+        login: () => false,
         logout,
-        switchOrganization,
-        updateOrganization,
+        switchOrganization: setOrganization,
+        updateOrganization: (updates) =>
+          setOrganization((prev) => ({ ...prev, ...updates, updatedAt: new Date().toISOString() })),
       }}
     >
       {children}
     </AuthContext.Provider>
   );
+};
+
+const LocalAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [organization, setOrganization] = useState<Organization>(SEED_ORGANIZATION);
+  return (
+    <AuthContext.Provider
+      value={{
+        user: null,
+        organization,
+        isAuthenticated: false,
+        authReady: true,
+        membershipDenied: false,
+        clerkConfigured: false,
+        login: () => false,
+        logout: () => undefined,
+        switchOrganization: setOrganization,
+        updateOrganization: (updates) =>
+          setOrganization((prev) => ({ ...prev, ...updates, updatedAt: new Date().toISOString() })),
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
+    return <LocalAuthProvider>{children}</LocalAuthProvider>;
+  }
+  return <ClerkSyncedAuthProvider>{children}</ClerkSyncedAuthProvider>;
 };
 
 export const useAuth = () => {

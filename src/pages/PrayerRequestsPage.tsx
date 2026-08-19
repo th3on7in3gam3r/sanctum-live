@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { PrayerRequestCard } from '../components/dashboard/PrayerRequestCard';
 import { EmptyState } from '../components/common/EmptyState';
 import { BackButton } from '../components/common/BackButton';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';
+import { hasPermission } from '../lib/permissions';
 import { Search, Download } from 'lucide-react';
 
 interface PrayerRequestsPageProps {
@@ -18,12 +20,15 @@ export const PrayerRequestsPage: React.FC<PrayerRequestsPageProps> = ({ onNaviga
     addNoteToPrayerRequest,
     addToast,
   } = useApp();
+  const { user } = useAuth();
+  const canSeePrivate = hasPermission(user?.role || 'LISTENER', 'canViewPrivateRequests');
+  const visibleRequests = (prayerRequests || []).filter((req) => !req.isPrivate || canSeePrivate);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState<'ALL' | 'PRIVATE' | 'PUBLIC' | 'ANSWERED' | 'ARCHIVED'>('ALL');
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
-  const filteredRequests = (prayerRequests || []).filter((req) => {
+  const filteredRequests = visibleRequests.filter((req) => {
     if (!req) return false;
     const matchesSearch =
       (req.participantName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -31,21 +36,21 @@ export const PrayerRequestsPage: React.FC<PrayerRequestsPageProps> = ({ onNaviga
       (req.adminNote && req.adminNote.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
-    if (filterTab === 'PRIVATE') return req.isPrivate && req.status !== 'ARCHIVED';
+    if (filterTab === 'PRIVATE') return canSeePrivate && req.isPrivate && req.status !== 'ARCHIVED';
     if (filterTab === 'PUBLIC') return !req.isPrivate && req.status !== 'ARCHIVED';
     if (filterTab === 'ANSWERED') return req.status === 'ANSWERED';
     if (filterTab === 'ARCHIVED') return req.status === 'ARCHIVED';
     return req.status !== 'ARCHIVED';
   });
 
-  const selectedRequest = prayerRequests.find((req) => req.id === selectedRequestId) || null;
+  const selectedRequest = visibleRequests.find((req) => req.id === selectedRequestId) || null;
 
   const handleExportCSV = () => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       ['Name,Request,Private,Status,Created At,Pastoral Note']
         .concat(
-          prayerRequests.map(
+          visibleRequests.map(
             (r) =>
               `"${r.participantName}","${r.request.replace(/"/g, '""')}",${r.isPrivate},${r.status},"${new Date(r.createdAt).toISOString()}","${(r.adminNote || '').replace(/"/g, '""')}"`
           )
@@ -107,7 +112,7 @@ export const PrayerRequestsPage: React.FC<PrayerRequestsPageProps> = ({ onNaviga
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {[
             { id: 'ALL', label: 'Active Requests' },
-            { id: 'PRIVATE', label: 'Pastoral Only 🔒' },
+            ...(canSeePrivate ? [{ id: 'PRIVATE', label: 'Pastoral Only 🔒' }] : []),
             { id: 'PUBLIC', label: 'Congregation 🌐' },
             { id: 'ANSWERED', label: 'Answered ✨' },
             { id: 'ARCHIVED', label: 'Archived' },

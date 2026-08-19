@@ -11,6 +11,8 @@ interface ConnectionStatusProps {
   preview?: boolean;
   /** True when this is a browser internet check, not realtime-media health. */
   basicNetworkCheck?: boolean;
+  /** True when LiveKit is actually connected. */
+  live?: boolean;
 }
 
 export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
@@ -19,8 +21,37 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   className,
   preview = false,
   basicNetworkCheck = false,
+  live = false,
 }) => {
   const getStatusConfig = () => {
+    if (live) {
+      if (status === 'RECONNECTING') {
+        return {
+          label: 'Reconnecting to prayer…',
+          color: 'text-amber-600 dark:text-amber-400',
+          bg: 'bg-amber-500/10 border-amber-500/20',
+          bars: 1,
+          icon: AlertTriangle,
+        };
+      }
+      if (status === 'OFFLINE') {
+        return {
+          label: 'Disconnected',
+          color: 'text-[#B94A48] dark:text-red-400',
+          bg: 'bg-[#B94A48]/10 border-[#B94A48]/20',
+          bars: 0,
+          icon: WifiOff,
+        };
+      }
+      return {
+        label: 'Connected',
+        color: 'text-emerald-700 dark:text-emerald-300',
+        bg: 'bg-emerald-500/10 border-emerald-500/20',
+        bars: 4,
+        icon: Wifi,
+      };
+    }
+
     if (preview) {
       return {
         label: 'Not Connected',

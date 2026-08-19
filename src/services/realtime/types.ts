@@ -15,7 +15,12 @@ export type RealtimeEventType =
   | 'ROLE_UPDATED'
   | 'REACTION_SENT'
   | 'SESSION_ENDED'
-  | 'ACTIVE_SPEAKER_CHANGED';
+  | 'SESSION_STARTED'
+  | 'FLOOR_CHANGED'
+  | 'HAND_DISMISSED'
+  | 'SPEAKER_DECLINED'
+  | 'ACTIVE_SPEAKER_CHANGED'
+  | 'CHAT_MESSAGE';
 
 export interface RealtimeEventPayload {
   type: RealtimeEventType;

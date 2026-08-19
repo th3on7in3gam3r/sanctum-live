@@ -13,9 +13,12 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name phase_1b1_foundation"
+    "prisma:migrate": "prisma migrate dev --name phase_1b2_audio",
+    "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@clerk/express": "^2.1.59",
+    "@clerk/react": "^6.14.4",
     "@google/genai": "^2.4.0",
     "@prisma/client": "^6.19.3",
     "@tailwindcss/vite": "^4.1.14",
@@ -45,5 +48,8 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

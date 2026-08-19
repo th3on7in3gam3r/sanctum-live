@@ -27,6 +27,7 @@ function createMemoryFloorStore(seed?: { occupiedBy?: string | null }): SpeakerF
     endedAt: null,
     livekitRoomName: 'lk_room',
     activeSpeakerParticipantId: seed?.occupiedBy ?? null,
+    peakConcurrentParticipants: 0,
   });
 
   participants.set('p_listener', {
@@ -36,6 +37,8 @@ function createMemoryFloorStore(seed?: { occupiedBy?: string | null }): SpeakerF
     guestName: 'Guest One',
     realtimeIdentity: 'guest_abc',
     role: 'LISTENER',
+    baseRole: 'LISTENER',
+    leftAt: null,
   });
   participants.set('p_other', {
     id: 'p_other',
@@ -44,6 +47,8 @@ function createMemoryFloorStore(seed?: { occupiedBy?: string | null }): SpeakerF
     guestName: 'Guest Two',
     realtimeIdentity: 'guest_def',
     role: 'LISTENER',
+    baseRole: 'LISTENER',
+    leftAt: null,
   });
 
   return {
@@ -146,6 +151,7 @@ describe('listener token grants', () => {
     });
     expect(grants.canPublish).toBe(false);
     expect(grants.canPublishSources).toEqual([]);
+    expect(grants.canPublishData).toBe(true);
     expect(grants.roomAdmin).toBe(false);
   });
 
