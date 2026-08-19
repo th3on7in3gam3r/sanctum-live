@@ -214,6 +214,22 @@ export const membershipRepository = {
       data: { status: 'ACTIVE' },
     });
   },
+  async ensureActiveOwner(organizationId: string, userId: string): Promise<MembershipRecord> {
+    const prisma = requirePrisma();
+    return prisma.organizationMembership.upsert({
+      where: { organizationId_userId: { organizationId, userId } },
+      create: {
+        organizationId,
+        userId,
+        role: 'OWNER',
+        status: 'ACTIVE',
+      },
+      update: {
+        role: 'OWNER',
+        status: 'ACTIVE',
+      },
+    });
+  },
 };
 
 export const sessionRepository = {

@@ -59,6 +59,20 @@ const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
       }
       try {
+        let token = await getToken();
+        for (let attempt = 0; !token && attempt < 8; attempt += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          if (cancelled) return;
+          token = await getToken();
+        }
+        if (!token) {
+          if (!cancelled) {
+            setUser(null);
+            setMembershipDenied(false);
+            setAuthReady(true);
+          }
+          return;
+        }
         const me = await sanctumApi.fetchMe();
         if (cancelled) return;
         setMembershipDenied(false);
@@ -84,7 +98,7 @@ const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, getToken]);
 
   const logout = () => {
     setUser(null);

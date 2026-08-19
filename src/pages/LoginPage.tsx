@@ -55,9 +55,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
         )}
 
         {membershipDenied && (
-          <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-[#B94A48]/30 text-[#B94A48] dark:text-red-400 text-xs font-medium leading-relaxed">
-            This account is not on a church team. Ask your apostle, pastor, or admin to add your email in Settings →
-            Team, then sign in with that same email.
+          <div className="space-y-3">
+            <div className="p-3 rounded-xl bg-red-500/10 border border-[#B94A48]/30 text-[#B94A48] dark:text-red-400 text-xs font-medium leading-relaxed">
+              This Clerk account was not on a church team yet. If you are the church owner, reload and open the dashboard
+              — the first owner sign-in is linked automatically. Extra staff still need an invite in Settings → Team.
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.assign('/dashboard');
+              }}
+              className="w-full px-4 py-2.5 rounded-xl text-xs font-bold bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] cursor-pointer"
+            >
+              Open dashboard
+            </button>
           </div>
         )}
 
@@ -77,15 +88,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
         )}
       </main>
 
-      <footer className="max-w-md w-full mx-auto text-center text-xs text-[#68736D] dark:text-[#96A39D] pt-4">
-        Need to register a new church?{' '}
-        <button
-          onClick={() => onNavigate('/onboarding')}
-          className="font-bold text-[#203C32] dark:text-[#C9A35A] hover:underline"
-        >
-          Start Onboarding
-        </button>
-      </footer>
+      {!membershipDenied && (
+        <footer className="max-w-md w-full mx-auto text-center text-xs text-[#68736D] dark:text-[#96A39D] pt-4">
+          Need to register a new church?{' '}
+          <button
+            onClick={() => onNavigate('/onboarding')}
+            className="font-bold text-[#203C32] dark:text-[#C9A35A] hover:underline"
+          >
+            Start Onboarding
+          </button>
+        </footer>
+      )}
     </div>
   );
 };
