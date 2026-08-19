@@ -1,6 +1,6 @@
 import { defineComputeConfig } from "@prisma/compute-sdk/config";
 
-/** Production deploys from GitHub `main` via Prisma Compute. */
+/** Production deploys from GitHub `main` via Prisma Compute after migrate lock release. */
 export default defineComputeConfig({
   app: {
     name: "Sanctum Live",
