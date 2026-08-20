@@ -20,6 +20,7 @@ import {
   Sliders,
   Hand,
   Mic,
+  MicOff,
   Users,
   FileText,
   Search,
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react';
 import { Role } from '../types';
 import { hasPermission } from '../lib/permissions';
+import { livekitRealtimeProvider } from '../services/realtime/livekitRealtimeProvider';
 
 interface PrayerControlRoomPageProps {
   roomId: string;
@@ -76,6 +78,8 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   const [activeTab, setActiveTab] = useState<'CONSOLE' | 'PARTICIPANTS' | 'REQUESTS' | 'CHAT'>('CONSOLE');
   const [showTestRoomModal, setShowTestRoomModal] = useState(false);
   const [showPrePrayerModal, setShowPrePrayerModal] = useState(false);
+  const [hostMicOn, setHostMicOn] = useState(false);
+  const [hostMicBusy, setHostMicBusy] = useState(false);
 
   // Filter participants
   const speakers = (participants || []).filter((p) => p && p.role === 'SPEAKER');
@@ -122,6 +126,33 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
     startPrayerSession(room.id);
   };
 
+  const handleToggleHostMic = async () => {
+    setHostMicBusy(true);
+    try {
+      if (!liveConnected && room?.id) {
+        await connectControlRoom(room.id);
+      }
+      if (hostMicOn) {
+        await livekitRealtimeProvider.disableMicrophone();
+        setHostMicOn(false);
+        addToast('Microphone muted', 'info');
+        return;
+      }
+      await livekitRealtimeProvider.enableMicrophone();
+      setHostMicOn(true);
+      addToast('Your microphone is on. The congregation can hear you lead.', 'success');
+    } catch (error) {
+      addToast(
+        error instanceof Error
+          ? error.message
+          : 'Allow microphone access in the browser to lead in prayer.',
+        'error'
+      );
+    } finally {
+      setHostMicBusy(false);
+    }
+  };
+
   const breadcrumbs = [
     { label: 'Prayer Rooms', path: '/dashboard/prayer-rooms' },
     { label: room?.name || 'Altar Room', path: `/dashboard/prayer-rooms/${room?.id || roomId}` },
@@ -157,7 +188,8 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             </h1>
           </div>
           <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
-            {organization.name} • Permanent URL: <span className="font-mono text-[#203C32] dark:text-[#C9A35A]">sanctum.live/join/{room?.slug}</span>
+            {organization.name} • Lead from this Control Room. Congregants join as listeners at{' '}
+            <span className="font-mono text-[#203C32] dark:text-[#C9A35A]">/join/{room?.slug}</span>
           </p>
         </div>
 
@@ -224,6 +256,35 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
           )}
         </div>
       </div>
+
+      {(resolution.status === 'WAITING' || isLive) && (
+        <div className="bg-white dark:bg-[#17221D] p-4 sm:p-5 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
+              {hostMicOn ? <Mic className="w-4 h-4 text-emerald-600" /> : <MicOff className="w-4 h-4 text-[#68736D]" />}
+              Host microphone
+            </p>
+            <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
+              {hostMicOn
+                ? 'You are live. The congregation can hear you.'
+                : 'Turn this on to lead in prayer. The browser will ask for microphone permission the first time.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={hostMicBusy}
+            onClick={() => void handleToggleHostMic()}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 ${
+              hostMicOn
+                ? 'bg-[#B94A48] hover:bg-red-700 text-white'
+                : 'bg-[#203C32] hover:bg-[#16251F] text-white dark:bg-[#C9A35A] dark:text-[#101814]'
+            }`}
+          >
+            {hostMicOn ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            <span>{hostMicOn ? 'Mute microphone' : 'Turn on microphone'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Control Room Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-[#E5E6E1] dark:border-[#26362F] pb-2">

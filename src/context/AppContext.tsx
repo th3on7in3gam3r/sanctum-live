@@ -710,7 +710,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           roomName: room.name,
           note: 'Live prayer session started',
         });
-        addToast(`Live prayer session started for "${room.name}"`, 'success');
+        addToast(`Live prayer session started for "${room.name}". Turn on your microphone to lead.`, 'success');
       } catch (error) {
         addToast(
           error instanceof ApiClientError

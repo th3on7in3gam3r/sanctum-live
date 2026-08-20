@@ -4,19 +4,22 @@ import { ParticipantCount } from '../common/ParticipantCount';
 import { PrayerSessionStatus } from '../common/PrayerSessionStatus';
 import { PrayerCountdown } from '../common/PrayerCountdown';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { resolveAltarLink } from '../../services/altarLinkResolver';
 import { getNextOccurrences } from '../../services/sessionScheduler';
 import { sanctumApi, ApiClientError } from '../../services/api/sanctumApi';
-import { ShieldCheck, HelpCircle, Sparkles, Moon, Sun, Clock } from 'lucide-react';
+import { ShieldCheck, HelpCircle, Sparkles, Moon, Sun, Clock, LayoutDashboard } from 'lucide-react';
 import type { PrayerRoom, SessionLifecycleStatus } from '../../types';
 
 interface PublicJoinViewProps {
   slug: string;
   onJoinSuccess: (participantName: string) => void;
+  onNavigate?: (path: string) => void;
 }
 
-export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSuccess }) => {
+export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSuccess, onNavigate }) => {
   const { prayerRooms, liveSession, historySessions, dataSaverMode, setDataSaverMode, isDarkMode, toggleDarkMode, joinPrayerRoom, connectedNow } = useApp();
+  const { isAuthenticated } = useAuth();
 
   const [name, setName] = useState(() => {
     return localStorage.getItem('sanctum_last_attendee_name') || '';
@@ -127,13 +130,25 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
     <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex flex-col justify-between p-4 sm:p-6 select-none transition-colors">
       <header className="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-4">
         <SanctumLogo size="md" showTagline />
-        <button
-          onClick={toggleDarkMode}
-          aria-label="Toggle dark mode"
-          className="p-2 rounded-xl text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-        >
-          {isDarkMode ? <Sun className="w-5 h-5 text-[#C9A35A]" /> : <Moon className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          {isAuthenticated && onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate('/dashboard')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#203C32] dark:text-[#C9A35A] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </button>
+          )}
+          <button
+            onClick={toggleDarkMode}
+            aria-label="Toggle dark mode"
+            className="p-2 rounded-xl text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            {isDarkMode ? <Sun className="w-5 h-5 text-[#C9A35A]" /> : <Moon className="w-5 h-5" />}
+          </button>
+        </div>
       </header>
 
       <main className="w-full max-w-md mx-auto my-auto bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 shadow-xl border border-[#E5E6E1] dark:border-[#26362F] text-center">
@@ -173,9 +188,9 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         <div className="my-4 p-3.5 rounded-2xl bg-[#203C32]/5 dark:bg-[#203C32]/20 border border-[#203C32]/10 dark:border-[#203C32]/30">
           <p className="text-xs text-[#203C32] dark:text-[#E8D8B2] font-medium leading-relaxed">
             {isWaiting
-              ? 'The Sanctuary is Open. Prayer will begin shortly.'
+              ? 'The Sanctuary is Open. You will join as a listener — your microphone stays off unless a prayer leader invites you to speak.'
               : canJoin
-                ? 'Join your church family in corporate prayer.'
+                ? 'Join as a listener. Raise your hand if you are invited to pray aloud. Pastors lead from the Control Room.'
                 : 'This gathering is not open yet. Your pastor opens it from Prayer Rooms → Control Room.'}
           </p>
         </div>
@@ -277,7 +292,13 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
             </h3>
             <div className="text-xs text-[#68736D] dark:text-[#96A39D] space-y-2.5 leading-relaxed">
               <p>
-                <strong>No Login Needed:</strong> Simply enter your name and tap Join Prayer.
+                <strong>No Login Needed:</strong> Congregants enter a name and tap Join Prayer. You join as a listener.
+              </p>
+              <p>
+                <strong>Microphone:</strong> Your mic stays off. If a prayer leader invites you to speak, Accept and the browser will ask for microphone permission.
+              </p>
+              <p>
+                <strong>Pastors:</strong> Lead from the dashboard Control Room, not this join page. That is where the host microphone lives.
               </p>
               <p>
                 <strong>Hearing prayer audio:</strong> If you don't hear sound once the live gathering begins, check that your phone volume or device speaker is turned up.

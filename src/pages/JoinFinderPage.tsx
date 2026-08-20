@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { SanctumLogo } from '../components/common/SanctumLogo';
 import { LiveBadge } from '../components/common/LiveBadge';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { sanctumApi, ApiClientError } from '../services/api/sanctumApi';
 import { parseJoinInput } from '../services/joinLink';
-import { Moon, Sun, Link2, ArrowRight } from 'lucide-react';
+import { Moon, Sun, Link2, ArrowRight, LayoutDashboard } from 'lucide-react';
 
 export type LiveAltar = {
   slug: string;
@@ -21,6 +22,7 @@ interface JoinFinderPageProps {
 
 export const JoinFinderPage: React.FC<JoinFinderPageProps> = ({ onNavigate }) => {
   const { isDarkMode, toggleDarkMode } = useApp();
+  const { isAuthenticated } = useAuth();
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,13 +101,25 @@ export const JoinFinderPage: React.FC<JoinFinderPageProps> = ({ onNavigate }) =>
         <button type="button" onClick={() => onNavigate('/')} className="cursor-pointer">
           <SanctumLogo size="md" showTagline />
         </button>
-        <button
-          onClick={toggleDarkMode}
-          aria-label="Toggle dark mode"
-          className="p-2 rounded-xl text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-        >
-          {isDarkMode ? <Sun className="w-5 h-5 text-[#C9A35A]" /> : <Moon className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => onNavigate('/dashboard')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#203C32] dark:text-[#C9A35A] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </button>
+          )}
+          <button
+            onClick={toggleDarkMode}
+            aria-label="Toggle dark mode"
+            className="p-2 rounded-xl text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            {isDarkMode ? <Sun className="w-5 h-5 text-[#C9A35A]" /> : <Moon className="w-5 h-5" />}
+          </button>
+        </div>
       </header>
 
       <main className="w-full max-w-md mx-auto my-auto bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 shadow-xl border border-[#E5E6E1] dark:border-[#26362F]">

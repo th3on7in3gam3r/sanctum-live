@@ -176,7 +176,7 @@ describe('listener token grants', () => {
     expect(grants.roomAdmin).toBe(false);
   });
 
-  it('grants microphone publish only to the speaker who holds the floor', () => {
+  it('lets Control Room hosts and the speaker on the floor publish; listeners cannot', () => {
     const speaker = buildLiveKitTokenGrants({
       roomName: 'session_1',
       sessionRole: 'SPEAKER',
@@ -190,8 +190,16 @@ describe('listener token grants', () => {
       sessionRole: 'HOST',
       holdsSpeakerFloor: false,
     });
-    expect(host.canPublish).toBe(false);
+    expect(host.canPublish).toBe(true);
+    expect(host.canPublishSources).toEqual(['microphone']);
     expect(host.roomAdmin).toBe(true);
+
+    const idleSpeaker = buildLiveKitTokenGrants({
+      roomName: 'session_1',
+      sessionRole: 'SPEAKER',
+      holdsSpeakerFloor: false,
+    });
+    expect(idleSpeaker.canPublish).toBe(false);
   });
 });
 

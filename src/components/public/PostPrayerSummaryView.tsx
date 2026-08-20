@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { PrayerRoom, PrayerSession } from '../../types';
 
 interface PostPrayerSummaryViewProps {
@@ -30,6 +31,7 @@ export const PostPrayerSummaryView: React.FC<PostPrayerSummaryViewProps> = ({
   onSubmitPrayerRequest,
 }) => {
   const { isDarkMode, toggleDarkMode, submitPrayerRequest, addToast } = useApp();
+  const { isAuthenticated } = useAuth();
 
   const [testimony, setTestimony] = useState('');
   const [testimonySubmitted, setTestimonySubmitted] = useState(false);
@@ -171,7 +173,7 @@ export const PostPrayerSummaryView: React.FC<PostPrayerSummaryViewProps> = ({
           onClick={onExit}
           className="w-full py-3.5 rounded-2xl font-bold text-sm bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-md flex items-center justify-center gap-2 cursor-pointer"
         >
-          <span>Exit Gathering</span>
+          <span>{isAuthenticated ? 'Back to Dashboard' : 'Exit Gathering'}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </main>

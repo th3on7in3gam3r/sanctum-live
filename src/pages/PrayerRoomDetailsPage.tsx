@@ -109,6 +109,7 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
           </div>
           <p className="text-[11px] pt-1">
             {organization.name} • Recurring sessions appear in History, not as extra Prayer Room cards.
+            Lead from Control Room. The join link is for listeners — it will not ask for a microphone.
           </p>
         </div>
 
@@ -139,7 +140,7 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
             className="flex-1 py-2.5 px-3 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Control Room</span>
+            <span>Control Room — lead with your mic</span>
           </button>
           <button
             onClick={() => setShowTestRoomModal(true)}
@@ -154,7 +155,7 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
             className="px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-[#E5E6E1] dark:border-[#26362F] hover:bg-gray-50 dark:hover:bg-white/5 text-[#16251F] dark:text-[#F8F7F3] flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <ExternalLink className="w-3.5 h-3.5 text-[#C9A35A]" />
-            <span>Join View</span>
+            <span>Listener join page</span>
           </button>
           <button
             onClick={() => onNavigate(`/dashboard/prayer-rooms/${room.id}/edit`)}

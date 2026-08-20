@@ -14,7 +14,7 @@ import { SpeakerLiveView } from './SpeakerLiveView';
 import { PostPrayerSummaryView } from './PostPrayerSummaryView';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, Sun, Moon, Volume2 } from 'lucide-react';
+import { LogOut, Sun, Moon, Volume2, LayoutDashboard } from 'lucide-react';
 import { DevelopmentPreviewBadge } from '../common/DevelopmentPreviewBadge';
 import { RealtimeEngineStatus } from '../common/RealtimeEngineStatus';
 import { livekitRealtimeProvider } from '../../services/realtime/livekitRealtimeProvider';
@@ -52,7 +52,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     endSpeaker,
     participants,
   } = useApp();
-  const { organization } = useAuth();
+  const { organization, isAuthenticated } = useAuth();
 
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [isPrayerRequestOpen, setIsPrayerRequestOpen] = useState(false);
@@ -127,11 +127,11 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
           </button>
           <button
             onClick={onLeave}
-            aria-label="Leave prayer session"
+            aria-label={isAuthenticated ? 'Back to dashboard' : 'Leave prayer session'}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#B94A48] dark:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Leave</span>
+            {isAuthenticated ? <LayoutDashboard className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />}
+            <span>{isAuthenticated ? 'Dashboard' : 'Leave'}</span>
           </button>
         </div>
       </header>
@@ -179,7 +179,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
               {liveSession?.status === 'WAITING'
                 ? 'The Sanctuary is Open. Prayer will begin shortly.'
                 : prayerHasStarted
-                  ? <>Praying with: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span> (Listener)</>
+                  ? <>Praying with: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span> (Listener — mic off until invited)</>
                   : 'Prayer has not started'}
             </p>
           </div>

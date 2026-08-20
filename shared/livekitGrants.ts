@@ -15,8 +15,9 @@ export function buildLiveKitTokenGrants(options: {
   sessionRole: SessionRole;
   holdsSpeakerFloor: boolean;
 }): LiveKitTokenGrants {
-  const canPublish = options.sessionRole === 'SPEAKER' && options.holdsSpeakerFloor;
   const roomAdmin = options.sessionRole === 'HOST' || options.sessionRole === 'MODERATOR';
+  const canPublish =
+    (options.sessionRole === 'SPEAKER' && options.holdsSpeakerFloor) || roomAdmin;
 
   return {
     roomJoin: true,

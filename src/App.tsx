@@ -140,7 +140,7 @@ const RouterContent: React.FC = () => {
             void leavePrayerRoom();
             localStorage.removeItem('sanctum_active_attendee_session');
             setJoinedAttendeeName(null);
-            navigate(`/join/${slug}`);
+            navigate(isAuthenticated ? '/dashboard' : `/join/${slug}`);
           }}
         />
       );
@@ -153,6 +153,7 @@ const RouterContent: React.FC = () => {
           localStorage.setItem('sanctum_active_attendee_session', name);
           setJoinedAttendeeName(name);
         }}
+        onNavigate={navigate}
       />
     );
   }

@@ -35,7 +35,8 @@ export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
   waitingCount = 0,
   onStartPrayer,
 }) => {
-  const [micStatus, setMicStatus] = useState<ReadinessCheckStatus>('READY');
+  const [micStatus, setMicStatus] = useState<ReadinessCheckStatus>('NOT_TESTED');
+  const [micLabel, setMicLabel] = useState('Tap Test Mic — the browser will ask for permission');
   const [audioStatus, setAudioStatus] = useState<ReadinessCheckStatus>('READY');
   const [networkStatus, setNetworkStatus] = useState<ReadinessCheckStatus>('READY');
   const [networkLatency, setNetworkLatency] = useState<number>(34);
@@ -51,6 +52,14 @@ export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
       });
     }
   }, [isOpen]);
+
+  const handleTestMic = async () => {
+    setMicStatus('NOT_TESTED');
+    setMicLabel('Requesting microphone…');
+    const result = await DeviceTestService.testMicrophone();
+    setMicStatus(result.status);
+    setMicLabel(result.label);
+  };
 
   const handlePlayChime = async () => {
     setIsPlayingChime(true);
@@ -149,20 +158,38 @@ export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
             {/* Checklist Grid */}
             <div className="p-6 space-y-3.5 overflow-y-auto flex-1 text-xs">
               {/* Host Microphone */}
-              <div className="p-3.5 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <div className="p-3.5 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                      micStatus === 'READY'
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        : micStatus === 'FAILED'
+                          ? 'bg-red-500/10 text-red-600'
+                          : 'bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A]'
+                    }`}
+                  >
                     <Mic className="w-4 h-4" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="font-bold text-[#16251F] dark:text-[#F8F7F3]">Host Microphone</span>
-                    <p className="text-[11px] text-[#68736D] dark:text-[#96A39D]">Default Audio Input detected</p>
+                    <p className="text-[11px] text-[#68736D] dark:text-[#96A39D] truncate">{micLabel}</p>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Ready</span>
-                </span>
+                {micStatus === 'READY' ? (
+                  <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Ready</span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void handleTestMic()}
+                    className="px-2.5 py-1 rounded-lg border border-[#203C32] dark:border-[#C9A35A] text-[#203C32] dark:text-[#E8D8B2] text-[11px] font-bold hover:bg-[#203C32]/5 cursor-pointer shrink-0"
+                  >
+                    Test Mic
+                  </button>
+                )}
               </div>
 
               {/* Audio Output */}
