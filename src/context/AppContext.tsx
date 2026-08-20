@@ -966,17 +966,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       )
     );
 
+    const asStaff = Boolean(
+      actor.userId && actor.organizationId && altar.room.organizationId === actor.organizationId
+    );
+
     const participant = await connectLiveKit({
       sessionId: altar.session.id,
       guestName: name.trim(),
-      asGuest: true,
+      asGuest: !asStaff,
       roomSlug,
     });
 
     addToast({
       type: 'participant_join',
-      title: 'Attendee Joined Gathering',
-      message: `${name} entered "${room?.name || 'Prayer Room'}" as an audio listener`,
+      title: asStaff ? 'You joined as prayer leader' : 'Attendee Joined Gathering',
+      message: asStaff
+        ? `Turn on your microphone to lead "${room?.name || 'Prayer Room'}".`
+        : `${name} entered "${room?.name || 'Prayer Room'}" as an audio listener`,
       meta: { participantName: name, roomName: room?.name },
     });
 
@@ -1024,20 +1030,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     try {
-      await livekitRealtimeProvider.joinRoom({
-        roomSlug: stored.sessionId,
-        displayName: stored.guestName,
-        role: 'LISTENER',
-        token: stored.token,
-        livekitUrl: stored.livekitUrl,
-      });
-      connectedRoomRef.current = stored.sessionId;
-      setLocalParticipantId(stored.participantId);
-      localParticipantIdRef.current = stored.participantId;
-      setConnectionState(livekitRealtimeProvider.connectionState);
-      setAudioBlocked(livekitRealtimeProvider.audioBlocked);
-      setConnectedNow(livekitRealtimeProvider.connectedCount);
-      await applySnapshot(stored.sessionId);
+      if (actor.userId) {
+        await connectLiveKit({
+          sessionId: stored.sessionId,
+          guestName: stored.guestName || user?.name || 'Prayer Leader',
+          asGuest: false,
+          roomSlug: stored.sessionId,
+        });
+      } else {
+        await livekitRealtimeProvider.joinRoom({
+          roomSlug: stored.sessionId,
+          displayName: stored.guestName,
+          role: 'LISTENER',
+          token: stored.token,
+          livekitUrl: stored.livekitUrl,
+        });
+        connectedRoomRef.current = stored.sessionId;
+        setLocalParticipantId(stored.participantId);
+        localParticipantIdRef.current = stored.participantId;
+        setConnectionState(livekitRealtimeProvider.connectionState);
+        setAudioBlocked(livekitRealtimeProvider.audioBlocked);
+        setConnectedNow(livekitRealtimeProvider.connectedCount);
+        await applySnapshot(stored.sessionId);
+      }
       if (!opts?.silent) addToast('Reconnected to prayer', 'success');
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Reconnect failed', 'error');

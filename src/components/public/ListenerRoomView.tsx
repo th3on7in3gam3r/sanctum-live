@@ -14,7 +14,7 @@ import { SpeakerLiveView } from './SpeakerLiveView';
 import { PostPrayerSummaryView } from './PostPrayerSummaryView';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, Sun, Moon, Volume2, LayoutDashboard } from 'lucide-react';
+import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic } from 'lucide-react';
 import { DevelopmentPreviewBadge } from '../common/DevelopmentPreviewBadge';
 import { RealtimeEngineStatus } from '../common/RealtimeEngineStatus';
 import { livekitRealtimeProvider } from '../../services/realtime/livekitRealtimeProvider';
@@ -51,23 +51,41 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     declineSpeakerInvite,
     endSpeaker,
     participants,
+    addToast,
   } = useApp();
-  const { organization, isAuthenticated } = useAuth();
+  const { organization, isAuthenticated, user } = useAuth();
 
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [isPrayerRequestOpen, setIsPrayerRequestOpen] = useState(false);
   const [selfMuted, setSelfMuted] = useState(false);
+  const [micOn, setMicOn] = useState(false);
 
   useEffect(() => {
+    const stored = loadJoinSession();
+    if (!stored) return;
+    if (user?.id && stored.asGuest) {
+      void reconnectToPrayer({ silent: true });
+      return;
+    }
     if (connectionState !== 'DISCONNECTED' && connectionState !== 'FAILED') return;
-    if (!loadJoinSession()) return;
     void reconnectToPrayer({ silent: true });
-  }, []);
+  }, [user?.id]);
 
   const room = prayerRooms.find((item) => item.slug === roomSlug) || prayerRooms.find((item) => item.id === liveSession?.prayerRoomId) || prayerRooms[0];
   const liveConnected = connectionState === 'CONNECTED' || connectionState === 'RECONNECTING';
   const localParticipant = participants.find((item) => item.id === localParticipantId);
   const currentRole = localParticipant?.role === 'SPEAKER' ? 'SPEAKER' : 'LISTENER';
+  const isLeader =
+    currentRole === 'SPEAKER' ||
+    localParticipant?.role === 'OWNER' ||
+    localParticipant?.role === 'ADMIN' ||
+    localParticipant?.role === 'PRAYER_LEADER' ||
+    localParticipant?.role === 'TECHNICAL_ADMIN' ||
+    user?.role === 'OWNER' ||
+    user?.role === 'ADMIN' ||
+    user?.role === 'PRAYER_LEADER' ||
+    user?.role === 'TECHNICAL_ADMIN';
+  const showLiveMic = currentRole === 'SPEAKER' || micOn;
   const prayerHasStarted = liveSession?.status === 'LIVE' || liveSession?.status === 'STARTING';
   const participantCount = liveConnected || localParticipantId ? connectedNow : undefined;
   const activeSpeaker = liveSession?.activeSpeakerName || 'Waiting for the next prayer leader.';
@@ -85,8 +103,33 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   };
 
   const handleFinishPrayer = async () => {
-    if (localParticipantId) {
+    if (localParticipantId && currentRole === 'SPEAKER') {
       await endSpeaker(localParticipantId);
+    }
+    try {
+      await livekitRealtimeProvider.disableMicrophone();
+    } catch {
+      /* already muted or disconnected */
+    }
+    setMicOn(false);
+    setSelfMuted(true);
+  };
+
+  const handleToggleLeadMic = async () => {
+    try {
+      if (micOn) {
+        await livekitRealtimeProvider.disableMicrophone();
+        setMicOn(false);
+        setSelfMuted(true);
+        return;
+      }
+      await livekitRealtimeProvider.enableMicrophone();
+      setMicOn(true);
+      setSelfMuted(false);
+    } catch {
+      setMicOn(false);
+      setSelfMuted(true);
+      addToast('Allow microphone access in the browser to lead in prayer.', 'error');
     }
   };
 
@@ -176,43 +219,81 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
               </h1>
             </div>
             <p className="text-xs text-[#68736D] dark:text-[#96A39D]">
-              {liveSession?.status === 'WAITING'
-                ? 'The Sanctuary is Open. Prayer will begin shortly.'
-                : prayerHasStarted
-                  ? <>Praying with: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span> (Listener — mic off until invited)</>
-                  : 'Prayer has not started'}
+              {isLeader
+                ? showLiveMic
+                  ? <>You are leading: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span></>
+                  : 'You are the prayer leader. Turn on your microphone to speak.'
+                : liveSession?.status === 'WAITING'
+                  ? 'The Sanctuary is Open. Prayer will begin shortly.'
+                  : prayerHasStarted
+                    ? <>Praying with: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span> (Listener — mic off until invited)</>
+                    : 'Prayer has not started'}
             </p>
           </div>
 
           <div className="flex items-center justify-center sm:justify-end gap-3 flex-wrap">
-            <ParticipantCount count={participantCount} suffix="praying with you" size="sm" emptyLabel="Waiting for participants" />
+            <ParticipantCount
+              count={participantCount}
+              suffix="praying with you"
+              size="sm"
+              emptyLabel="Waiting for participants"
+              localParticipantId={localParticipantId}
+              names={participants
+                .filter((person) => !person.leftAt)
+                .map((person) => ({
+                  id: person.id,
+                  displayName: person.displayName,
+                  role: person.role,
+                }))}
+            />
             <PrayerTimer seconds={liveSession?.durationSeconds || 0} size="sm" />
           </div>
         </div>
 
-        {currentRole === 'SPEAKER' ? (
+        {showLiveMic ? (
           <SpeakerLiveView
             participantName={participantName}
             participantCount={participantCount}
             selfMuted={selfMuted}
             onToggleSelfMute={() => {
               void (async () => {
-                if (selfMuted) await livekitRealtimeProvider.enableMicrophone();
-                else await livekitRealtimeProvider.disableMicrophone();
+                if (selfMuted) {
+                  await livekitRealtimeProvider.enableMicrophone();
+                  setMicOn(true);
+                } else {
+                  await livekitRealtimeProvider.disableMicrophone();
+                  setMicOn(false);
+                }
                 setSelfMuted((prev) => !prev);
               })();
             }}
             onFinishPrayer={handleFinishPrayer}
           />
         ) : (
-          <AudioVisualizerPlaceholder
-            speakerName={activeSpeaker}
-            speakerTitle={activeSpeakerTitle}
-            isLive={prayerHasStarted}
-          />
+          <div className="space-y-3">
+            <AudioVisualizerPlaceholder
+              speakerName={isLeader ? 'Your turn to lead' : activeSpeaker}
+              speakerTitle={
+                isLeader
+                  ? 'Turn on your microphone. The congregation is waiting to hear you.'
+                  : activeSpeakerTitle
+              }
+              isLive={prayerHasStarted}
+            />
+            {isLeader ? (
+              <button
+                type="button"
+                onClick={() => void handleToggleLeadMic()}
+                className="w-full py-4 px-6 rounded-2xl font-bold text-base bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Mic className="w-5 h-5" />
+                <span>Turn on microphone to lead</span>
+              </button>
+            ) : null}
+          </div>
         )}
 
-        {currentRole === 'LISTENER' && (
+        {!showLiveMic && (
           <ListenerReactionBar
             isHandRaised={isHandRaised}
             onSendAmen={() => sendReactionAttendee('AMEN')}

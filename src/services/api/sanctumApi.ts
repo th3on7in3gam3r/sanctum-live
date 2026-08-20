@@ -220,6 +220,7 @@ export const sanctumApi = {
         id: string;
         name: string;
         slug: string;
+        organizationId?: string;
         organizationName?: string;
         scheduledStart?: string;
         timezone?: string;
