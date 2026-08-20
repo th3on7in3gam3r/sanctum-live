@@ -64,7 +64,7 @@ export interface AppContextType {
   // Prayer Room operations
   createPrayerRoom: (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PrayerRoom>;
   updatePrayerRoom: (id: string, updates: Partial<PrayerRoom>) => void;
-  deletePrayerRoom: (id: string) => void;
+  deletePrayerRoom: (id: string) => Promise<void>;
 
   // Session Lifecycle Machine
   openSanctuary: (roomId: string) => void;
@@ -241,13 +241,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (cancelled) return;
         const mapped = result.rooms.map(mapServerPrayerRoom).filter((room) => !isDemoRoomId(room.id));
         setPrayerRooms((prev) => {
-          const byId = new Map(mapped.map((room) => [room.id, room]));
-          for (const room of prev) {
-            if (room.organizationId === orgId && !byId.has(room.id) && !isDemoRoomId(room.id)) {
-              byId.set(room.id, room);
-            }
-          }
-          return dedupePrayerRooms(Array.from(byId.values()));
+          const fromOtherOrgs = prev.filter((room) => room.organizationId !== orgId && !isDemoRoomId(room.id));
+          return dedupePrayerRooms([...mapped, ...fromOtherOrgs]);
         });
       } catch {
         /* keep local rooms for this church */
@@ -589,20 +584,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     AuditLogger.log('ROOM_UPDATED', { targetId: id, note: 'Updated room settings' });
   };
 
-  const deletePrayerRoom = (id: string) => {
+  const deletePrayerRoom = async (id: string) => {
     const target = prayerRooms.find((r) => r.id === id);
-    const hasHistory = historySessions.some((session) => session.prayerRoomId === id);
-    if (hasHistory) {
-      setPrayerRooms((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...r, isArchived: true, updatedAt: new Date().toISOString() } : r
-        )
-      );
-      addToast(`"${target?.name || 'Altar'}" was deactivated. Prayer history was preserved.`, 'info');
-      return;
+    try {
+      await sanctumApi.deletePrayerRoom(id, actor);
+      setPrayerRooms((prev) => prev.filter((r) => r.id !== id));
+      setHistorySessions((prev) => prev.filter((session) => session.prayerRoomId !== id));
+      setLiveSession((prev) => (prev?.prayerRoomId === id ? null : prev));
+      addToast(`Prayer room "${target?.name || 'Altar'}" deleted`, 'info');
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Could not delete this prayer room.';
+      addToast(message, 'error');
     }
-    setPrayerRooms((prev) => prev.filter((r) => r.id !== id));
-    addToast(`Prayer room "${target?.name || 'Altar'}" deleted`, 'info');
   };
 
   const connectControlRoom = async (roomId: string) => {

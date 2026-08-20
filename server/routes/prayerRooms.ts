@@ -1,11 +1,12 @@
 import type { Request, Response } from 'express';
-import { requireCanCreateRoom } from '../authz.ts';
+import { requireCanCreateRoom, requireCanDeleteRoom } from '../authz.ts';
 import { resolveActorFromRequest } from '../clerkAuth.ts';
-import { env } from '../env.ts';
+import { env, isLiveKitConfigured } from '../env.ts';
 import { sendError } from '../http.ts';
 import { RoomNotFound, Unauthorized } from '../../shared/errors.ts';
 import { auditRepository, prayerRoomRepository, sessionRepository } from '../repositories/index.ts';
 import { ensureLiveKitRoom } from '../realtime/ensureLiveKitRoom.ts';
+import { getLiveKitProvider } from '../realtime/livekitProvider.ts';
 
 export async function listPrayerRoomsHandler(req: Request, res: Response): Promise<void> {
   try {
@@ -70,6 +71,37 @@ export async function createPrayerRoomHandler(req: Request, res: Response): Prom
     }
 
     res.status(201).json({ room });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function deletePrayerRoomHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = await resolveActorFromRequest(req);
+    requireCanDeleteRoom(actor);
+
+    const orgId = actor.organizationId;
+    if (!orgId) {
+      throw RoomNotFound();
+    }
+
+    const deleted = await prayerRoomRepository.deleteById(req.params.roomId, orgId);
+
+    await auditRepository.write({
+      organizationId: orgId,
+      actorId: actor.userId,
+      action: 'ROOM_ARCHIVED',
+      targetId: req.params.roomId,
+    });
+
+    if (isLiveKitConfigured()) {
+      for (const roomName of deleted.livekitRoomNames) {
+        void getLiveKitProvider().deleteRoom(roomName);
+      }
+    }
+
+    res.json({ ok: true });
   } catch (error) {
     sendError(res, error);
   }

@@ -5,6 +5,7 @@
 import { Unauthorized } from '../shared/errors.ts';
 import {
   canCreatePrayerRoom,
+  canDeletePrayerRoom,
   canInviteSpeaker,
   canManageParticipants,
   canStartPrayerSession,
@@ -46,6 +47,10 @@ export function requireOrgPermission(
 
 export function requireCanCreateRoom(actor: ActorContext): OrganizationRole {
   return requireOrgPermission(actor, canCreatePrayerRoom, 'Not authorized to create prayer rooms');
+}
+
+export function requireCanDeleteRoom(actor: ActorContext): OrganizationRole {
+  return requireOrgPermission(actor, canDeletePrayerRoom, 'Not authorized to delete prayer rooms');
 }
 
 export function requireCanStartSession(actor: ActorContext): OrganizationRole {

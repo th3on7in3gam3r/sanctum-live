@@ -142,6 +142,38 @@ export const prayerRoomRepository = {
       throw error;
     }
   },
+
+  async deleteById(id: string, organizationId: string): Promise<{ livekitRoomNames: string[] }> {
+    const prisma = requirePrisma();
+    const room = await prisma.prayerRoom.findFirst({ where: { id, organizationId } });
+    if (!room) throw RoomNotFound(id);
+
+    const sessions = await prisma.prayerSession.findMany({
+      where: { prayerRoomId: id },
+      select: { id: true, livekitRoomName: true },
+    });
+    const sessionIds = sessions.map((row) => row.id);
+    const livekitRoomNames = [
+      ...new Set(
+        [...sessions.map((row) => row.livekitRoomName), room.livekitRoomName].filter(
+          (name): name is string => Boolean(name)
+        )
+      ),
+    ];
+
+    await prisma.$transaction(async (tx) => {
+      if (sessionIds.length) {
+        await tx.prayerSession.updateMany({
+          where: { id: { in: sessionIds } },
+          data: { activeSpeakerParticipantId: null },
+        });
+        await tx.prayerSession.deleteMany({ where: { id: { in: sessionIds } } });
+      }
+      await tx.prayerRoom.delete({ where: { id } });
+    });
+
+    return { livekitRoomNames };
+  },
 };
 
 export interface UserRecord {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DuplicateSlug, SanctumError } from '../shared/errors.ts';
 import { buildLiveKitTokenGrants } from '../shared/livekitGrants.ts';
 import {
+  canDeletePrayerRoom,
   canInviteSpeaker,
   canManageParticipants,
   canManageTeam,
@@ -81,6 +82,13 @@ describe('permission matrix', () => {
   it('lets Technical Admin manage participants without pastoral privacy access', () => {
     expect(canManageParticipants('TECHNICAL_ADMIN')).toBe(true);
     expect(canInviteSpeaker('TECHNICAL_ADMIN')).toBe(true);
+  });
+
+  it('lets Owner and Admin delete prayer rooms', () => {
+    expect(canDeletePrayerRoom('OWNER')).toBe(true);
+    expect(canDeletePrayerRoom('ADMIN')).toBe(true);
+    expect(canDeletePrayerRoom('PRAYER_LEADER')).toBe(false);
+    expect(canDeletePrayerRoom('TECHNICAL_ADMIN')).toBe(false);
   });
 
   it('lets only Owner invite Admins to the Sanctum Space', () => {

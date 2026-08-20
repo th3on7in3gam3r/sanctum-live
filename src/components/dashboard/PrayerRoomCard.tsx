@@ -4,6 +4,8 @@ import { PrayerSessionStatus } from '../common/PrayerSessionStatus';
 import { resolveAltarLink } from '../../services/altarLinkResolver';
 import { Copy, Check, Sliders, ExternalLink, Edit3, Trash2, Users, Calendar } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
+import { canDeletePrayerRoom } from '../../lib/permissions';
 import { formatNumber } from '../../lib/utils';
 
 interface PrayerRoomCardProps {
@@ -22,11 +24,12 @@ export const PrayerRoomCard: React.FC<PrayerRoomCardProps> = ({
   onEdit,
 }) => {
   const { addToast, deletePrayerRoom, confirmAction, liveSession, historySessions } = useApp();
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
   const resolution = resolveAltarLink(room, liveSession, historySessions);
   const fullUrl = `https://sanctum.live/join/${room.slug}`;
-  const hasHistory = historySessions.some((session) => session.prayerRoomId === room.id);
+  const canDelete = user?.role === 'OWNER' || user?.role === 'ADMIN' ? canDeletePrayerRoom(user.role) : false;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(fullUrl);
@@ -37,11 +40,10 @@ export const PrayerRoomCard: React.FC<PrayerRoomCardProps> = ({
 
   const handleDeleteRoom = () => {
     confirmAction({
-      title: hasHistory ? `Deactivate "${room.name}"?` : `Delete "${room.name}"?`,
-      description: hasHistory
-        ? 'This prayer room has session history. It will be deactivated and hidden from the list. Past Prayer Sessions will be preserved.'
-        : 'Are you sure you want to permanently delete this prayer room? The permanent join link will be invalidated.',
-      confirmText: hasHistory ? 'Deactivate Room' : 'Delete Room',
+      title: `Delete "${room.name}"?`,
+      description:
+        'This permanently deletes the prayer room and its gatherings. The join link will stop working. This cannot be undone.',
+      confirmText: 'Delete Room',
       cancelText: 'Keep Room',
       isDestructive: true,
       onConfirm: () => deletePrayerRoom(room.id),
@@ -68,13 +70,15 @@ export const PrayerRoomCard: React.FC<PrayerRoomCardProps> = ({
             >
               <Edit3 className="w-4 h-4" />
             </button>
-            <button
-              onClick={handleDeleteRoom}
-              title="Delete room"
-              className="p-1.5 rounded-lg text-gray-400 hover:text-[#B94A48] transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {canDelete && (
+              <button
+                onClick={handleDeleteRoom}
+                title="Delete room"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-[#B94A48] transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 

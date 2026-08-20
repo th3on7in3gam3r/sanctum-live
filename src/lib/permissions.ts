@@ -1,6 +1,7 @@
 import type { Role, RoleCapability } from '../types';
 import {
   canCreatePrayerRoom,
+  canDeletePrayerRoom,
   canInviteSpeaker,
   canManageParticipants,
   canManageTeam,
@@ -13,6 +14,7 @@ import {
 
 export {
   canCreatePrayerRoom,
+  canDeletePrayerRoom,
   canInviteSpeaker,
   canManageParticipants,
   canManageTeam,
