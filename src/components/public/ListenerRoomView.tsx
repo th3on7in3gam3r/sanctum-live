@@ -225,6 +225,19 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
         <PrayerChatPanel sessionId={liveSession?.id} senderName={participantName} compact />
       </main>
 
+      <p className="w-full max-w-2xl mx-auto text-center text-[11px] text-[#68736D] dark:text-[#96A39D] leading-relaxed">
+        Keep listening while you browse —{' '}
+        <a
+          href="https://github.com/th3on7in3gam3r/sanctum-live/blob/main/extension/README.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-[#203C32] dark:text-[#C9A35A] hover:underline"
+        >
+          install the Sanctum Live side panel
+        </a>
+        .
+      </p>
+
       <footer className="w-full max-w-2xl mx-auto pt-4 text-center text-xs text-[#68736D] dark:text-[#96A39D] flex items-center justify-between border-t border-[#E5E6E1] dark:border-[#26362F]">
         <span className="text-[11px]">Sanctum Live™ — Prayer without barriers</span>
         <span className="text-[11px] inline-flex items-center gap-2">
