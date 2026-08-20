@@ -4,7 +4,8 @@ import { resolveActorFromRequest } from '../clerkAuth.ts';
 import { env } from '../env.ts';
 import { sendError } from '../http.ts';
 import { RoomNotFound, Unauthorized } from '../../shared/errors.ts';
-import { auditRepository, prayerRoomRepository } from '../repositories/index.ts';
+import { auditRepository, prayerRoomRepository, sessionRepository } from '../repositories/index.ts';
+import { ensureLiveKitRoom } from '../realtime/ensureLiveKitRoom.ts';
 
 export async function listPrayerRoomsHandler(req: Request, res: Response): Promise<void> {
   try {
@@ -57,6 +58,16 @@ export async function createPrayerRoomHandler(req: Request, res: Response): Prom
       action: 'ROOM_CREATED',
       targetId: room.id,
     });
+
+    const session = await sessionRepository.create({
+      prayerRoomId: room.id,
+      status: 'WAITING',
+    });
+    try {
+      await ensureLiveKitRoom(session);
+    } catch {
+      /* Join still works once LiveKit is configured; the sanctuary is already WAITING. */
+    }
 
     res.status(201).json({ room });
   } catch (error) {

@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SanctumLogo } from '../common/SanctumLogo';
 import { ParticipantCount } from '../common/ParticipantCount';
 import { PrayerSessionStatus } from '../common/PrayerSessionStatus';
 import { PrayerCountdown } from '../common/PrayerCountdown';
 import { useApp } from '../../context/AppContext';
-import { useAuth } from '../../context/AuthContext';
 import { resolveAltarLink } from '../../services/altarLinkResolver';
+import { getNextOccurrences } from '../../services/sessionScheduler';
 import { sanctumApi, ApiClientError } from '../../services/api/sanctumApi';
 import { ShieldCheck, HelpCircle, Sparkles, Moon, Sun, Clock } from 'lucide-react';
-import type { SessionLifecycleStatus } from '../../types';
+import type { PrayerRoom, SessionLifecycleStatus } from '../../types';
 
 interface PublicJoinViewProps {
   slug: string;
@@ -17,7 +17,6 @@ interface PublicJoinViewProps {
 
 export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSuccess }) => {
   const { prayerRooms, liveSession, historySessions, dataSaverMode, setDataSaverMode, isDarkMode, toggleDarkMode, joinPrayerRoom, connectedNow } = useApp();
-  const { organization } = useAuth();
 
   const [name, setName] = useState(() => {
     return localStorage.getItem('sanctum_last_attendee_name') || '';
@@ -26,16 +25,52 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [altarStatus, setAltarStatus] = useState<SessionLifecycleStatus | 'NOT_FOUND' | null>(null);
-  const [altarRoomName, setAltarRoomName] = useState<string | null>(null);
+  const [altarRoom, setAltarRoom] = useState<{
+    name: string;
+    organizationName?: string;
+    scheduledStart?: string;
+    timezone?: string;
+  } | null>(null);
 
-  const room = prayerRooms.find((r) => r.slug === slug);
-  const resolution = room ? resolveAltarLink(room, liveSession, historySessions) : null;
+  const localRoom = prayerRooms.find((r) => r.slug === slug);
+  const roomForSchedule: PrayerRoom | null = localRoom
+    ? localRoom
+    : altarRoom
+      ? {
+          id: slug,
+          organizationId: '',
+          name: altarRoom.name,
+          slug,
+          roomType: 'AUDIO_PRAYER',
+          expectedAttendance: 0,
+          speakerPermission: 'ADMIN_APPROVAL_REQUIRED',
+          isRecurring: true,
+          recurrenceRule: 'DAILY',
+          scheduledStart: altarRoom.scheduledStart || '05:00 AM',
+          timezone: altarRoom.timezone || 'Africa/Kampala',
+          recordingEnabled: false,
+          status: 'SCHEDULED',
+          permanentUrl: `/join/${slug}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      : null;
+  const resolution = roomForSchedule ? resolveAltarLink(roomForSchedule, liveSession, historySessions) : null;
   const serverStatus = altarStatus;
   const status = serverStatus || resolution?.status || 'SCHEDULED';
   const isLive = status === 'LIVE' || status === 'STARTING';
   const isWaiting = status === 'WAITING';
+  const canJoin = isLive || isWaiting;
   const attendeeCount = isLive || isWaiting ? connectedNow || undefined : undefined;
-  const displayName = altarRoomName || room?.name || 'Prayer Gathering';
+  const displayName = altarRoom?.name || localRoom?.name || 'Prayer Gathering';
+  const churchName = altarRoom?.organizationName || '';
+  const scheduledStart = altarRoom?.scheduledStart || localRoom?.scheduledStart || '05:00 AM';
+  const timezone = altarRoom?.timezone || localRoom?.timezone || 'Africa/Kampala';
+  const nextStart = useMemo(() => {
+    if (resolution?.nextScheduledDate) return resolution.nextScheduledDate;
+    if (!roomForSchedule) return undefined;
+    return getNextOccurrences(roomForSchedule, 1)[0];
+  }, [resolution?.nextScheduledDate, roomForSchedule]);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,13 +78,18 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
       .getAltar(slug)
       .then((result) => {
         if (cancelled) return;
-        setAltarRoomName(result.room?.name || null);
+        setAltarRoom({
+          name: result.room?.name || '',
+          organizationName: result.room?.organizationName,
+          scheduledStart: result.room?.scheduledStart,
+          timezone: result.room?.timezone,
+        });
         const next = result.session?.status;
         setAltarStatus((next as SessionLifecycleStatus) || 'SCHEDULED');
       })
-      .catch((error) => {
+      .catch((lookupError) => {
         if (cancelled) return;
-        setAltarStatus(error instanceof ApiClientError && error.status === 404 ? 'NOT_FOUND' : 'SCHEDULED');
+        setAltarStatus(lookupError instanceof ApiClientError && lookupError.status === 404 ? 'NOT_FOUND' : 'SCHEDULED');
       });
     return () => {
       cancelled = true;
@@ -73,17 +113,15 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
       await joinPrayerRoom(slug, name.trim());
       onJoinSuccess(name.trim());
     } catch {
-      setError('Could not join this prayer gathering. The sanctuary may not be open yet.');
+      setError(
+        canJoin
+          ? 'Could not join this prayer gathering. Check the link and try again.'
+          : 'This gathering is not open yet. Ask your pastor to open it from the Control Room.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const todayFormatted = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date());
 
   return (
     <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex flex-col justify-between p-4 sm:p-6 select-none transition-colors">
@@ -112,21 +150,21 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         </h1>
 
         <p className="text-sm font-semibold text-[#203C32] dark:text-[#C9A35A] mt-1">
-          {organization.name}
+          {churchName}
         </p>
 
         <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
-          {todayFormatted} • {room?.scheduledStart || '05:00 AM'} ({room?.timezone || 'EAT'})
+          {scheduledStart} ({timezone})
         </p>
 
-        {!isLive && !isWaiting && resolution?.nextScheduledDate && (
+        {!isLive && !isWaiting && nextStart && (
           <div className="my-5 p-4 rounded-2xl bg-[#203C32]/5 dark:bg-[#C9A35A]/10 border border-[#203C32]/10 dark:border-[#C9A35A]/20 flex flex-col items-center gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D] flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-[#C9A35A]" />
               Prayer Begins In
             </span>
             <PrayerCountdown
-              targetDate={resolution.nextScheduledDate}
+              targetDate={nextStart}
               className="text-[#203C32] dark:text-[#E8D8B2]"
             />
           </div>
@@ -136,7 +174,9 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           <p className="text-xs text-[#203C32] dark:text-[#E8D8B2] font-medium leading-relaxed">
             {isWaiting
               ? 'The Sanctuary is Open. Prayer will begin shortly.'
-              : (organization.joinPageMessage || 'Join your church family in corporate prayer.')}
+              : canJoin
+                ? 'Join your church family in corporate prayer.'
+                : 'This gathering is not open yet. Your pastor opens it from Prayer Rooms → Control Room.'}
           </p>
         </div>
 
@@ -171,8 +211,8 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
 
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="w-full py-4 px-6 rounded-2xl font-bold text-lg bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg hover:shadow-xl transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+            disabled={isSubmitting || !canJoin}
+            className="w-full py-4 px-6 rounded-2xl font-bold text-lg bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg hover:shadow-xl transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Sparkles className="w-5 h-5 text-[#C9A35A] dark:text-[#101814]" />
             <span>{isWaiting ? 'Enter Sanctuary' : 'Join Prayer'}</span>

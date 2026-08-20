@@ -3,13 +3,14 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { slugify, suggestAlternativeSlug } from '../lib/utils';
 import { createPrayerRoomSchema } from '../lib/validations/prayerRoom';
+import { formatClockTime, parseClockTime } from '../services/sessionScheduler';
 import { BackButton } from '../components/common/BackButton';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { Save, Radio, Shield, Users, Clock, AlertCircle } from 'lucide-react';
 
 interface CreatePrayerRoomPageProps {
-  onNavigate: (path: string) => void;
+  onNavigate: (path: string, options?: { ignoreUnsaved?: boolean }) => void;
   roomId?: string; // If editing existing room
 }
 
@@ -158,11 +159,11 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
       if (existing) {
         updatePrayerRoom(existing.id, formData);
         setHasUnsavedChanges(false);
-        onNavigate(`/dashboard/prayer-rooms/${existing.id}`);
+        onNavigate(`/dashboard/prayer-rooms/${existing.id}`, { ignoreUnsaved: true });
       } else {
         const created = await createPrayerRoom(formData);
         setHasUnsavedChanges(false);
-        onNavigate(`/dashboard/prayer-rooms/${created.id}`);
+        onNavigate(`/dashboard/prayer-rooms/${created.id}`, { ignoreUnsaved: true });
       }
     } catch {
       /* createPrayerRoom already surfaces the error */
@@ -373,10 +374,15 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
                   Start Time
                 </label>
                 <input
-                  type="text"
-                  value={scheduledStart}
-                  onChange={(e) => setScheduledStart(e.target.value)}
-                  placeholder="05:00 AM"
+                  type="time"
+                  value={(() => {
+                    const clock = parseClockTime(scheduledStart);
+                    return `${String(clock.hours).padStart(2, '0')}:${String(clock.minutes).padStart(2, '0')}`;
+                  })()}
+                  onChange={(e) => {
+                    const [hours, minutes] = e.target.value.split(':').map(Number);
+                    setScheduledStart(formatClockTime(hours || 0, minutes || 0));
+                  }}
                   className="w-full px-3 py-2 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-xs font-bold"
                 />
               </div>

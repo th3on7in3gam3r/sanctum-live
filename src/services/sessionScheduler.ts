@@ -1,50 +1,118 @@
 import { PrayerRoom, PrayerSession } from '../types';
 
+function pad(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+export function parseClockTime(timeStr: string): { hours: number; minutes: number } {
+  let hours = 5;
+  let minutes = 0;
+  const match = (timeStr || '05:00 AM').match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (match) {
+    let hour = parseInt(match[1], 10);
+    minutes = parseInt(match[2], 10);
+    const ampm = match[3]?.toUpperCase();
+    if (ampm === 'PM' && hour < 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+    hours = hour;
+  }
+  return { hours, minutes };
+}
+
+export function formatClockTime(hours: number, minutes: number): string {
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${pad(hour12)}:${pad(minutes)} ${ampm}`;
+}
+
+function ymdInZone(date: Date, timeZone: string): { year: number; month: number; day: number } {
+  const formatted = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+  const [year, month, day] = formatted.split('-').map(Number);
+  return { year, month, day };
+}
+
+function addCalendarDays(
+  ymd: { year: number; month: number; day: number },
+  days: number
+): { year: number; month: number; day: number } {
+  const utc = new Date(Date.UTC(ymd.year, ymd.month - 1, ymd.day + days));
+  return { year: utc.getUTCFullYear(), month: utc.getUTCMonth() + 1, day: utc.getUTCDate() };
+}
+
+/** Instant corresponding to a wall-clock time in `timeZone`. */
+export function zonedWallTime(
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number
+): Date {
+  const asUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date(asUtc));
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value || 0);
+  const asZoneUtc = Date.UTC(
+    read('year'),
+    read('month') - 1,
+    read('day'),
+    read('hour') % 24,
+    read('minute'),
+    read('second')
+  );
+  return new Date(asUtc - (asZoneUtc - asUtc));
+}
+
+const GRACE_MS = 2 * 60 * 60 * 1000;
+
 /**
  * Calculates the next occurrences for a prayer room over the next 7 to 14 days.
- * Preserves the designated room timezone.
+ * Uses the room timezone so a Kampala 6:30 PM start is not rolled to tomorrow
+ * just because the visitor's laptop is already past 6:30 PM locally.
  */
 export function getNextOccurrences(room: PrayerRoom, count: number = 7): Date[] {
   const occurrences: Date[] = [];
   const now = new Date();
-  
-  // Parse room's scheduledStart e.g. "05:00 AM", "12:00 PM", "22:00", "05:00"
-  let targetHours = 5;
-  let targetMinutes = 0;
-  
-  const timeStr = room.scheduledStart || '05:00 AM';
-  const matchAmPm = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-  if (matchAmPm) {
-    let h = parseInt(matchAmPm[1], 10);
-    const m = parseInt(matchAmPm[2], 10);
-    const ampm = matchAmPm[3]?.toUpperCase();
-    if (ampm === 'PM' && h < 12) h += 12;
-    if (ampm === 'AM' && h === 12) h = 0;
-    targetHours = h;
-    targetMinutes = m;
-  }
+  const timeZone = room.timezone || 'Africa/Kampala';
+  const { hours: targetHours, minutes: targetMinutes } = parseClockTime(room.scheduledStart || '05:00 AM');
 
-  // Day names helper
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const selectedDays = room.selectedDays || (room.recurrenceRule === 'DAILY' ? dayNames : ['Sunday']);
 
-  let checkDate = new Date(now);
-  // Search forward for next occurrences
+  let cursor = ymdInZone(now, timeZone);
   for (let i = 0; i < 30 && occurrences.length < count; i++) {
-    const candidate = new Date(checkDate);
-    candidate.setHours(targetHours, targetMinutes, 0, 0);
-
-    const currentDayName = dayNames[candidate.getDay()];
+    const candidate = zonedWallTime(
+      timeZone,
+      cursor.year,
+      cursor.month,
+      cursor.day,
+      targetHours,
+      targetMinutes
+    );
+    const weekday = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'long' }).format(candidate);
     const isDayMatched = room.isRecurring
-      ? room.recurrenceRule === 'DAILY' || selectedDays.includes(currentDayName)
+      ? room.recurrenceRule === 'DAILY' || selectedDays.includes(weekday)
       : i === 0;
 
-    if (isDayMatched && candidate.getTime() > now.getTime()) {
+    if (isDayMatched && candidate.getTime() + GRACE_MS > now.getTime()) {
       occurrences.push(candidate);
     }
 
-    // Move to next day
-    checkDate.setDate(checkDate.getDate() + 1);
+    cursor = addCalendarDays(cursor, 1);
   }
 
   return occurrences;

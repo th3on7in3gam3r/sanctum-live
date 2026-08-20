@@ -211,9 +211,17 @@ export const sanctumApi = {
       realtimeConfigured: boolean;
     }>(`/api/sessions/${sessionId}`),
   getAltar: (slug: string) =>
-    apiFetch<{ room: { id: string; name: string; slug: string }; session: { id: string; status: string } | null }>(
-      `/api/altar/${encodeURIComponent(slug)}`
-    ),
+    apiFetch<{
+      room: {
+        id: string;
+        name: string;
+        slug: string;
+        organizationName?: string;
+        scheduledStart?: string;
+        timezone?: string;
+      };
+      session: { id: string; status: string } | null;
+    }>(`/api/altar/${encodeURIComponent(slug)}`),
   listLiveAltars: (organizationSlug?: string) => {
     const query = organizationSlug ? `?organization=${encodeURIComponent(organizationSlug)}` : '';
     return apiFetch<{

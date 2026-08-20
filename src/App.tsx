@@ -65,12 +65,18 @@ const RouterContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [hasUnsavedChanges, currentPath, confirmAction, setHasUnsavedChanges]);
 
-  const navigate = (path: string) => {
+  const navigate = (path: string, options?: { ignoreUnsaved?: boolean }) => {
     const go = () => {
       window.history.pushState({}, '', path);
       setCurrentPath(path);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+
+    if (options?.ignoreUnsaved) {
+      setHasUnsavedChanges(false);
+      go();
+      return;
+    }
 
     if (hasUnsavedChanges) {
       confirmAction({

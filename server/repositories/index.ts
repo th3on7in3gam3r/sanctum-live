@@ -71,6 +71,15 @@ export const prayerRoomRepository = {
     return prisma.prayerRoom.findFirst({ where: { slug }, orderBy: { createdAt: 'asc' } });
   },
 
+  async findPublicAltarBySlug(slug: string) {
+    const prisma = requirePrisma();
+    return prisma.prayerRoom.findFirst({
+      where: { slug },
+      include: { organization: { select: { name: true, slug: true } } },
+      orderBy: { createdAt: 'asc' },
+    });
+  },
+
   async findByOrgAndSlug(organizationId: string, slug: string): Promise<PrayerRoomRecord | null> {
     const prisma = requirePrisma();
     return prisma.prayerRoom.findUnique({

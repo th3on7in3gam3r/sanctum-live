@@ -288,11 +288,19 @@ export async function listLiveAltarsHandler(req: Request, res: Response): Promis
 
 export async function getAltarBySlugHandler(req: Request, res: Response): Promise<void> {
   try {
-    const room = await prayerRoomRepository.findBySlug(req.params.slug);
+    const room = await prayerRoomRepository.findPublicAltarBySlug(req.params.slug);
     if (!room) throw RoomNotFound(req.params.slug);
     const session = await sessionRepository.findJoinableByRoom(room.id);
     res.json({
-      room: { id: room.id, name: room.name, slug: room.slug, organizationId: room.organizationId },
+      room: {
+        id: room.id,
+        name: room.name,
+        slug: room.slug,
+        organizationId: room.organizationId,
+        organizationName: room.organization.name,
+        scheduledStart: room.scheduledStart,
+        timezone: room.timezone,
+      },
       session,
     });
   } catch (error) {
