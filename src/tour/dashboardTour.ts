@@ -2,12 +2,13 @@ import type { TourStep } from './createTour';
 
 export const dashboardTourSteps: TourStep[] = [
   {
+    element: '[data-tour="dashboard-welcome"]',
     popover: {
       title: 'Welcome to your dashboard',
       description:
         'This is home base for your church. From here you create prayer rooms, share join links, and lead gatherings.',
-      side: 'left',
-      align: 'center',
+      side: 'bottom',
+      align: 'start',
     },
   },
   {
