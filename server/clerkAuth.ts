@@ -44,7 +44,6 @@ export async function resolvePrismaUserFromClerk(req: Request): Promise<UserReco
 
   const existing = await userRepository.findByClerkUserId(clerkUserId);
   if (existing) {
-    await membershipRepository.activateInvitedForUser(existing.id);
     return existing;
   }
 

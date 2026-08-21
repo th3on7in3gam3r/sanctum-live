@@ -3,11 +3,37 @@ import { env, isDatabaseConfigured } from './env.ts';
 
 let prismaClient: PrismaClient | null = null;
 
+/**
+ * Prisma App / 1-vCPU hosts default to connection_limit=3. Concurrent dashboard
+ * requests then time out before delete/auth can run. Keep Accelerate URLs unchanged.
+ */
+export function withConnectionPoolParams(databaseUrl: string): string {
+  if (databaseUrl.startsWith('prisma://') || databaseUrl.startsWith('prisma+postgres://')) {
+    return databaseUrl;
+  }
+  let next = databaseUrl;
+  const append = (key: string, value: string) => {
+    if (new RegExp(`[?&]${key}=`).test(next)) return;
+    next += `${next.includes('?') ? '&' : '?'}${key}=${value}`;
+  };
+  append('connection_limit', '10');
+  append('pool_timeout', '20');
+  return next;
+}
+
+export function isPrismaPoolTimeout(error: unknown): boolean {
+  if (error && typeof error === 'object' && 'code' in error && (error as { code: unknown }).code === 'P2024') {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('Timed out fetching a new connection from the connection pool');
+}
+
 export function getPrisma(): PrismaClient | null {
   if (!isDatabaseConfigured()) return null;
   if (!prismaClient) {
     prismaClient = new PrismaClient({
-      datasources: { db: { url: env.databaseUrl! } },
+      datasources: { db: { url: withConnectionPoolParams(env.databaseUrl!) } },
     });
   }
   return prismaClient;

@@ -2,7 +2,7 @@ import { DatabaseUnavailable, DuplicateSlug, ParticipantNotFound, RoomNotFound, 
 import { ensureSlugAvailable } from '../../shared/slug.ts';
 import type { OrganizationRole, SessionRole } from '../../shared/roles.ts';
 import type { SessionLifecycleState } from '../../shared/sessionStateMachine.ts';
-import { getPrisma } from '../prisma.ts';
+import { getPrisma, isPrismaPoolTimeout } from '../prisma.ts';
 
 export interface PrayerRoomRecord {
   id: string;
@@ -162,16 +162,28 @@ export const prayerRoomRepository = {
       ),
     ];
 
-    await prisma.$transaction(async (tx) => {
-      if (sessionIds.length) {
-        await tx.prayerSession.updateMany({
-          where: { id: { in: sessionIds } },
-          data: { activeSpeakerParticipantId: null },
-        });
-        await tx.prayerSession.deleteMany({ where: { id: { in: sessionIds } } });
-      }
-      await tx.prayerRoom.delete({ where: { id } });
-    });
+    const runDelete = () =>
+      prisma.$transaction(
+        async (tx) => {
+          if (sessionIds.length) {
+            await tx.prayerSession.updateMany({
+              where: { id: { in: sessionIds } },
+              data: { activeSpeakerParticipantId: null },
+            });
+            await tx.prayerSession.deleteMany({ where: { id: { in: sessionIds } } });
+          }
+          await tx.prayerRoom.delete({ where: { id } });
+        },
+        { maxWait: 10_000, timeout: 15_000 }
+      );
+
+    try {
+      await runDelete();
+    } catch (error) {
+      if (!isPrismaPoolTimeout(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await runDelete();
+    }
 
     return { livekitRoomNames };
   },

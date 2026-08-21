@@ -10,6 +10,7 @@ export async function meHandler(req: Request, res: Response): Promise<void> {
     if (!prismaUser) {
       throw Unauthorized('Sign in to continue.');
     }
+    await membershipRepository.activateInvitedForUser(prismaUser.id);
     const actor = await resolveActorFromRequest(req);
     if (!actor.orgRole || !actor.organizationId) {
       res.json({
