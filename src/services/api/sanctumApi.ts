@@ -215,10 +215,27 @@ export const sanctumApi = {
       activeSpeaker: Record<string, unknown> | null;
       participants: Array<Record<string, unknown>>;
       raisedHands: Array<Record<string, unknown>>;
+      chatMessages?: Array<{
+        id: string;
+        displayName: string;
+        body: string;
+        createdAt?: string;
+        timestamp?: string;
+      }>;
       connectedNow: number;
       peakConcurrentParticipants: number;
       realtimeConfigured: boolean;
     }>(`/api/sessions/${sessionId}`),
+  sendChat: (
+    sessionId: string,
+    input: { displayName: string; body: string; participantId?: string }
+  ) =>
+    apiFetch<{
+      message: { id: string; displayName: string; body: string; timestamp: string };
+    }>(`/api/sessions/${sessionId}/chat`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   getAltar: (slug: string) =>
     apiFetch<{
       room: {

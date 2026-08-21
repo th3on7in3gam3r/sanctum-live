@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import { livekitRealtimeProvider } from '../../services/realtime/livekitRealtimeProvider';
 import { loadJoinSession } from '../../services/realtime/joinSessionStore';
+import { sanctumApi } from '../../services/api/sanctumApi';
 import { useApp } from '../../context/AppContext';
 
 export interface ChatMessage {
@@ -18,6 +19,7 @@ interface PrayerChatPanelProps {
 }
 
 function appendMessage(prev: ChatMessage[], incoming: ChatMessage): ChatMessage[] {
+  if (prev.some((item) => item.id === incoming.id)) return prev;
   if (
     prev.some(
       (item) =>
@@ -31,27 +33,64 @@ function appendMessage(prev: ChatMessage[], incoming: ChatMessage): ChatMessage[
   return [...prev.slice(-99), incoming];
 }
 
+function mapRow(row: {
+  id: string;
+  displayName: string;
+  body: string;
+  createdAt?: string;
+  timestamp?: string;
+}): ChatMessage {
+  return {
+    id: row.id,
+    displayName: row.displayName || 'Attendee',
+    body: row.body,
+    timestamp: row.timestamp || row.createdAt || new Date().toISOString(),
+  };
+}
+
 export const PrayerChatPanel: React.FC<PrayerChatPanelProps> = ({
   sessionId,
   senderName,
   compact = false,
 }) => {
-  const { addToast, connectionState } = useApp();
+  const { addToast, localParticipantId } = useApp();
   const [open, setOpen] = useState(!compact);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const connected = connectionState === 'CONNECTED' || connectionState === 'RECONNECTING';
+  const resolvedSessionId = sessionId || loadJoinSession()?.sessionId || '';
+
+  useEffect(() => {
+    if (!resolvedSessionId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const snapshot = await sanctumApi.getSession(resolvedSessionId);
+        if (cancelled) return;
+        const history = (snapshot.chatMessages || []).map(mapRow);
+        setMessages(history);
+      } catch {
+        /* Snapshot is best-effort; live events still apply. */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedSessionId]);
 
   useEffect(() => {
     return livekitRealtimeProvider.subscribe((event) => {
       if (event.type !== 'CHAT_MESSAGE') return;
       const body = typeof event.metadata?.body === 'string' ? event.metadata.body.trim() : '';
       if (!body) return;
+      const messageId =
+        typeof event.metadata?.messageId === 'string'
+          ? event.metadata.messageId
+          : `${event.timestamp}-${event.displayName}-${body}`;
       setMessages((prev) =>
         appendMessage(prev, {
-          id: `${event.timestamp}-${event.displayName}-${body}`,
+          id: messageId,
           displayName: event.displayName || 'Attendee',
           body,
           timestamp: event.timestamp,
@@ -68,10 +107,19 @@ export const PrayerChatPanel: React.FC<PrayerChatPanelProps> = ({
     e.preventDefault();
     const body = draft.trim().slice(0, 240);
     if (!body || sending) return;
-    const resolvedSessionId = sessionId || loadJoinSession()?.sessionId || '';
+    if (!resolvedSessionId) {
+      addToast('Join the gathering before sending chat.', 'warning');
+      return;
+    }
     setSending(true);
     try {
-      await livekitRealtimeProvider.sendChatMessage(resolvedSessionId, senderName.trim() || 'Attendee', body);
+      const participantId = localParticipantId || loadJoinSession()?.participantId;
+      const result = await sanctumApi.sendChat(resolvedSessionId, {
+        displayName: senderName.trim() || 'Attendee',
+        body,
+        participantId: participantId || undefined,
+      });
+      setMessages((prev) => appendMessage(prev, result.message));
       setDraft('');
     } catch {
       addToast('Chat could not send. Stay connected to the gathering and try again.', 'error');
@@ -114,13 +162,13 @@ export const PrayerChatPanel: React.FC<PrayerChatPanelProps> = ({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               maxLength={240}
-              placeholder={connected ? 'Share a short prayer note…' : 'Connect to the gathering to chat'}
-              disabled={!connected || sending}
+              placeholder={resolvedSessionId ? 'Share a short prayer note…' : 'Join the gathering to chat'}
+              disabled={!resolvedSessionId || sending}
               className="flex-1 px-3 py-2 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-xs disabled:opacity-60"
             />
             <button
               type="submit"
-              disabled={!connected || sending || !draft.trim()}
+              disabled={!resolvedSessionId || sending || !draft.trim()}
               className="p-2 rounded-xl bg-[#203C32] text-white dark:bg-[#C9A35A] dark:text-[#101814] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Send chat"
             >

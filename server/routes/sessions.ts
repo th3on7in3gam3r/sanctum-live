@@ -18,6 +18,7 @@ import { getLiveKitProvider } from '../realtime/livekitProvider.ts';
 import { mintLiveKitAccessToken } from '../realtime/tokenService.ts';
 import {
   auditRepository,
+  chatMessageRepository,
   participantRepository,
   prayerRoomRepository,
   raisedHandRepository,
@@ -233,6 +234,7 @@ export async function getSessionSnapshotHandler(req: Request, res: Response): Pr
       participants,
       raisedHands,
       invitations,
+      chatMessages: await chatMessageRepository.listBySession(session.id),
       connectedNow,
       peakConcurrentParticipants: session.peakConcurrentParticipants,
       realtimeConfigured: isLiveKitConfigured(),
@@ -812,6 +814,58 @@ export async function setCongregationMuteHandler(req: Request, res: Response): P
     });
 
     res.json({ session: updated });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function postChatHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const session = await sessionRepository.requireById(req.params.id);
+    if (!isJoinableSessionStatus(session.status)) throw SessionNotJoinable(session.status);
+
+    const body = typeof req.body?.body === 'string' ? req.body.body.trim().slice(0, 240) : '';
+    const displayName =
+      typeof req.body?.displayName === 'string' ? req.body.displayName.trim().slice(0, 80) : '';
+    if (!body || !displayName) {
+      throw Unauthorized('A name and message are required to chat');
+    }
+
+    const participantId = typeof req.body?.participantId === 'string' ? req.body.participantId.trim() : '';
+    if (participantId) {
+      const participant = await participantRepository.requireById(participantId);
+      if (participant.sessionId !== session.id) {
+        throw Unauthorized('Participant does not belong to this session');
+      }
+    } else {
+      const room = await prayerRoomRepository.findById(session.prayerRoomId);
+      const actor = await actorFromRequest(req, room?.organizationId);
+      if (!actor.orgRole) {
+        throw Unauthorized('Join the gathering to chat');
+      }
+    }
+
+    const message = await chatMessageRepository.create({
+      sessionId: session.id,
+      displayName,
+      body,
+    });
+    const timestamp = message.createdAt.toISOString();
+    await broadcastSessionEvent(session.livekitRoomName, 'CHAT_MESSAGE', {
+      sessionId: session.id,
+      displayName,
+      timestamp,
+      metadata: { body, messageId: message.id },
+    });
+
+    res.status(201).json({
+      message: {
+        id: message.id,
+        displayName: message.displayName,
+        body: message.body,
+        timestamp,
+      },
+    });
   } catch (error) {
     sendError(res, error);
   }

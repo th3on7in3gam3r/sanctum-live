@@ -573,6 +573,29 @@ export const raisedHandRepository = {
   },
 };
 
+export const chatMessageRepository = {
+  async create(input: { sessionId: string; displayName: string; body: string }) {
+    const prisma = requirePrisma();
+    return prisma.sessionChatMessage.create({
+      data: {
+        sessionId: input.sessionId,
+        displayName: input.displayName,
+        body: input.body,
+      },
+    });
+  },
+
+  async listBySession(sessionId: string, limit = 100) {
+    const prisma = requirePrisma();
+    const rows = await prisma.sessionChatMessage.findMany({
+      where: { sessionId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return rows.reverse();
+  },
+};
+
 export const speakerInvitationRepository = {
   async create(input: { sessionId: string; participantId: string; invitedById?: string | null }) {
     const prisma = requirePrisma();

@@ -213,11 +213,24 @@ model PrayerSession {
   raisedHands         RaisedHand[]
   prayerRequests      PrayerRequest[]
   speakerInvitations  SpeakerInvitation[]
+  chatMessages        SessionChatMessage[]
   auditEvents         AuditEvent[]
 
   @@index([prayerRoomId])
   @@index([status])
   @@index([createdAt])
+}
+
+model SessionChatMessage {
+  id          String   @id @default(cuid())
+  sessionId   String
+  displayName String
+  body        String
+  createdAt   DateTime @default(now())
+
+  session PrayerSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
 }
 
 model SessionParticipant {
