@@ -29,10 +29,14 @@ import {
   ShieldCheck,
   MessageCircle,
   VolumeX,
+  CircleHelp,
 } from 'lucide-react';
 import { Role } from '../types';
 import { canMuteCongregation, canModerate, hasPermission } from '../lib/permissions';
 import { livekitRealtimeProvider } from '../services/realtime/livekitRealtimeProvider';
+import { useTour } from '../hooks/useTour';
+import { TOUR_IDS } from '../tour/tourIds';
+import { controlRoomTourSteps } from '../tour/controlRoomTour';
 
 interface PrayerControlRoomPageProps {
   roomId: string;
@@ -88,6 +92,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   const [hostMicOn, setHostMicOn] = useState(false);
   const [hostMicBusy, setHostMicBusy] = useState(false);
   const [micOnByIdentity, setMicOnByIdentity] = useState<Record<string, boolean>>({});
+  const { startTour } = useTour(TOUR_IDS.controlRoom, controlRoomTourSteps, { delayMs: 800 });
 
   // Filter participants
   const speakers = (participants || []).filter((p) => p && p.role === 'SPEAKER');
@@ -192,13 +197,27 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
           <Breadcrumbs items={breadcrumbs} onNavigate={onNavigate} />
         </div>
 
-        <span className="text-xs font-bold text-[#C9A35A] uppercase tracking-wider hidden sm:block">
-          Altar Control Room™
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => startTour()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+            aria-label="Show Control Room tutorial"
+          >
+            <CircleHelp className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Help</span>
+          </button>
+          <span className="text-xs font-bold text-[#C9A35A] uppercase tracking-wider hidden sm:block">
+            Altar Control Room™
+          </span>
+        </div>
       </div>
 
       {/* Top Session Status Bar */}
-      <div className="bg-white dark:bg-[#17221D] p-5 sm:p-6 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div
+        className="bg-white dark:bg-[#17221D] p-5 sm:p-6 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+        data-tour="control-welcome"
+      >
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <PrayerSessionStatus status={resolution.status} size="md" />
@@ -220,7 +239,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               <PrayerTimer seconds={sessionDuration} size="sm" />
             </>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-tour="control-start">
               <button
                 onClick={() => setShowTestRoomModal(true)}
                 type="button"
@@ -268,6 +287,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             <button
               onClick={handleEndSessionClick}
               type="button"
+              data-tour="control-end"
               className="px-4 py-2 rounded-xl font-bold text-xs bg-[#B94A48] hover:bg-red-700 text-white shadow-xs transition-transform active:scale-95 cursor-pointer"
             >
               End Prayer Session
@@ -277,7 +297,10 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
       </div>
 
       {(resolution.status === 'WAITING' || isLive) && (
-        <div className="bg-white dark:bg-[#17221D] p-4 sm:p-5 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div
+          className="bg-white dark:bg-[#17221D] p-4 sm:p-5 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          data-tour="control-host-mic"
+        >
           <div>
             <p className="text-sm font-bold text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
               {hostMicOn ? <Mic className="w-4 h-4 text-emerald-600" /> : <MicOff className="w-4 h-4 text-[#68736D]" />}
@@ -306,7 +329,10 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
       )}
 
       {(resolution.status === 'WAITING' || isLive) && canControlCongregation && (
-        <div className="bg-white dark:bg-[#17221D] p-4 sm:p-5 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div
+          className="bg-white dark:bg-[#17221D] p-4 sm:p-5 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          data-tour="control-congregation-mute"
+        >
           <div>
             <p className="text-sm font-bold text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
               {congregationMuted ? (
@@ -359,15 +385,17 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
       )}
 
       {(resolution.status === 'WAITING' || isLive) && (
-        <CongregationRoster
-          participants={participants}
-          micOnByIdentity={micOnByIdentity}
-          localIdentity={livekitRealtimeProvider.getIdentity()}
-          canMute={canMuteIndividuals}
-          discussionOpen={!congregationMuted}
-          onMute={(id) => void muteParticipant(id)}
-          onUnmute={(id) => void unmuteParticipant(id)}
-        />
+        <div data-tour="control-roster">
+          <CongregationRoster
+            participants={participants}
+            micOnByIdentity={micOnByIdentity}
+            localIdentity={livekitRealtimeProvider.getIdentity()}
+            canMute={canMuteIndividuals}
+            discussionOpen={!congregationMuted}
+            onMute={(id) => void muteParticipant(id)}
+            onUnmute={(id) => void unmuteParticipant(id)}
+          />
+        </div>
       )}
 
       {/* Control Room Navigation Tabs */}
@@ -414,6 +442,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
         <button
           onClick={() => setActiveTab('CHAT')}
           type="button"
+          data-tour="control-chat-tab"
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'CHAT'
               ? 'bg-[#203C32] text-white dark:bg-[#C9A35A] dark:text-[#101814]'
@@ -471,7 +500,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             </div>
 
             {/* Column 2: Raised Hands Queue */}
-            <div className="space-y-4">
+            <div className="space-y-4" data-tour="control-raised-hands">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
                   <Hand className="w-4 h-4 text-[#C9A35A]" />

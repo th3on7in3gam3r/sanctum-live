@@ -14,11 +14,14 @@ import { SpeakerLiveView } from './SpeakerLiveView';
 import { PostPrayerSummaryView } from './PostPrayerSummaryView';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff } from 'lucide-react';
+import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff, CircleHelp } from 'lucide-react';
 import { DevelopmentPreviewBadge } from '../common/DevelopmentPreviewBadge';
 import { RealtimeEngineStatus } from '../common/RealtimeEngineStatus';
 import { livekitRealtimeProvider } from '../../services/realtime/livekitRealtimeProvider';
 import { connectionStateToQuality } from '../../services/domain/sessionSnapshot';
+import { useTour } from '../../hooks/useTour';
+import { TOUR_IDS } from '../../tour/tourIds';
+import { listenerRoomTourSteps } from '../../tour/listenerRoomTour';
 
 interface ListenerRoomViewProps {
   participantName: string;
@@ -59,6 +62,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   const [isPrayerRequestOpen, setIsPrayerRequestOpen] = useState(false);
   const [selfMuted, setSelfMuted] = useState(false);
   const [micOn, setMicOn] = useState(false);
+  const { startTour } = useTour(TOUR_IDS.listenerRoom, listenerRoomTourSteps, { delayMs: 900 });
 
   useEffect(() => {
     const stored = loadJoinSession();
@@ -194,8 +198,17 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
             {isDarkMode ? <Sun className="w-4 h-4 text-[#C9A35A]" /> : <Moon className="w-4 h-4" />}
           </button>
           <button
+            type="button"
+            onClick={() => startTour()}
+            aria-label="Show prayer room tutorial"
+            className="p-2 rounded-xl text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            <CircleHelp className="w-4 h-4" />
+          </button>
+          <button
             onClick={onLeave}
             aria-label={isAuthenticated ? 'Back to dashboard' : 'Leave prayer session'}
+            data-tour="listener-leave"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#B94A48] dark:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
           >
             {isAuthenticated ? <LayoutDashboard className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />}
@@ -227,6 +240,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
             <button
               type="button"
               onClick={() => void enablePrayerAudio()}
+              data-tour="listener-enable-audio"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#C9A35A] text-xs font-bold text-[#203C32] dark:text-[#E8D8B2] cursor-pointer"
             >
               <Volume2 className="w-4 h-4" />
@@ -235,7 +249,10 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-center sm:text-left bg-white/60 dark:bg-[#17221D]/60 p-4 rounded-2xl border border-[#E5E6E1] dark:border-[#26362F]">
+        <div
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-center sm:text-left bg-white/60 dark:bg-[#17221D]/60 p-4 rounded-2xl border border-[#E5E6E1] dark:border-[#26362F]"
+          data-tour="listener-welcome"
+        >
           <div>
             <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
               {prayerHasStarted ? <LiveBadge size="sm" /> : null}
@@ -279,6 +296,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
           <button
             type="button"
             onClick={() => void handleToggleLeadMic()}
+            data-tour="listener-mic"
             className={`w-full py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer ${
               showLiveMic && !selfMuted
                 ? 'bg-[#B94A48] hover:bg-red-700 text-white'
@@ -294,6 +312,15 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
                   : 'Unmute microphone'}
             </span>
           </button>
+        )}
+
+        {!canUseMic && (
+          <div
+            data-tour="listener-mic-locked"
+            className="w-full py-3 px-4 rounded-2xl text-center text-xs font-medium text-[#68736D] dark:text-[#96A39D] border border-dashed border-[#E5E6E1] dark:border-[#26362F] bg-white/40 dark:bg-[#17221D]/40"
+          >
+            Your microphone stays off until the pastor opens discussion.
+          </div>
         )}
 
         {showLiveMic ? (
@@ -330,20 +357,24 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
         )}
 
         {!showLiveMic && (
-          <ListenerReactionBar
-            isHandRaised={isHandRaised}
-            onSendAmen={() => sendReactionAttendee('AMEN')}
-            onSendPraiseGod={() => sendReactionAttendee('PRAISE_GOD')}
-            onToggleRaiseHand={handleToggleRaiseHand}
-            onOpenPrayerRequest={() => setIsPrayerRequestOpen(true)}
-          />
+          <div data-tour="listener-reactions">
+            <ListenerReactionBar
+              isHandRaised={isHandRaised}
+              onSendAmen={() => sendReactionAttendee('AMEN')}
+              onSendPraiseGod={() => sendReactionAttendee('PRAISE_GOD')}
+              onToggleRaiseHand={handleToggleRaiseHand}
+              onOpenPrayerRequest={() => setIsPrayerRequestOpen(true)}
+            />
+          </div>
         )}
 
-        <PrayerChatPanel
-          sessionId={liveSession?.id || loadJoinSession()?.sessionId}
-          senderName={participantName}
-          compact
-        />
+        <div data-tour="listener-chat">
+          <PrayerChatPanel
+            sessionId={liveSession?.id || loadJoinSession()?.sessionId}
+            senderName={participantName}
+            compact
+          />
+        </div>
       </main>
 
       <p className="w-full max-w-2xl mx-auto text-center text-[11px] text-[#68736D] dark:text-[#96A39D] leading-relaxed">

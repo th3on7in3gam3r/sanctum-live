@@ -2,16 +2,21 @@ import React, { useState } from 'react';
 import { SanctumLogo } from '../common/SanctumLogo';
 import { UserButton } from '@clerk/react';
 import { useAuth } from '../../context/AuthContext';
-import { Menu, X, Sun, Moon, LogOut, Radio, LayoutDashboard, FileText, Users, History, Settings } from 'lucide-react';
+import { Menu, X, Sun, Moon, LogOut, Radio, LayoutDashboard, FileText, Users, History, Settings, CircleHelp } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { cn } from '../../lib/utils';
 
 interface MobileHeaderProps {
   currentPath: string;
   onNavigate: (path: string) => void;
+  onShowTutorial?: () => void;
 }
 
-export const MobileHeader: React.FC<MobileHeaderProps> = ({ currentPath, onNavigate }) => {
+export const MobileHeader: React.FC<MobileHeaderProps> = ({
+  currentPath,
+  onNavigate,
+  onShowTutorial,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const { organization, user, logout } = useAuth();
   const { isDarkMode, toggleDarkMode } = useApp();
@@ -105,6 +110,19 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({ currentPath, onNavig
             >
               Preview Public Join Link
             </button>
+            {onShowTutorial && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onShowTutorial();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold text-[#68736D] dark:text-[#96A39D] bg-black/5 dark:bg-white/5"
+              >
+                <CircleHelp className="w-4 h-4" />
+                <span>Show tutorial</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 logout();

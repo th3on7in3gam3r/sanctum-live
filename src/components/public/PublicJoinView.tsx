@@ -10,6 +10,9 @@ import { getNextOccurrences } from '../../services/sessionScheduler';
 import { sanctumApi, ApiClientError } from '../../services/api/sanctumApi';
 import { ShieldCheck, HelpCircle, Sparkles, Moon, Sun, Clock, LayoutDashboard } from 'lucide-react';
 import type { PrayerRoom, SessionLifecycleStatus } from '../../types';
+import { useTour } from '../../hooks/useTour';
+import { TOUR_IDS } from '../../tour/tourIds';
+import { joinGateTourSteps } from '../../tour/listenerRoomTour';
 
 interface PublicJoinViewProps {
   slug: string;
@@ -28,6 +31,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [altarStatus, setAltarStatus] = useState<SessionLifecycleStatus | 'NOT_FOUND' | null>(null);
+  useTour(TOUR_IDS.joinGate, joinGateTourSteps, { delayMs: 500 });
   const [altarRoom, setAltarRoom] = useState<{
     name: string;
     organizationName?: string;
@@ -202,7 +206,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
             </div>
           )}
 
-          <div>
+          <div data-tour="join-name">
             <label
               htmlFor="attendeeName"
               className="block text-xs font-bold text-[#16251F] dark:text-[#F8F7F3] uppercase tracking-wider mb-2"

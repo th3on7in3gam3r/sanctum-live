@@ -96,6 +96,7 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
             <button
               onClick={handleCopyLink}
               type="button"
+              data-tour="dashboard-copy-link"
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#203C32]/10 dark:bg-[#C9A35A]/20 text-[#203C32] dark:text-[#E8D8B2] hover:bg-[#203C32]/15 transition-colors cursor-pointer shrink-0"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -111,13 +112,14 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
             <button
               onClick={() => onOpenControlRoom(room.id)}
               type="button"
+              data-tour="dashboard-control-room"
               className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-[#D7473F] hover:bg-[#C23C35] text-white shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sliders className="w-4 h-4" />
               <span>{isLive ? 'Live Control Room™' : 'Open Control Room'}</span>
             </button>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2" data-tour="dashboard-control-room">
               {onOpenPrePrayerCheck && (
                 <button
                   onClick={onOpenPrePrayerCheck}

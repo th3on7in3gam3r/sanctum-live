@@ -58,14 +58,14 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, size = 's
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 font-medium rounded-full border',
-        size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-sm',
+        'inline-flex items-center gap-1 font-medium rounded-full border max-w-full',
+        size === 'sm' ? 'px-2 py-0.5 text-[11px] leading-none' : 'px-2.5 py-1 text-sm',
         config.bg,
         className
       )}
     >
-      <Icon className={size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
-      <span>{config.label}</span>
+      <Icon className={cn('shrink-0', size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5')} />
+      <span className="truncate whitespace-nowrap">{config.label}</span>
     </span>
   );
 };

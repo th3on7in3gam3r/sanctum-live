@@ -71,6 +71,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           <button
             onClick={() => onNavigate('/dashboard/prayer-rooms/new')}
             type="button"
+            data-tour="dashboard-create-room"
             className="px-4 py-2.5 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -103,6 +104,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           title="No prayer rooms yet"
           description="Create your first prayer altar to share a join link and gather your congregation."
           actionText="Create Prayer Room"
+          actionDataTour="dashboard-empty-create"
           onAction={() => onNavigate('/dashboard/prayer-rooms/new')}
         />
       )}

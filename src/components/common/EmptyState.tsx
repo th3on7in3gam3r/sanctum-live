@@ -8,6 +8,7 @@ interface EmptyStateProps {
   description: string;
   actionText?: string;
   onAction?: () => void;
+  actionDataTour?: string;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   description,
   actionText,
   onAction,
+  actionDataTour,
   className,
 }) => {
   return (
@@ -37,6 +39,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         <button
           onClick={onAction}
           type="button"
+          data-tour={actionDataTour}
           className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-medium text-sm bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-sm transition-colors cursor-pointer"
         >
           {actionText}
