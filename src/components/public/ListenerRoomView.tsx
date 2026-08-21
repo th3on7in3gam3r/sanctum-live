@@ -14,7 +14,7 @@ import { SpeakerLiveView } from './SpeakerLiveView';
 import { PostPrayerSummaryView } from './PostPrayerSummaryView';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic } from 'lucide-react';
+import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff } from 'lucide-react';
 import { DevelopmentPreviewBadge } from '../common/DevelopmentPreviewBadge';
 import { RealtimeEngineStatus } from '../common/RealtimeEngineStatus';
 import { livekitRealtimeProvider } from '../../services/realtime/livekitRealtimeProvider';
@@ -275,23 +275,33 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
           </div>
         </div>
 
+        {canUseMic && (
+          <button
+            type="button"
+            onClick={() => void handleToggleLeadMic()}
+            className={`w-full py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer ${
+              showLiveMic && !selfMuted
+                ? 'bg-[#B94A48] hover:bg-red-700 text-white'
+                : 'bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814]'
+            }`}
+          >
+            {showLiveMic && !selfMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            <span>
+              {showLiveMic && !selfMuted
+                ? 'Mute microphone'
+                : isMinister
+                  ? 'Unmute microphone to lead'
+                  : 'Unmute microphone'}
+            </span>
+          </button>
+        )}
+
         {showLiveMic ? (
           <SpeakerLiveView
             participantName={participantName}
             participantCount={participantCount}
             selfMuted={selfMuted}
-            onToggleSelfMute={() => {
-              void (async () => {
-                if (selfMuted) {
-                  await livekitRealtimeProvider.enableMicrophone();
-                  setMicOn(true);
-                } else {
-                  await livekitRealtimeProvider.disableMicrophone();
-                  setMicOn(false);
-                }
-                setSelfMuted((prev) => !prev);
-              })();
-            }}
+            onToggleSelfMute={() => void handleToggleLeadMic()}
             onFinishPrayer={handleFinishPrayer}
           />
         ) : (
@@ -307,25 +317,15 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
               }
               isLive={prayerHasStarted}
             />
-            {isMinister ? (
-              <button
-                type="button"
-                onClick={() => void handleToggleLeadMic()}
-                className="w-full py-4 px-6 rounded-2xl font-bold text-base bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Mic className="w-5 h-5" />
-                <span>Turn on microphone to lead</span>
-              </button>
-            ) : canDiscuss ? (
-              <button
-                type="button"
-                onClick={() => void handleToggleLeadMic()}
-                className="w-full py-4 px-6 rounded-2xl font-bold text-base bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <Mic className="w-5 h-5" />
-                <span>Turn on microphone to join discussion</span>
-              </button>
-            ) : null}
+            {!canUseMic ? null : isMinister ? (
+              <p className="text-center text-xs text-[#68736D] dark:text-[#96A39D]">
+                Use Mute microphone above if you need a moment of quiet while leading.
+              </p>
+            ) : (
+              <p className="text-center text-xs text-[#68736D] dark:text-[#96A39D]">
+                Discussion is open. Mute yourself when you are not speaking.
+              </p>
+            )}
           </div>
         )}
 

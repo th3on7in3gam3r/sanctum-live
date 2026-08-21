@@ -49,7 +49,7 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
             Congregation ({congregation.length})
           </h3>
           <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
-            Names from the join link. Mute anyone who still has a microphone on.
+            Names from the join link. Pick a person and mute them if they forget.
           </p>
         </div>
         <span
@@ -100,26 +100,28 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
               </div>
             </div>
 
-            {canMute && person.micOn && (
-              <button
-                type="button"
-                onClick={() => onMute(person.id)}
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-[#B94A48] hover:bg-red-700 text-white cursor-pointer"
-              >
-                <VolumeX className="w-3.5 h-3.5" />
-                Mute
-              </button>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {canMute && (
+                <button
+                  type="button"
+                  onClick={() => onMute(person.id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-[#B94A48] hover:bg-red-700 text-white cursor-pointer"
+                >
+                  <VolumeX className="w-3.5 h-3.5" />
+                  Mute
+                </button>
+              )}
 
-            {canMute && !person.micOn && discussionOpen && (
-              <button
-                type="button"
-                onClick={() => onUnmute(person.id)}
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-[#E5E6E1] dark:border-[#26362F] text-[#203C32] dark:text-[#E8D8B2] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
-              >
-                Unmute
-              </button>
-            )}
+              {canMute && !person.micOn && discussionOpen && (
+                <button
+                  type="button"
+                  onClick={() => onUnmute(person.id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-[#E5E6E1] dark:border-[#26362F] text-[#203C32] dark:text-[#E8D8B2] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                >
+                  Unmute
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
