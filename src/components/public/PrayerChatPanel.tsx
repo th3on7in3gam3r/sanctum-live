@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import { livekitRealtimeProvider } from '../../services/realtime/livekitRealtimeProvider';
+import { loadJoinSession } from '../../services/realtime/joinSessionStore';
+import { useApp } from '../../context/AppContext';
 
 export interface ChatMessage {
   id: string;
@@ -15,38 +17,67 @@ interface PrayerChatPanelProps {
   compact?: boolean;
 }
 
+function appendMessage(prev: ChatMessage[], incoming: ChatMessage): ChatMessage[] {
+  if (
+    prev.some(
+      (item) =>
+        item.timestamp === incoming.timestamp &&
+        item.body === incoming.body &&
+        item.displayName === incoming.displayName
+    )
+  ) {
+    return prev;
+  }
+  return [...prev.slice(-99), incoming];
+}
+
 export const PrayerChatPanel: React.FC<PrayerChatPanelProps> = ({
   sessionId,
   senderName,
   compact = false,
 }) => {
+  const { addToast, connectionState } = useApp();
   const [open, setOpen] = useState(!compact);
   const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const connected = connectionState === 'CONNECTED' || connectionState === 'RECONNECTING';
 
   useEffect(() => {
     return livekitRealtimeProvider.subscribe((event) => {
       if (event.type !== 'CHAT_MESSAGE') return;
-      const body = typeof event.metadata?.body === 'string' ? event.metadata.body : '';
+      const body = typeof event.metadata?.body === 'string' ? event.metadata.body.trim() : '';
       if (!body) return;
-      setMessages((prev) => [
-        ...prev.slice(-99),
-        {
-          id: `${event.timestamp}-${prev.length}`,
+      setMessages((prev) =>
+        appendMessage(prev, {
+          id: `${event.timestamp}-${event.displayName}-${body}`,
           displayName: event.displayName || 'Attendee',
           body,
           timestamp: event.timestamp,
-        },
-      ]);
+        })
+      );
     });
   }, []);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
+  }, [messages.length]);
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const body = draft.trim().slice(0, 240);
-    if (!body || !sessionId) return;
-    await livekitRealtimeProvider.sendChatMessage(sessionId, senderName, body);
-    setDraft('');
+    if (!body || sending) return;
+    const resolvedSessionId = sessionId || loadJoinSession()?.sessionId || '';
+    setSending(true);
+    try {
+      await livekitRealtimeProvider.sendChatMessage(resolvedSessionId, senderName.trim() || 'Attendee', body);
+      setDraft('');
+    } catch {
+      addToast('Chat could not send. Stay connected to the gathering and try again.', 'error');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -64,7 +95,10 @@ export const PrayerChatPanel: React.FC<PrayerChatPanelProps> = ({
       </button>
       {open && (
         <div className="border-t border-[#E5E6E1] dark:border-[#26362F] p-3 space-y-2">
-          <div className={`${compact ? 'max-h-40' : 'max-h-56'} overflow-y-auto space-y-1.5 text-xs`}>
+          <div
+            ref={listRef}
+            className={`${compact ? 'max-h-40' : 'max-h-56'} overflow-y-auto space-y-1.5 text-xs`}
+          >
             {messages.length === 0 && (
               <p className="text-[#68736D] dark:text-[#96A39D]">No messages yet. Keep the altar chat brief.</p>
             )}
@@ -80,12 +114,14 @@ export const PrayerChatPanel: React.FC<PrayerChatPanelProps> = ({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               maxLength={240}
-              placeholder="Share a short prayer note…"
-              className="flex-1 px-3 py-2 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-xs"
+              placeholder={connected ? 'Share a short prayer note…' : 'Connect to the gathering to chat'}
+              disabled={!connected || sending}
+              className="flex-1 px-3 py-2 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-xs disabled:opacity-60"
             />
             <button
               type="submit"
-              className="p-2 rounded-xl bg-[#203C32] text-white dark:bg-[#C9A35A] dark:text-[#101814] cursor-pointer"
+              disabled={!connected || sending || !draft.trim()}
+              className="p-2 rounded-xl bg-[#203C32] text-white dark:bg-[#C9A35A] dark:text-[#101814] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Send chat"
             >
               <Send className="w-3.5 h-3.5" />

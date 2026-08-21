@@ -37,10 +37,12 @@ export async function mintLiveKitAccessToken(input: MintTokenInput): Promise<str
     room: grants.room,
     canPublish: grants.canPublish,
     canSubscribe: grants.canSubscribe,
-    canPublishData: grants.canPublishData,
+    canPublishData: true,
     roomAdmin: grants.roomAdmin,
-    canPublishSources: grants.canPublishSources.includes('microphone') ? [TrackSource.MICROPHONE] : [],
   };
+  if (grants.canPublishSources.includes('microphone')) {
+    videoGrant.canPublishSources = [TrackSource.MICROPHONE];
+  }
 
   token.addGrant(videoGrant);
   return token.toJwt();

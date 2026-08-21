@@ -86,7 +86,7 @@ export class LiveKitRealtimeProvider implements ILiveKitRealtimeProvider {
         canSubscribe: true,
         canPublish,
         canPublishData: true,
-        canPublishSources: canPublish ? [TrackSource.MICROPHONE] : [],
+        ...(canPublish ? { canPublishSources: [TrackSource.MICROPHONE] } : {}),
       },
     });
   }

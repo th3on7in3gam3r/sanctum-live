@@ -161,9 +161,11 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
   }
 
   async sendChatMessage(sessionId: string, displayName: string, body: string): Promise<void> {
-    if (!this.room) return;
+    if (!this.room) {
+      throw new Error('Not connected to prayer.');
+    }
     const payload = {
-      type: 'CHAT_MESSAGE',
+      type: 'CHAT_MESSAGE' as const,
       sessionId: sessionId || this.sessionId,
       displayName,
       timestamp: new Date().toISOString(),
@@ -171,7 +173,7 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     };
     const bytes = new TextEncoder().encode(JSON.stringify(payload));
     await this.room.localParticipant.publishData(bytes, { reliable: true });
-    this.emit(payload as RealtimeEventPayload);
+    this.emit(payload);
   }
   async acceptSpeakerInvitation(): Promise<void> {
     throw new Error('Use POST /api/sessions/:id/speaker/accept');

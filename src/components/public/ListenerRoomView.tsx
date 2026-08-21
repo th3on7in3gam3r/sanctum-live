@@ -339,7 +339,11 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
           />
         )}
 
-        <PrayerChatPanel sessionId={liveSession?.id} senderName={participantName} compact />
+        <PrayerChatPanel
+          sessionId={liveSession?.id || loadJoinSession()?.sessionId}
+          senderName={participantName}
+          compact
+        />
       </main>
 
       <p className="w-full max-w-2xl mx-auto text-center text-[11px] text-[#68736D] dark:text-[#96A39D] leading-relaxed">
