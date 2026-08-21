@@ -151,7 +151,9 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
                   </button>
                 )}
 
-                {(participant.role === 'SPEAKER' || participant.role === 'PRAYER_LEADER') && (
+                {(participant.role === 'LISTENER' ||
+                  participant.role === 'SPEAKER' ||
+                  participant.role === 'PRAYER_LEADER') && (
                   <>
                     <button
                       onClick={() => {
@@ -161,7 +163,7 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-gray-100 dark:hover:bg-white/5 text-left cursor-pointer"
                     >
                       <VolumeX className="w-3.5 h-3.5" />
-                      <span>{participant.isMuted ? 'Unmute Audio Voice' : 'Mute Speaker Audio'}</span>
+                      <span>{participant.isMuted ? 'Unmute Audio Voice' : 'Mute microphone'}</span>
                     </button>
 
                     {participant.role === 'SPEAKER' && (

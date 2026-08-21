@@ -6,6 +6,7 @@ import { ParticipantCount } from '../components/common/ParticipantCount';
 import { PrayerTimer } from '../components/common/PrayerTimer';
 import { SpeakerCard } from '../components/dashboard/SpeakerCard';
 import { RaisedHandRow } from '../components/dashboard/RaisedHandRow';
+import { CongregationRoster } from '../components/dashboard/CongregationRoster';
 import { ParticipantRow } from '../components/dashboard/ParticipantRow';
 import { PrayerCountdownTimer } from '../components/dashboard/PrayerCountdownTimer';
 import { BackButton } from '../components/common/BackButton';
@@ -30,7 +31,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { Role } from '../types';
-import { canMuteCongregation, hasPermission } from '../lib/permissions';
+import { canMuteCongregation, canModerate, hasPermission } from '../lib/permissions';
 import { livekitRealtimeProvider } from '../services/realtime/livekitRealtimeProvider';
 
 interface PrayerControlRoomPageProps {
@@ -70,6 +71,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   const canControlCongregation =
     user?.role === 'OWNER' || user?.role === 'ADMIN' ? canMuteCongregation(user.role) : false;
   const congregationMuted = liveSession?.congregationMuted !== false;
+  const canMuteIndividuals = user?.role ? canModerate(user.role) : false;
   const room = (prayerRooms || []).find((r) => r?.id === roomId) || (prayerRooms || [])[0];
   const visiblePrayerRequests = (prayerRequests || []).filter(
     (req) => !req.isPrivate || hasPermission(user?.role || 'LISTENER', 'canViewPrivateRequests')
@@ -85,6 +87,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   const [showPrePrayerModal, setShowPrePrayerModal] = useState(false);
   const [hostMicOn, setHostMicOn] = useState(false);
   const [hostMicBusy, setHostMicBusy] = useState(false);
+  const [micOnByIdentity, setMicOnByIdentity] = useState<Record<string, boolean>>({});
 
   // Filter participants
   const speakers = (participants || []).filter((p) => p && p.role === 'SPEAKER');
@@ -108,6 +111,17 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
       void connectControlRoom(room.id);
     }
   }, [room?.id, liveSession?.id, resolution.status]);
+
+  useEffect(() => {
+    const syncMics = () => setMicOnByIdentity(livekitRealtimeProvider.getMicStates());
+    syncMics();
+    const unsubscribe = livekitRealtimeProvider.subscribe(syncMics);
+    const timer = window.setInterval(syncMics, 2000);
+    return () => {
+      unsubscribe();
+      window.clearInterval(timer);
+    };
+  }, [liveConnected, connectionState]);
 
   const handleEndSessionClick = () => {
     confirmAction({
@@ -342,6 +356,18 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             <span>{congregationMuted ? 'Unmute for discussion' : 'Mute congregation'}</span>
           </button>
         </div>
+      )}
+
+      {(resolution.status === 'WAITING' || isLive) && (
+        <CongregationRoster
+          participants={participants}
+          micOnByIdentity={micOnByIdentity}
+          localIdentity={livekitRealtimeProvider.getIdentity()}
+          canMute={canMuteIndividuals}
+          discussionOpen={!congregationMuted}
+          onMute={(id) => void muteParticipant(id)}
+          onUnmute={(id) => void unmuteParticipant(id)}
+        />
       )}
 
       {/* Control Room Navigation Tabs */}

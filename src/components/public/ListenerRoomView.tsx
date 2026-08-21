@@ -101,6 +101,16 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     }
   }, [congregationMuted, isMinister, micOn]);
 
+  useEffect(() => {
+    return livekitRealtimeProvider.subscribe((event) => {
+      if (event.type !== 'PARTICIPANT_MUTED') return;
+      if (event.metadata?.muted === false) return;
+      if (!event.participantId || event.participantId !== localParticipantId) return;
+      setMicOn(false);
+      setSelfMuted(true);
+    });
+  }, [localParticipantId]);
+
   const handleToggleRaiseHand = async () => {
     if (!localParticipantId) return;
     if (isHandRaised) {

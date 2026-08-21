@@ -21,7 +21,8 @@ export type RealtimeEventType =
   | 'SPEAKER_DECLINED'
   | 'ACTIVE_SPEAKER_CHANGED'
   | 'CHAT_MESSAGE'
-  | 'CONGREGATION_MUTED';
+  | 'CONGREGATION_MUTED'
+  | 'MIC_STATE_CHANGED';
 
 export interface RealtimeEventPayload {
   type: RealtimeEventType;

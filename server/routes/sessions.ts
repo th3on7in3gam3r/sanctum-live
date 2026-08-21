@@ -673,11 +673,21 @@ export async function muteParticipantHandler(req: Request, res: Response): Promi
     const participant = await participantRepository.requireById(String(req.body?.participantId || req.params.participantId || ''));
     if (participant.sessionId !== session.id) throw Unauthorized('Participant does not belong to this session');
     if (isLiveKitConfigured() && session.livekitRoomName) {
-      await getLiveKitProvider().muteParticipant(session.livekitRoomName, participant.realtimeIdentity);
+      const provider = getLiveKitProvider();
+      try {
+        await provider.muteParticipant(session.livekitRoomName, participant.realtimeIdentity);
+        const isMinister = participant.role === 'HOST' || participant.role === 'MODERATOR';
+        if (!isMinister) {
+          await provider.updatePublishPermission(session.livekitRoomName, participant.realtimeIdentity, false);
+        }
+      } catch {
+        /* Participant may not be connected to LiveKit yet. */
+      }
     }
     await broadcastSessionEvent(session.livekitRoomName, 'PARTICIPANT_MUTED', {
       sessionId: session.id,
       participantId: participant.id,
+      muted: true,
     });
     res.json({ muted: true, participantId: participant.id, floorRetained: session.activeSpeakerParticipantId === participant.id });
   } catch (error) {
@@ -695,7 +705,17 @@ export async function unmuteParticipantHandler(req: Request, res: Response): Pro
     const participant = await participantRepository.requireById(String(req.body?.participantId || req.params.participantId || ''));
     if (participant.sessionId !== session.id) throw Unauthorized('Participant does not belong to this session');
     if (isLiveKitConfigured() && session.livekitRoomName) {
-      await getLiveKitProvider().unmuteParticipant(session.livekitRoomName, participant.realtimeIdentity);
+      const provider = getLiveKitProvider();
+      const isMinister = participant.role === 'HOST' || participant.role === 'MODERATOR';
+      const canPublish = isMinister || session.congregationMuted === false;
+      try {
+        await provider.updatePublishPermission(session.livekitRoomName, participant.realtimeIdentity, canPublish);
+        if (canPublish) {
+          await provider.unmuteParticipant(session.livekitRoomName, participant.realtimeIdentity);
+        }
+      } catch {
+        /* Participant may not be connected to LiveKit yet. */
+      }
     }
     await broadcastSessionEvent(session.livekitRoomName, 'PARTICIPANT_MUTED', {
       sessionId: session.id,

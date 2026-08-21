@@ -125,6 +125,31 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     return this.room?.localParticipant.identity ?? null;
   }
 
+  /** identity -> true when that person currently has an unmuted microphone. */
+  getMicStates(): Record<string, boolean> {
+    const states: Record<string, boolean> = {};
+    if (!this.room) return states;
+    const collect = (identity: string, publication: { isMuted: boolean; track?: unknown } | undefined) => {
+      states[identity] = Boolean(publication && !publication.isMuted && publication.track);
+    };
+    collect(
+      this.room.localParticipant.identity,
+      this.room.localParticipant.getTrackPublication(Track.Source.Microphone)
+    );
+    this.room.remoteParticipants.forEach((participant) => {
+      collect(participant.identity, participant.getTrackPublication(Track.Source.Microphone));
+    });
+    return states;
+  }
+
+  private emitMicStateChanged(): void {
+    this.emit({
+      type: 'MIC_STATE_CHANGED',
+      sessionId: this.sessionId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   async raiseHand(): Promise<void> {
     throw new Error('Use POST /api/sessions/:id/raise-hand');
   }
@@ -249,6 +274,14 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
         timestamp: new Date().toISOString(),
       });
     });
+
+    const onMicChanged = () => this.emitMicStateChanged();
+    room.on(RoomEvent.TrackMuted, onMicChanged);
+    room.on(RoomEvent.TrackUnmuted, onMicChanged);
+    room.on(RoomEvent.TrackPublished, onMicChanged);
+    room.on(RoomEvent.TrackUnpublished, onMicChanged);
+    room.on(RoomEvent.LocalTrackPublished, onMicChanged);
+    room.on(RoomEvent.LocalTrackUnpublished, onMicChanged);
   }
 
   private attachAudio(track: RemoteTrack, identity: string): void {

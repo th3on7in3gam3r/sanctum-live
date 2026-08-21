@@ -467,6 +467,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const muted = event.metadata?.muted !== false;
         setLiveSession((prev) => (prev ? { ...prev, congregationMuted: muted } : prev));
       }
+      if (event.type === 'PARTICIPANT_MUTED') {
+        const muted = event.metadata?.muted !== false;
+        const targetId = event.participantId;
+        if (targetId) {
+          setParticipants((prev) =>
+            prev.map((person) => (person.id === targetId ? { ...person, isMuted: muted } : person))
+          );
+        }
+        if (muted && targetId && targetId === localParticipantIdRef.current) {
+          void livekitRealtimeProvider.disableMicrophone();
+        }
+      }
       if (event.type === 'SESSION_STARTED') {
         setLiveSession((prev) =>
           prev ? { ...prev, status: 'LIVE', startedAt: prev.startedAt || new Date().toISOString() } : prev
@@ -489,7 +501,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         event.type === 'PARTICIPANT_LEFT' ||
         event.type === 'PARTICIPANT_REMOVED' ||
         event.type === 'SPEAKER_DECLINED' ||
-        event.type === 'CONGREGATION_MUTED'
+        event.type === 'CONGREGATION_MUTED' ||
+        event.type === 'PARTICIPANT_MUTED'
       ) {
         const sessionId = liveSessionIdRef.current;
         if (sessionId) void applySnapshot(sessionId);
