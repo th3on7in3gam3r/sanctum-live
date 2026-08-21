@@ -65,6 +65,7 @@ export interface AppContextType {
   createPrayerRoom: (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PrayerRoom>;
   updatePrayerRoom: (id: string, updates: Partial<PrayerRoom>) => void;
   deletePrayerRoom: (id: string) => Promise<void>;
+  setCongregationMuted: (muted: boolean) => Promise<void>;
 
   // Session Lifecycle Machine
   openSanctuary: (roomId: string) => void;
@@ -462,6 +463,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           });
         }
       }
+      if (event.type === 'CONGREGATION_MUTED') {
+        const muted = event.metadata?.muted !== false;
+        setLiveSession((prev) => (prev ? { ...prev, congregationMuted: muted } : prev));
+      }
       if (event.type === 'SESSION_STARTED') {
         setLiveSession((prev) =>
           prev ? { ...prev, status: 'LIVE', startedAt: prev.startedAt || new Date().toISOString() } : prev
@@ -483,7 +488,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         event.type === 'PARTICIPANT_JOINED' ||
         event.type === 'PARTICIPANT_LEFT' ||
         event.type === 'PARTICIPANT_REMOVED' ||
-        event.type === 'SPEAKER_DECLINED'
+        event.type === 'SPEAKER_DECLINED' ||
+        event.type === 'CONGREGATION_MUTED'
       ) {
         const sessionId = liveSessionIdRef.current;
         if (sessionId) void applySnapshot(sessionId);
@@ -600,6 +606,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ? error.message
             : 'Could not delete this prayer room.';
       addToast(message, 'error');
+    }
+  };
+
+  const setCongregationMuted = async (muted: boolean) => {
+    if (!liveSession || !isServerSessionId(liveSession.id)) {
+      addToast('Open the sanctuary before changing congregation mute.', 'warning');
+      return;
+    }
+    try {
+      await sanctumApi.setCongregationMute(liveSession.id, muted, actor);
+      setLiveSession((prev) => (prev ? { ...prev, congregationMuted: muted } : prev));
+      addToast(
+        muted
+          ? 'Congregation muted. Only the pastor and ministers can speak.'
+          : 'Room unmuted for discussion. Congregants may turn on their microphones.',
+        'info'
+      );
+    } catch (error) {
+      addToast(
+        error instanceof ApiClientError ? error.message : 'Could not change congregation mute.',
+        'error'
+      );
     }
   };
 
@@ -1244,6 +1272,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createPrayerRoom,
         updatePrayerRoom,
         deletePrayerRoom,
+        setCongregationMuted,
         openSanctuary,
         startPrayerSession,
         endPrayerSession,

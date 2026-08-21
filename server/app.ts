@@ -24,6 +24,7 @@ import {
   openPrayerSessionHandler,
   raiseHandHandler,
   removeParticipantHandler,
+  setCongregationMuteHandler,
   revokeSpeakerHandler,
   startPrayerSessionHandler,
   transferSpeakerHandler,
@@ -85,6 +86,7 @@ export function createApp() {
   app.post('/api/sessions/:id/participants/:participantId/mute', muteParticipantHandler);
   app.post('/api/sessions/:id/participants/:participantId/unmute', unmuteParticipantHandler);
   app.post('/api/sessions/:id/participants/:participantId/remove', removeParticipantHandler);
+  app.post('/api/sessions/:id/congregation-mute', setCongregationMuteHandler);
 
   const here = path.dirname(fileURLToPath(import.meta.url));
   const distDir = existsSync(path.join(here, 'index.html'))

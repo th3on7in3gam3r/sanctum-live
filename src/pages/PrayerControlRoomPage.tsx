@@ -27,9 +27,10 @@ import {
   ExternalLink,
   ShieldCheck,
   MessageCircle,
+  VolumeX,
 } from 'lucide-react';
 import { Role } from '../types';
-import { hasPermission } from '../lib/permissions';
+import { canMuteCongregation, hasPermission } from '../lib/permissions';
 import { livekitRealtimeProvider } from '../services/realtime/livekitRealtimeProvider';
 
 interface PrayerControlRoomPageProps {
@@ -62,9 +63,13 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
     connectedNow,
     connectionState,
     connectControlRoom,
+    setCongregationMuted,
   } = useApp();
 
   const { organization, user } = useAuth();
+  const canControlCongregation =
+    user?.role === 'OWNER' || user?.role === 'ADMIN' ? canMuteCongregation(user.role) : false;
+  const congregationMuted = liveSession?.congregationMuted !== false;
   const room = (prayerRooms || []).find((r) => r?.id === roomId) || (prayerRooms || [])[0];
   const visiblePrayerRequests = (prayerRequests || []).filter(
     (req) => !req.isPrivate || hasPermission(user?.role || 'LISTENER', 'canViewPrivateRequests')
@@ -282,6 +287,59 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
           >
             {hostMicOn ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             <span>{hostMicOn ? 'Mute microphone' : 'Turn on microphone'}</span>
+          </button>
+        </div>
+      )}
+
+      {(resolution.status === 'WAITING' || isLive) && canControlCongregation && (
+        <div className="bg-white dark:bg-[#17221D] p-4 sm:p-5 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
+              {congregationMuted ? (
+                <VolumeX className="w-4 h-4 text-[#B94A48]" />
+              ) : (
+                <Users className="w-4 h-4 text-emerald-600" />
+              )}
+              {congregationMuted ? 'Congregation muted' : 'Discussion open'}
+            </p>
+            <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
+              {congregationMuted
+                ? 'Only the pastor, apostle, and ministers can speak during opening prayer.'
+                : 'The room is unmuted. Congregants may turn on their microphones for discussion.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (congregationMuted) {
+                confirmAction({
+                  title: 'Unmute the room for discussion?',
+                  description:
+                    'Congregants will be able to turn on their microphones. Use this after opening prayer.',
+                  confirmText: 'Unmute for discussion',
+                  cancelText: 'Keep muted',
+                  onConfirm: () => void setCongregationMuted(false),
+                });
+                return;
+              }
+              confirmAction({
+                title: 'Mute the congregation?',
+                description:
+                  'Everyone except the pastor, apostle, and ministers will be muted. Use this for opening prayer.',
+                confirmText: 'Mute congregation',
+                cancelText: 'Keep discussion open',
+                isDestructive: true,
+                onConfirm: () => void setCongregationMuted(true),
+              });
+            }}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer ${
+              congregationMuted
+                ? 'bg-[#203C32] hover:bg-[#16251F] text-white dark:bg-[#C9A35A] dark:text-[#101814]'
+                : 'bg-[#B94A48] hover:bg-red-700 text-white'
+            }`}
+          >
+            {congregationMuted ? <Users className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <span>{congregationMuted ? 'Unmute for discussion' : 'Mute congregation'}</span>
           </button>
         </div>
       )}

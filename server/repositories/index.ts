@@ -34,6 +34,7 @@ export interface PrayerSessionRecord {
   livekitRoomName: string | null;
   activeSpeakerParticipantId: string | null;
   peakConcurrentParticipants: number;
+  congregationMuted?: boolean;
 }
 
 export interface SessionParticipantRecord {
@@ -400,6 +401,7 @@ export const sessionRepository = {
         livekitRoomName: data.livekitRoomName,
         activeSpeakerParticipantId: data.activeSpeakerParticipantId,
         peakConcurrentParticipants: data.peakConcurrentParticipants,
+        congregationMuted: data.congregationMuted,
       },
     }) as Promise<PrayerSessionRecord>;
   },

@@ -14,10 +14,11 @@ export function buildLiveKitTokenGrants(options: {
   roomName: string;
   sessionRole: SessionRole;
   holdsSpeakerFloor: boolean;
+  congregationMuted?: boolean;
 }): LiveKitTokenGrants {
   const roomAdmin = options.sessionRole === 'HOST' || options.sessionRole === 'MODERATOR';
-  const canPublish =
-    (options.sessionRole === 'SPEAKER' && options.holdsSpeakerFloor) || roomAdmin;
+  const congregationMuted = options.congregationMuted !== false;
+  const canPublish = roomAdmin || !congregationMuted;
 
   return {
     roomJoin: true,

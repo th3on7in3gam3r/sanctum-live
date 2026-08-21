@@ -20,7 +20,8 @@ export type RealtimeEventType =
   | 'HAND_DISMISSED'
   | 'SPEAKER_DECLINED'
   | 'ACTIVE_SPEAKER_CHANGED'
-  | 'CHAT_MESSAGE';
+  | 'CHAT_MESSAGE'
+  | 'CONGREGATION_MUTED';
 
 export interface RealtimeEventPayload {
   type: RealtimeEventType;

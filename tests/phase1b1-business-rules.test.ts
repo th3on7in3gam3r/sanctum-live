@@ -6,6 +6,7 @@ import {
   canInviteSpeaker,
   canManageParticipants,
   canManageTeam,
+  canMuteCongregation,
   canPublishAudio,
   canViewPrivatePrayerRequests,
   isInviteableOrgRole,
@@ -82,6 +83,13 @@ describe('permission matrix', () => {
   it('lets Technical Admin manage participants without pastoral privacy access', () => {
     expect(canManageParticipants('TECHNICAL_ADMIN')).toBe(true);
     expect(canInviteSpeaker('TECHNICAL_ADMIN')).toBe(true);
+  });
+
+  it('lets Owner and Admin mute the congregation', () => {
+    expect(canMuteCongregation('OWNER')).toBe(true);
+    expect(canMuteCongregation('ADMIN')).toBe(true);
+    expect(canMuteCongregation('PRAYER_LEADER')).toBe(false);
+    expect(canMuteCongregation('TECHNICAL_ADMIN')).toBe(false);
   });
 
   it('lets Owner and Admin delete prayer rooms', () => {
@@ -176,19 +184,20 @@ describe('listener token grants', () => {
     expect(grants.roomAdmin).toBe(false);
   });
 
-  it('lets Control Room hosts and the speaker on the floor publish; listeners cannot', () => {
+  it('lets Control Room hosts publish during opening prayer; listeners cannot', () => {
     const speaker = buildLiveKitTokenGrants({
       roomName: 'session_1',
       sessionRole: 'SPEAKER',
       holdsSpeakerFloor: true,
+      congregationMuted: true,
     });
-    expect(speaker.canPublish).toBe(true);
-    expect(speaker.canPublishSources).toEqual(['microphone']);
+    expect(speaker.canPublish).toBe(false);
 
     const host = buildLiveKitTokenGrants({
       roomName: 'session_1',
       sessionRole: 'HOST',
       holdsSpeakerFloor: false,
+      congregationMuted: true,
     });
     expect(host.canPublish).toBe(true);
     expect(host.canPublishSources).toEqual(['microphone']);
@@ -198,8 +207,20 @@ describe('listener token grants', () => {
       roomName: 'session_1',
       sessionRole: 'SPEAKER',
       holdsSpeakerFloor: false,
+      congregationMuted: true,
     });
     expect(idleSpeaker.canPublish).toBe(false);
+  });
+
+  it('lets the congregation publish when the room is unmuted for discussion', () => {
+    const listener = buildLiveKitTokenGrants({
+      roomName: 'session_1',
+      sessionRole: 'LISTENER',
+      holdsSpeakerFloor: false,
+      congregationMuted: false,
+    });
+    expect(listener.canPublish).toBe(true);
+    expect(listener.canPublishSources).toEqual(['microphone']);
   });
 });
 

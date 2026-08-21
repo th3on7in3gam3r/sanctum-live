@@ -442,7 +442,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
                       Admin / Pastor Approval Required (Strict Sanctum Standard)
                     </strong>
                     <span className="text-[11px] text-[#68736D] dark:text-[#96A39D]">
-                      Attendees must raise their hand and be invited by a leader before their mic is enabled.
+                      During the gathering, admins can mute everyone except the pastor, apostle, and ministers for opening prayer, then unmute the room for discussion.
                     </span>
                   </div>
                 </label>

@@ -90,6 +90,10 @@ export function canCreatePrayerRoom(role: OrganizationRole): boolean {
   return hasOrgPermission(role, 'room.create');
 }
 
+export function canMuteCongregation(role: OrganizationRole): boolean {
+  return hasOrgPermission(role, 'room.edit');
+}
+
 export function canDeletePrayerRoom(role: OrganizationRole): boolean {
   return hasOrgPermission(role, 'room.delete');
 }

@@ -84,6 +84,7 @@ export function mapServerSession(
     activeSpeakerName: extras?.activeSpeakerName,
     activeSpeakerTitle: extras?.activeSpeakerTitle,
     speakerDurationSeconds: extras?.speakerDurationSeconds ?? 0,
+    congregationMuted: session.congregationMuted !== false,
     createdAt: session.createdAt ? String(session.createdAt) : new Date().toISOString(),
   };
 }

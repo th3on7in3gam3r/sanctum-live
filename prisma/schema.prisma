@@ -204,6 +204,7 @@ model PrayerSession {
   livekitRoomName            String?
   activeSpeakerParticipantId String?
   peakConcurrentParticipants Int           @default(0)
+  congregationMuted          Boolean       @default(true)
   createdAt                  DateTime      @default(now())
   updatedAt                  DateTime      @updatedAt
 

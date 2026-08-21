@@ -28,6 +28,7 @@ import { createSpeakerFloorService } from '../services/createSpeakerFloorService
 import {
   requireCanInviteSpeaker,
   requireCanManageParticipants,
+  requireCanMuteCongregation,
   requireCanStartSession,
   resolveActor,
   sessionRoleForJoin,
@@ -367,6 +368,7 @@ export async function joinSessionHandler(req: Request, res: Response): Promise<v
       name: displayName || participant.realtimeIdentity,
       sessionRole: participant.role,
       holdsSpeakerFloor: session.activeSpeakerParticipantId === participant.id,
+      congregationMuted: session.congregationMuted !== false,
     });
 
     await broadcastSessionEvent(session.livekitRoomName, 'PARTICIPANT_JOINED', {
@@ -742,6 +744,54 @@ export async function removeParticipantHandler(req: Request, res: Response): Pro
     });
 
     res.json({ removed: true, participantId: participant.id });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function setCongregationMuteHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const session = await sessionRepository.requireById(req.params.id);
+    const room = await prayerRoomRepository.findById(session.prayerRoomId);
+    if (!room) throw RoomNotFound(session.prayerRoomId);
+    const actor = await actorFromRequest(req, room.organizationId);
+    requireCanMuteCongregation(actor);
+
+    const congregationMuted = req.body?.muted === true;
+    const updated = await sessionRepository.update(session.id, { congregationMuted });
+    const participants = await participantRepository.listBySession(session.id);
+
+    if (isLiveKitConfigured() && session.livekitRoomName) {
+      const provider = getLiveKitProvider();
+      for (const participant of participants) {
+        if (participant.leftAt) continue;
+        const isMinister = participant.role === 'HOST' || participant.role === 'MODERATOR';
+        const canPublish = isMinister || !congregationMuted;
+        try {
+          await provider.updatePublishPermission(session.livekitRoomName, participant.realtimeIdentity, canPublish);
+          if (congregationMuted && !isMinister) {
+            await provider.muteParticipant(session.livekitRoomName, participant.realtimeIdentity);
+          }
+        } catch {
+          /* Participant may not be connected to LiveKit yet. */
+        }
+      }
+    }
+
+    await auditRepository.write({
+      organizationId: room.organizationId,
+      sessionId: session.id,
+      actorId: actor.userId,
+      action: 'ROOM_UPDATED',
+      targetId: session.id,
+      metadata: { congregationMuted },
+    });
+    await broadcastSessionEvent(session.livekitRoomName, 'CONGREGATION_MUTED', {
+      sessionId: session.id,
+      muted: congregationMuted,
+    });
+
+    res.json({ session: updated });
   } catch (error) {
     sendError(res, error);
   }

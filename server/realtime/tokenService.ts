@@ -10,6 +10,7 @@ export interface MintTokenInput {
   name: string;
   sessionRole: SessionRole;
   holdsSpeakerFloor: boolean;
+  congregationMuted?: boolean;
   ttlSeconds?: number;
 }
 
@@ -22,6 +23,7 @@ export async function mintLiveKitAccessToken(input: MintTokenInput): Promise<str
     roomName: input.roomName,
     sessionRole: input.sessionRole,
     holdsSpeakerFloor: input.holdsSpeakerFloor,
+    congregationMuted: input.congregationMuted,
   });
 
   const token = new AccessToken(env.livekitApiKey!, env.livekitApiSecret!, {

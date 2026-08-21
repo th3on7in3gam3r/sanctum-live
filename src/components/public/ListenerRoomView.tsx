@@ -75,8 +75,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   const liveConnected = connectionState === 'CONNECTED' || connectionState === 'RECONNECTING';
   const localParticipant = participants.find((item) => item.id === localParticipantId);
   const currentRole = localParticipant?.role === 'SPEAKER' ? 'SPEAKER' : 'LISTENER';
-  const isLeader =
-    currentRole === 'SPEAKER' ||
+  const isMinister =
     localParticipant?.role === 'OWNER' ||
     localParticipant?.role === 'ADMIN' ||
     localParticipant?.role === 'PRAYER_LEADER' ||
@@ -85,11 +84,22 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     user?.role === 'ADMIN' ||
     user?.role === 'PRAYER_LEADER' ||
     user?.role === 'TECHNICAL_ADMIN';
-  const showLiveMic = currentRole === 'SPEAKER' || micOn;
+  const congregationMuted = liveSession?.congregationMuted !== false;
+  const canDiscuss = !congregationMuted && !isMinister;
+  const canUseMic = isMinister || canDiscuss;
+  const showLiveMic = micOn && canUseMic;
   const prayerHasStarted = liveSession?.status === 'LIVE' || liveSession?.status === 'STARTING';
   const participantCount = liveConnected || localParticipantId ? connectedNow : undefined;
   const activeSpeaker = liveSession?.activeSpeakerName || 'Waiting for the next prayer leader.';
   const activeSpeakerTitle = liveSession?.activeSpeakerTitle || 'No speaker is live yet';
+
+  useEffect(() => {
+    if (congregationMuted && !isMinister && micOn) {
+      void livekitRealtimeProvider.disableMicrophone();
+      setMicOn(false);
+      setSelfMuted(true);
+    }
+  }, [congregationMuted, isMinister, micOn]);
 
   const handleToggleRaiseHand = async () => {
     if (!localParticipantId) return;
@@ -129,7 +139,12 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     } catch {
       setMicOn(false);
       setSelfMuted(true);
-      addToast('Allow microphone access in the browser to lead in prayer.', 'error');
+      addToast(
+        isMinister
+          ? 'Allow microphone access in the browser to lead in prayer.'
+          : 'Allow microphone access in the browser to join the discussion.',
+        'error'
+      );
     }
   };
 
@@ -219,15 +234,15 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
               </h1>
             </div>
             <p className="text-xs text-[#68736D] dark:text-[#96A39D]">
-              {isLeader
+              {isMinister
                 ? showLiveMic
                   ? <>You are leading: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span></>
-                  : 'You are the prayer leader. Turn on your microphone to speak.'
-                : liveSession?.status === 'WAITING'
-                  ? 'The Sanctuary is Open. Prayer will begin shortly.'
-                  : prayerHasStarted
-                    ? <>Praying with: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span> (Listener — mic off until invited)</>
-                    : 'Prayer has not started'}
+                  : 'You are a minister. Turn on your microphone to speak.'
+                : congregationMuted
+                  ? 'Opening prayer — the congregation is muted. You will hear the pastor and ministers.'
+                  : showLiveMic
+                    ? 'Discussion is open. Your microphone is on.'
+                    : 'Discussion is open. You may turn on your microphone.'}
             </p>
           </div>
 
@@ -272,15 +287,17 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
         ) : (
           <div className="space-y-3">
             <AudioVisualizerPlaceholder
-              speakerName={isLeader ? 'Your turn to lead' : activeSpeaker}
+              speakerName={isMinister ? 'Your turn to lead' : activeSpeaker}
               speakerTitle={
-                isLeader
+                isMinister
                   ? 'Turn on your microphone. The congregation is waiting to hear you.'
-                  : activeSpeakerTitle
+                  : congregationMuted
+                    ? 'The congregation is muted for opening prayer.'
+                    : 'Discussion is open. Turn on your microphone to join.'
               }
               isLive={prayerHasStarted}
             />
-            {isLeader ? (
+            {isMinister ? (
               <button
                 type="button"
                 onClick={() => void handleToggleLeadMic()}
@@ -288,6 +305,15 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
               >
                 <Mic className="w-5 h-5" />
                 <span>Turn on microphone to lead</span>
+              </button>
+            ) : canDiscuss ? (
+              <button
+                type="button"
+                onClick={() => void handleToggleLeadMic()}
+                className="w-full py-4 px-6 rounded-2xl font-bold text-base bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Mic className="w-5 h-5" />
+                <span>Turn on microphone to join discussion</span>
               </button>
             ) : null}
           </div>

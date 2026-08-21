@@ -146,6 +146,7 @@ export interface PrayerSession {
   activeSpeakerName?: string;
   activeSpeakerTitle?: string;
   speakerDurationSeconds?: number;
+  congregationMuted?: boolean;
   totalPrayerRequests?: number;
   totalRaisedHands?: number;
   totalSpeakerInvitations?: number;

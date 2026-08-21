@@ -141,6 +141,11 @@ export const sanctumApi = {
       method: 'POST',
       body: JSON.stringify({}),
     }, staff(actor)),
+  setCongregationMute: (sessionId: string, muted: boolean, actor: Actor) =>
+    apiFetch<{ session: Record<string, unknown> }>(`/api/sessions/${sessionId}/congregation-mute`, {
+      method: 'POST',
+      body: JSON.stringify({ muted }),
+    }, staff(actor)),
   joinSession: (
     sessionId: string,
     input: { guestName?: string; userId?: string; role?: string },
