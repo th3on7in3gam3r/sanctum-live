@@ -1,5 +1,5 @@
 import React from 'react';
-import { Mic, MicOff, VolumeX } from 'lucide-react';
+import { Mic, MicOff, VolumeX, Volume2 } from 'lucide-react';
 import type { Participant, Role } from '../../types';
 
 const MINISTER_ROLES: Role[] = ['OWNER', 'ADMIN', 'PRAYER_LEADER', 'TECHNICAL_ADMIN'];
@@ -49,18 +49,32 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
             Congregation ({congregation.length})
           </h3>
           <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
-            Names from the join link. Pick a person and mute them if they forget.
+            {discussionOpen
+              ? 'Discussion is open. Mute someone if their mic stays on. Allow to speak lets them unmute on their phone.'
+              : 'Congregation is muted for opening prayer. Mute still works if someone has a mic on.'}
           </p>
         </div>
-        <span
-          className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-            unmutedCount > 0
-              ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
-              : 'bg-black/5 dark:bg-white/5 text-[#68736D] dark:text-[#96A39D]'
-          }`}
-        >
-          {unmutedCount} unmuted
-        </span>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <span
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+              discussionOpen
+                ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                : 'bg-[#B94A48]/10 text-[#B94A48]'
+            }`}
+          >
+            {discussionOpen ? <Mic className="w-3 h-3" /> : <MicOff className="w-3 h-3" />}
+            {discussionOpen ? 'Mics allowed' : 'Mics locked'}
+          </span>
+          <span
+            className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+              unmutedCount > 0
+                ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                : 'bg-black/5 dark:bg-white/5 text-[#68736D] dark:text-[#96A39D]'
+            }`}
+          >
+            {unmutedCount} live now
+          </span>
+        </div>
       </div>
 
       <div className="max-h-72 overflow-y-auto pr-1 space-y-1.5">
@@ -95,13 +109,13 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
                   }`}
                 >
                   {person.micOn ? <Mic className="w-3 h-3" /> : <MicOff className="w-3 h-3" />}
-                  {person.micOn ? 'Microphone on' : 'Muted'}
+                  {person.micOn ? 'Microphone on' : 'Mic off'}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
-              {canMute && (
+              {canMute && person.micOn && (
                 <button
                   type="button"
                   onClick={() => onMute(person.id)}
@@ -116,9 +130,11 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
                 <button
                   type="button"
                   onClick={() => onUnmute(person.id)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-[#E5E6E1] dark:border-[#26362F] text-[#203C32] dark:text-[#E8D8B2] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                  title="Allows this person to turn on their microphone. They must tap Unmute on their phone."
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
                 >
-                  Unmute
+                  <Volume2 className="w-3.5 h-3.5" />
+                  Allow to speak
                 </button>
               )}
             </div>

@@ -30,6 +30,7 @@ import {
   MessageCircle,
   VolumeX,
   CircleHelp,
+  Volume2,
 } from 'lucide-react';
 import { Role } from '../types';
 import { canMuteCongregation, canModerate, hasPermission } from '../lib/permissions';
@@ -309,7 +310,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
               {hostMicOn
                 ? 'You are live. The congregation can hear you.'
-                : 'Turn this on to lead in prayer. The browser will ask for microphone permission the first time.'}
+                : 'This is how you speak as the pastor. Tap Turn on microphone — Unmute for discussion only unlocks the congregation.'}
             </p>
           </div>
           <button
@@ -330,7 +331,11 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
 
       {(resolution.status === 'WAITING' || isLive) && canControlCongregation && (
         <div
-          className="bg-white dark:bg-[#17221D] p-4 sm:p-5 rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+          className={`p-4 sm:p-5 rounded-3xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+            congregationMuted
+              ? 'bg-white dark:bg-[#17221D] border-[#E5E6E1] dark:border-[#26362F]'
+              : 'bg-emerald-500/10 border-emerald-500/40 dark:bg-emerald-500/10 dark:border-emerald-400/30'
+          }`}
           data-tour="control-congregation-mute"
         >
           <div>
@@ -338,14 +343,14 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               {congregationMuted ? (
                 <VolumeX className="w-4 h-4 text-[#B94A48]" />
               ) : (
-                <Users className="w-4 h-4 text-emerald-600" />
+                <Volume2 className="w-4 h-4 text-emerald-600" />
               )}
-              {congregationMuted ? 'Congregation muted' : 'Discussion open'}
+              {congregationMuted ? 'Congregation muted' : 'Discussion open — mics allowed'}
             </p>
             <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
               {congregationMuted
-                ? 'Only the pastor, apostle, and ministers can speak during opening prayer.'
-                : 'The room is unmuted. Congregants may turn on their microphones for discussion.'}
+                ? 'Only you and other ministers can speak. Congregants hear you but stay muted.'
+                : 'Congregants may tap Unmute microphone on their phones. Your voice still uses Host microphone above.'}
             </p>
           </div>
           <button
@@ -355,7 +360,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                 confirmAction({
                   title: 'Unmute the room for discussion?',
                   description:
-                    'Congregants will be able to turn on their microphones. Use this after opening prayer.',
+                    'Congregants will be able to turn on their microphones on their own devices. This does not turn on your host microphone.',
                   confirmText: 'Unmute for discussion',
                   cancelText: 'Keep muted',
                   onConfirm: () => void setCongregationMuted(false),
@@ -378,7 +383,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                 : 'bg-[#B94A48] hover:bg-red-700 text-white'
             }`}
           >
-            {congregationMuted ? <Users className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            {congregationMuted ? <Mic className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
             <span>{congregationMuted ? 'Unmute for discussion' : 'Mute congregation'}</span>
           </button>
         </div>

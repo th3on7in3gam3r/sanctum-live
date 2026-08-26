@@ -105,6 +105,18 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     }
   }, [congregationMuted, isMinister, micOn]);
 
+  const prevCongregationMuted = React.useRef(congregationMuted);
+  useEffect(() => {
+    const wasMuted = prevCongregationMuted.current;
+    prevCongregationMuted.current = congregationMuted;
+    if (wasMuted && !congregationMuted && !isMinister) {
+      addToast('Discussion is open. Tap Unmute microphone to speak.', 'success');
+    }
+    if (!wasMuted && congregationMuted && !isMinister) {
+      addToast('Opening prayer — congregation microphones are muted again.', 'info');
+    }
+  }, [congregationMuted, isMinister, addToast]);
+
   useEffect(() => {
     return livekitRealtimeProvider.subscribe((event) => {
       if (event.type !== 'PARTICIPANT_MUTED') return;
@@ -279,6 +291,18 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
                     ? 'Discussion is open. Your microphone is on.'
                     : 'Discussion is open. You may turn on your microphone.'}
             </p>
+            {!isMinister && (
+              <p
+                className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  congregationMuted
+                    ? 'bg-[#B94A48]/10 text-[#B94A48]'
+                    : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                }`}
+              >
+                {congregationMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+                {congregationMuted ? 'Mics locked' : 'Mics allowed'}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center justify-center sm:justify-end gap-3 flex-wrap">
@@ -325,9 +349,17 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
         {!canUseMic && (
           <div
             data-tour="listener-mic-locked"
-            className="w-full py-3 px-4 rounded-2xl text-center text-xs font-medium text-[#68736D] dark:text-[#96A39D] border border-dashed border-[#E5E6E1] dark:border-[#26362F] bg-white/40 dark:bg-[#17221D]/40"
+            className="w-full py-3 px-4 rounded-2xl text-center text-xs font-medium text-[#68736D] dark:text-[#96A39D] border border-dashed border-[#E5E6E1] dark:border-[#26362F] bg-white/40 dark:bg-[#17221D]/40 flex items-center justify-center gap-2"
           >
+            <MicOff className="w-4 h-4 text-[#B94A48] shrink-0" />
             Your microphone stays off until the pastor opens discussion.
+          </div>
+        )}
+
+        {canUseMic && !isMinister && !showLiveMic && (
+          <div className="w-full py-2.5 px-4 rounded-2xl text-center text-xs font-semibold text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center gap-2">
+            <Mic className="w-4 h-4 shrink-0" />
+            Discussion is open — tap Unmute microphone above to speak.
           </div>
         )}
 

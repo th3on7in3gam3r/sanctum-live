@@ -672,7 +672,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addToast(
         muted
           ? 'Congregation muted. Only the pastor and ministers can speak.'
-          : 'Room unmuted for discussion. Congregants may turn on their microphones.',
+          : 'Discussion open — congregants can unmute on their phones. Use Turn on microphone above to speak as the host.',
         'info'
       );
     } catch (error) {
@@ -937,7 +937,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setParticipants((prev) =>
       prev.map((p) => (p.id === participantId ? { ...p, isMuted: false } : p))
     );
-    addToast(`Unmuted ${target?.displayName || 'speaker'}`, 'success');
+    addToast(
+      `Allowed ${target?.displayName || 'this person'} to speak. Ask them to tap Unmute microphone on their phone.`,
+      'success'
+    );
   };
 
   const endSpeaker = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
