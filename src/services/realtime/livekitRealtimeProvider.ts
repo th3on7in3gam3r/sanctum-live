@@ -108,6 +108,7 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
   }
 
   async leaveRoom(_sessionId: string, _participantId: string): Promise<void> {
+    this.teardownMicAnalyser();
     this.audioElements.forEach((el) => {
       el.srcObject = null;
       el.remove();
@@ -140,6 +141,77 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
       collect(participant.identity, participant.getTrackPublication(Track.Source.Microphone));
     });
     return states;
+  }
+
+  /**
+   * Local mic health for UI: whether this browser tab is publishing,
+   * and a 0–1 input level so you can see which tab is “live”.
+   */
+  getLocalMicStatus(): { publishing: boolean; muted: boolean; level: number; connected: boolean } {
+    if (!this.room || this.connectionState !== 'CONNECTED') {
+      return { publishing: false, muted: true, level: 0, connected: false };
+    }
+    const publication = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
+    const mediaTrack = publication?.track?.mediaStreamTrack;
+    const publishing = Boolean(publication?.track);
+    const muted = !publishing || Boolean(publication?.isMuted) || Boolean(mediaTrack?.muted);
+    let level = 0;
+    if (publishing && !muted && mediaTrack) {
+      level = this.sampleMicLevel(mediaTrack);
+    }
+    return { publishing, muted, level, connected: true };
+  }
+
+  private micAnalyser: {
+    trackId: string;
+    context: AudioContext;
+    analyser: AnalyserNode;
+    source: MediaStreamAudioSourceNode;
+    data: Uint8Array;
+  } | null = null;
+
+  private sampleMicLevel(track: MediaStreamTrack): number {
+    try {
+      if (!this.micAnalyser || this.micAnalyser.trackId !== track.id) {
+        this.teardownMicAnalyser();
+        const context = new AudioContext();
+        const source = context.createMediaStreamSource(new MediaStream([track]));
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.7;
+        source.connect(analyser);
+        this.micAnalyser = {
+          trackId: track.id,
+          context,
+          analyser,
+          source,
+          data: new Uint8Array(analyser.frequencyBinCount),
+        };
+        void context.resume();
+      }
+      const { analyser, data } = this.micAnalyser;
+      analyser.getByteTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 1) {
+        const v = (data[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / data.length);
+      return Math.min(1, rms * 4);
+    } catch {
+      return 0;
+    }
+  }
+
+  private teardownMicAnalyser(): void {
+    if (!this.micAnalyser) return;
+    try {
+      this.micAnalyser.source.disconnect();
+      void this.micAnalyser.context.close();
+    } catch {
+      /* already closed */
+    }
+    this.micAnalyser = null;
   }
 
   private emitMicStateChanged(): void {

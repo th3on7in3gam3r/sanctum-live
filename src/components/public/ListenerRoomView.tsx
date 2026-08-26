@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff, CircleHelp } from 'lucide-react';
 import { DevelopmentPreviewBadge } from '../common/DevelopmentPreviewBadge';
 import { RealtimeEngineStatus } from '../common/RealtimeEngineStatus';
+import { LocalMicStatus } from '../common/LocalMicStatus';
 import { livekitRealtimeProvider } from '../../services/realtime/livekitRealtimeProvider';
 import { connectionStateToQuality } from '../../services/domain/sessionSnapshot';
 import { useTour } from '../../hooks/useTour';
@@ -96,6 +97,21 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   const participantCount = liveConnected || localParticipantId ? connectedNow : undefined;
   const activeSpeaker = liveSession?.activeSpeakerName || 'Waiting for the next prayer leader.';
   const activeSpeakerTitle = liveSession?.activeSpeakerTitle || 'No speaker is live yet';
+
+  useEffect(() => {
+    const syncLocalMic = () => {
+      const status = livekitRealtimeProvider.getLocalMicStatus();
+      setMicOn(status.publishing && !status.muted);
+      setSelfMuted(!status.publishing || status.muted);
+    };
+    syncLocalMic();
+    const unsubscribe = livekitRealtimeProvider.subscribe(syncLocalMic);
+    const timer = window.setInterval(syncLocalMic, 1000);
+    return () => {
+      unsubscribe();
+      window.clearInterval(timer);
+    };
+  }, [liveConnected]);
 
   useEffect(() => {
     if (congregationMuted && !isMinister && micOn) {
@@ -204,6 +220,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <LocalMicStatus locked={!canUseMic} compact />
           <ConnectionStatus
             status={connectionStateToQuality(connectionState)}
             showLabel={false}
@@ -300,9 +317,12 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
                 }`}
               >
                 {congregationMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-                {congregationMuted ? 'Mics locked' : 'Mics allowed'}
+                {congregationMuted ? 'Room mics locked' : 'Room mics allowed'}
               </p>
             )}
+            <div className="mt-2">
+              <LocalMicStatus locked={!canUseMic} />
+            </div>
           </div>
 
           <div className="flex items-center justify-center sm:justify-end gap-3 flex-wrap">

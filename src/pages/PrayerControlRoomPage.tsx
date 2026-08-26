@@ -13,6 +13,7 @@ import { BackButton } from '../components/common/BackButton';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';
 import { DevelopmentPreviewBadge } from '../components/common/DevelopmentPreviewBadge';
 import { RealtimeEngineStatus } from '../components/common/RealtimeEngineStatus';
+import { LocalMicStatus } from '../components/common/LocalMicStatus';
 import { TestPrayerRoomModal } from '../components/dashboard/TestPrayerRoomModal';
 import { PrePrayerCheckModal } from '../components/dashboard/PrePrayerCheckModal';
 import { PrayerChatPanel } from '../components/public/PrayerChatPanel';
@@ -119,10 +120,17 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   }, [room?.id, liveSession?.id, resolution.status]);
 
   useEffect(() => {
-    const syncMics = () => setMicOnByIdentity(livekitRealtimeProvider.getMicStates());
+    const syncMics = () => {
+      const states = livekitRealtimeProvider.getMicStates();
+      setMicOnByIdentity(states);
+      const identity = livekitRealtimeProvider.getIdentity();
+      if (identity) {
+        setHostMicOn(Boolean(states[identity]));
+      }
+    };
     syncMics();
     const unsubscribe = livekitRealtimeProvider.subscribe(syncMics);
-    const timer = window.setInterval(syncMics, 2000);
+    const timer = window.setInterval(syncMics, 1000);
     return () => {
       unsubscribe();
       window.clearInterval(timer);
@@ -312,6 +320,9 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                 ? 'You are live. The congregation can hear you.'
                 : 'This is how you speak as the pastor. Tap Turn on microphone — Unmute for discussion only unlocks the congregation.'}
             </p>
+            <div className="mt-2">
+              <LocalMicStatus />
+            </div>
           </div>
           <button
             type="button"

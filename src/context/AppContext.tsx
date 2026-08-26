@@ -389,6 +389,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     [prayerRooms]
   );
 
+  // Keep congregation mute / roster in sync across Control Room + join tabs.
+  useEffect(() => {
+    const sessionId = liveSession && isServerSessionId(liveSession.id) ? liveSession.id : null;
+    if (!sessionId) return;
+    if (liveSession.status !== 'LIVE' && liveSession.status !== 'WAITING' && liveSession.status !== 'STARTING') {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void applySnapshot(sessionId);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [liveSession?.id, liveSession?.status, applySnapshot]);
+
   const connectLiveKit = useCallback(
     async (params: {
       sessionId: string;
