@@ -3,6 +3,7 @@ import {
   Room,
   RoomEvent,
   Track,
+  type RemoteParticipant,
   type RemoteTrack,
 } from 'livekit-client';
 import type { ConnectionQuality, ConnectionState, Role } from '../../types';
@@ -77,6 +78,7 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     await this.room.connect(params.livekitUrl, params.token, { autoSubscribe: true });
     this.connectedCount = this.room.remoteParticipants.size + 1;
     await this.tryStartAudio();
+    this.attachExistingRemoteAudio();
 
     return {
       sessionId: this.sessionId,
@@ -295,6 +297,7 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
         return;
       }
       this.attachAudio(track, participant.identity);
+      void this.tryStartAudio();
     });
 
     room.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
@@ -303,8 +306,9 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
       }
     });
 
-    room.on(RoomEvent.ParticipantConnected, () => {
+    room.on(RoomEvent.ParticipantConnected, (participant) => {
       this.connectedCount = room.remoteParticipants.size + 1;
+      this.attachParticipantAudio(participant);
       this.emit({
         type: 'PARTICIPANT_JOINED',
         sessionId: this.sessionId,
@@ -358,16 +362,43 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     room.on(RoomEvent.LocalTrackUnpublished, onMicChanged);
   }
 
+  private attachExistingRemoteAudio(): void {
+    if (!this.room) return;
+    this.room.remoteParticipants.forEach((participant) => {
+      this.attachParticipantAudio(participant);
+    });
+  }
+
+  private attachParticipantAudio(participant: RemoteParticipant): void {
+    const mic = participant.getTrackPublication(Track.Source.Microphone);
+    if (mic?.track && mic.isSubscribed && mic.track.kind === Track.Kind.Audio) {
+      this.attachAudio(mic.track, participant.identity);
+      return;
+    }
+    participant.trackPublications.forEach((publication) => {
+      if (publication.kind !== Track.Kind.Audio || !publication.track || !publication.isSubscribed) return;
+      this.attachAudio(publication.track, participant.identity);
+    });
+  }
+
   private attachAudio(track: RemoteTrack, identity: string): void {
     this.detachAudio(identity);
     const el = track.attach();
     el.autoplay = true;
     el.setAttribute('playsinline', 'true');
+    el.volume = 1;
+    el.muted = false;
     el.style.display = 'none';
     document.body.appendChild(el);
     this.audioElements.set(identity, el);
     void el.play().catch(() => {
       this.audioBlocked = true;
+      this.emit({
+        type: 'CONNECTED',
+        sessionId: this.sessionId,
+        timestamp: new Date().toISOString(),
+        metadata: { connectionState: this.connectionState, audioBlocked: true },
+      });
     });
   }
 

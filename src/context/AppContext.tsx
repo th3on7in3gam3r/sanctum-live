@@ -408,11 +408,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       guestName: string;
       asGuest: boolean;
       roomSlug: string;
+      connectionKind?: 'listener' | 'control';
     }) => {
       const join = await sessionApiAdapter.join(
         params.sessionId,
         params.guestName,
-        params.asGuest ? undefined : actor
+        params.asGuest ? undefined : actor,
+        {
+          asGuest: params.asGuest,
+          connectionKind: params.connectionKind || 'listener',
+        }
       );
       if (!join.ok || !join.token || !join.livekitUrl || !join.participant) {
         throw new Error(join.reason || 'LiveKit connection unavailable in this environment.');
@@ -712,6 +717,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         guestName: user?.name || 'Prayer Leader',
         asGuest: false,
         roomSlug: room.slug,
+        connectionKind: 'control',
       });
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Control Room could not connect to prayer audio.', 'warning');
@@ -1071,6 +1077,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       guestName: name.trim(),
       asGuest: !asStaff,
       roomSlug,
+      connectionKind: 'listener',
     });
 
     addToast({
@@ -1126,12 +1133,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     try {
-      if (actor.userId) {
+      if (actor.userId && !stored.asGuest) {
         await connectLiveKit({
           sessionId: stored.sessionId,
           guestName: stored.guestName || user?.name || 'Prayer Leader',
           asGuest: false,
           roomSlug: stored.sessionId,
+          connectionKind: stored.realtimeIdentity?.endsWith('_control') ? 'control' : 'listener',
+        });
+      } else if (actor.userId && stored.asGuest) {
+        await connectLiveKit({
+          sessionId: stored.sessionId,
+          guestName: stored.guestName || 'Listener',
+          asGuest: true,
+          roomSlug: stored.sessionId,
+          connectionKind: 'listener',
         });
       } else {
         await livekitRealtimeProvider.joinRoom({

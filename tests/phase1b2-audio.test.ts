@@ -197,6 +197,11 @@ describe('guest identity', () => {
     expect(resolveJoinRealtimeIdentity(null, 'guest_injected')).toMatch(/^guest_/);
     expect(resolveJoinRealtimeIdentity('user_pastor_kenneth', 'admin')).toBe('user_user_pastor_kenneth');
   });
+
+  it('uses a distinct Control Room identity so join and control can both stay connected', () => {
+    expect(resolveJoinRealtimeIdentity('clerk_abc', undefined, 'listener')).toBe('user_clerk_abc');
+    expect(resolveJoinRealtimeIdentity('clerk_abc', undefined, 'control')).toBe('user_clerk_abc_control');
+  });
 });
 
 describe('ensureLiveKitRoom', () => {

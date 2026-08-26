@@ -21,16 +21,23 @@ export const sessionApiAdapter = {
   async join(
     sessionId: string | undefined,
     guestName: string,
-    actor?: { userId?: string; organizationId?: string }
+    actor?: { userId?: string; organizationId?: string },
+    options?: { asGuest?: boolean; connectionKind?: 'listener' | 'control' }
   ) {
     if (!isServerSessionId(sessionId)) {
       return { ok: false as const, reason: UNCONFIGURED, participant: null, token: null, livekitUrl: null };
     }
     try {
+      const asGuest = options?.asGuest === true || !actor?.userId;
       const result = await sanctumApi.joinSession(
         sessionId,
-        { guestName, userId: actor?.userId },
-        actor
+        {
+          guestName,
+          userId: asGuest ? undefined : actor?.userId,
+          asGuest,
+          connectionKind: options?.connectionKind || 'listener',
+        },
+        asGuest ? undefined : actor
       );
       return {
         ok: true as const,

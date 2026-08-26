@@ -153,7 +153,13 @@ export const sanctumApi = {
     }, staff(actor)),
   joinSession: (
     sessionId: string,
-    input: { guestName?: string; userId?: string; role?: string },
+    input: {
+      guestName?: string;
+      userId?: string;
+      role?: string;
+      asGuest?: boolean;
+      connectionKind?: 'listener' | 'control';
+    },
     actor?: Actor
   ) =>
     apiFetch<{
@@ -170,9 +176,12 @@ export const sanctumApi = {
       `/api/sessions/${sessionId}/join`,
       {
         method: 'POST',
-        body: JSON.stringify({ ...input, asGuest: !actor?.userId }),
+        body: JSON.stringify({
+          ...input,
+          asGuest: input.asGuest === true || !actor?.userId,
+        }),
       },
-      actor?.userId ? staff(actor) : undefined
+      actor?.userId && input.asGuest !== true ? staff(actor) : undefined
     ),
   raiseHand: (sessionId: string, participantId: string) =>
     apiFetch(`/api/sessions/${sessionId}/raise-hand`, {

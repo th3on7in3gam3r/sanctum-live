@@ -331,10 +331,14 @@ export async function joinSessionHandler(req: Request, res: Response): Promise<v
       ? { userId: null, organizationId: room.organizationId, orgRole: null }
       : await actorFromRequest(req, room.organizationId);
 
+    const connectionKind =
+      req.body?.connectionKind === 'control' && !asGuest && actor.userId ? 'control' : 'listener';
+
     const sessionRole = sessionRoleForJoin(actor.orgRole, req.body?.role);
     const realtimeIdentity = resolveJoinRealtimeIdentity(
       actor.userId,
-      typeof req.body?.realtimeIdentity === 'string' ? req.body.realtimeIdentity : undefined
+      typeof req.body?.realtimeIdentity === 'string' ? req.body.realtimeIdentity : undefined,
+      connectionKind
     );
 
     if (!actor.userId && !guestName) {
