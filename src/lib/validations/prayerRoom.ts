@@ -4,6 +4,11 @@ export const createPrayerRoomSchema = z.object({
   name: z.string().min(3, 'Prayer name must be at least 3 characters').max(80, 'Prayer name cannot exceed 80 characters'),
   slug: z.string().min(2, 'Slug must be at least 2 characters').regex(/^[a-z0-9-]+$/, 'Slug can only contain lowercase letters, numbers, and hyphens'),
   description: z.string().max(400, 'Description cannot exceed 400 characters').optional(),
+  logoUrl: z
+    .string()
+    .url('Logo must be a valid http or https image URL')
+    .optional()
+    .or(z.literal('')),
   roomType: z.enum(['AUDIO_PRAYER', 'PRAYER_LEADER_VIDEO', 'EVENT', 'LEADER_VIDEO']).default('AUDIO_PRAYER'),
   expectedAttendance: z.number().min(1, 'Expected attendance must be at least 1').max(50000, 'Maximum 50,000 for single room'),
   scheduledStart: z.string().min(1, 'Please select a gathering start time'),

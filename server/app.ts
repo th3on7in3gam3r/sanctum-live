@@ -4,7 +4,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { healthHandler } from './routes/health.ts';
-import { createPrayerRoomHandler, deletePrayerRoomHandler, listPrayerRoomsHandler } from './routes/prayerRooms.ts';
+import { createPrayerRoomHandler, deletePrayerRoomHandler, listPrayerRoomsHandler, updatePrayerRoomHandler } from './routes/prayerRooms.ts';
 import {
   acceptSpeakerHandler,
   createPrayerSessionHandler,
@@ -61,6 +61,7 @@ export function createApp() {
   app.post('/api/team/invite', inviteTeamMemberHandler);
   app.get('/api/prayer-rooms', listPrayerRoomsHandler);
   app.post('/api/prayer-rooms', createPrayerRoomHandler);
+  app.patch('/api/prayer-rooms/:roomId', updatePrayerRoomHandler);
   app.delete('/api/prayer-rooms/:roomId', deletePrayerRoomHandler);
   app.get('/api/altar/live', listLiveAltarsHandler);
   app.get('/api/altar/:slug', getAltarBySlugHandler);

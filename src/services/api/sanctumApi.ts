@@ -122,6 +122,11 @@ export const sanctumApi = {
       method: 'POST',
       body: JSON.stringify(input),
     }, staff(actor)),
+  updatePrayerRoom: (roomId: string, input: Record<string, unknown>, actor: Actor) =>
+    apiFetch<{ room: Record<string, unknown> }>(`/api/prayer-rooms/${encodeURIComponent(roomId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }, staff(actor)),
   deletePrayerRoom: (roomId: string, actor: Actor) =>
     apiFetch<{ ok: true }>(`/api/prayer-rooms/${encodeURIComponent(roomId)}`, {
       method: 'DELETE',
@@ -244,6 +249,8 @@ export const sanctumApi = {
         slug: string;
         organizationId?: string;
         organizationName?: string;
+        organizationLogoUrl?: string;
+        logoUrl?: string;
         scheduledStart?: string;
         timezone?: string;
       };

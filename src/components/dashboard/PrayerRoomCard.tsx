@@ -83,22 +83,33 @@ export const PrayerRoomCard: React.FC<PrayerRoomCardProps> = ({
         </div>
 
         {/* Room Title & Description */}
-        <h3 className="text-xl font-bold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
-          {onOpenDetails ? (
-            <button
-              type="button"
-              onClick={() => onOpenDetails(room.id)}
-              className="text-left hover:underline cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#203C32] dark:focus-visible:ring-[#C9A35A] rounded"
-            >
-              {room.name}
-            </button>
-          ) : (
-            room.name
-          )}
-        </h3>
-        <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-1 line-clamp-2 leading-relaxed">
-          {room.description || 'Corporate gathering for intercession, praise, and prayer.'}
-        </p>
+        <div className="flex items-start gap-3">
+          {room.logoUrl ? (
+            <img
+              src={room.logoUrl}
+              alt=""
+              className="w-11 h-11 rounded-xl object-cover border border-[#E5E6E1] dark:border-[#26362F] shrink-0 bg-[#F8F7F3] dark:bg-[#101814]"
+            />
+          ) : null}
+          <div className="min-w-0">
+            <h3 className="text-xl font-bold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
+              {onOpenDetails ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenDetails(room.id)}
+                  className="text-left hover:underline cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#203C32] dark:focus-visible:ring-[#C9A35A] rounded"
+                >
+                  {room.name}
+                </button>
+              ) : (
+                room.name
+              )}
+            </h3>
+            <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-1 line-clamp-2 leading-relaxed">
+              {room.description || 'Corporate gathering for intercession, praise, and prayer.'}
+            </p>
+          </div>
+        </div>
 
         {/* Schedule & Attendance Info */}
         <div className="mt-4 pt-4 border-t border-[#E5E6E1] dark:border-[#26362F] space-y-2 text-xs text-[#68736D] dark:text-[#96A39D]">

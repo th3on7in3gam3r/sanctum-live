@@ -106,6 +106,8 @@ export interface PrayerRoom {
   name: string;
   slug: string;
   description?: string;
+  /** Optional logo for this room only (public https image URL). */
+  logoUrl?: string;
   roomType: RoomType;
   expectedAttendance: number;
   speakerPermission: SpeakerPermissionMode;

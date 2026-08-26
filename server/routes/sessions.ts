@@ -301,6 +301,8 @@ export async function getAltarBySlugHandler(req: Request, res: Response): Promis
         slug: room.slug,
         organizationId: room.organizationId,
         organizationName: room.organization.name,
+        organizationLogoUrl: room.organization.logoUrl || undefined,
+        logoUrl: room.logoUrl || undefined,
         scheduledStart: room.scheduledStart,
         timezone: room.timezone,
       },

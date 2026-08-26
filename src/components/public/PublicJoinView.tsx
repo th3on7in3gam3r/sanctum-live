@@ -22,7 +22,7 @@ interface PublicJoinViewProps {
 
 export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSuccess, onNavigate }) => {
   const { prayerRooms, liveSession, historySessions, dataSaverMode, setDataSaverMode, isDarkMode, toggleDarkMode, joinPrayerRoom, connectedNow } = useApp();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, organization } = useAuth();
 
   const [name, setName] = useState(() => {
     return localStorage.getItem('sanctum_last_attendee_name') || '';
@@ -35,6 +35,8 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
   const [altarRoom, setAltarRoom] = useState<{
     name: string;
     organizationName?: string;
+    organizationLogoUrl?: string;
+    logoUrl?: string;
     scheduledStart?: string;
     timezone?: string;
   } | null>(null);
@@ -71,6 +73,12 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
   const attendeeCount = isLive || isWaiting ? connectedNow || undefined : undefined;
   const displayName = altarRoom?.name || localRoom?.name || 'Prayer Gathering';
   const churchName = altarRoom?.organizationName || '';
+  const roomLogoUrl =
+    altarRoom?.logoUrl ||
+    localRoom?.logoUrl ||
+    altarRoom?.organizationLogoUrl ||
+    organization?.logoUrl ||
+    '';
   const scheduledStart = altarRoom?.scheduledStart || localRoom?.scheduledStart || '05:00 AM';
   const timezone = altarRoom?.timezone || localRoom?.timezone || 'Africa/Kampala';
   const nextStart = useMemo(() => {
@@ -88,6 +96,8 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         setAltarRoom({
           name: result.room?.name || '',
           organizationName: result.room?.organizationName,
+          organizationLogoUrl: result.room?.organizationLogoUrl,
+          logoUrl: result.room?.logoUrl,
           scheduledStart: result.room?.scheduledStart,
           timezone: result.room?.timezone,
         });
@@ -156,6 +166,15 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
       </header>
 
       <main className="w-full max-w-md mx-auto my-auto bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 shadow-xl border border-[#E5E6E1] dark:border-[#26362F] text-center">
+        {roomLogoUrl ? (
+          <div className="mb-4 flex justify-center">
+            <img
+              src={roomLogoUrl}
+              alt=""
+              className="w-16 h-16 rounded-2xl object-cover border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3] dark:bg-[#101814]"
+            />
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center justify-center gap-2.5 mb-5">
           <PrayerSessionStatus status={status === 'NOT_FOUND' ? 'SCHEDULED' : status} size="md" />
           <ParticipantCount

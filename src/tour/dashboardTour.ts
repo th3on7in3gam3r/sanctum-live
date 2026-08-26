@@ -26,7 +26,7 @@ export const dashboardTourSteps: TourStep[] = [
     popover: {
       title: 'Create a prayer room',
       description:
-        'Start here when you need a new gathering. Each room gets its own permanent join link for your congregation.',
+        'Start here when you need a new gathering. You can add a room logo, set the schedule, and get a permanent join link.',
       side: 'bottom',
       align: 'end',
     },
@@ -36,7 +36,7 @@ export const dashboardTourSteps: TourStep[] = [
     popover: {
       title: 'Create your first room',
       description:
-        'You do not have a prayer room yet. Tap Create Prayer Room — it only takes a minute.',
+        'You do not have a prayer room yet. Tap Create Prayer Room — add a name, optional logo, and share the join link.',
       side: 'top',
       align: 'center',
     },

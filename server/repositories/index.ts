@@ -76,7 +76,7 @@ export const prayerRoomRepository = {
     const prisma = requirePrisma();
     return prisma.prayerRoom.findFirst({
       where: { slug },
-      include: { organization: { select: { name: true, slug: true } } },
+      include: { organization: { select: { name: true, slug: true, logoUrl: true } } },
       orderBy: { createdAt: 'asc' },
     });
   },
@@ -101,6 +101,7 @@ export const prayerRoomRepository = {
     name: string;
     slug: string;
     description?: string;
+    logoUrl?: string | null;
     roomType?: string;
     expectedAttendance?: number;
     speakerPermission?: string;
@@ -125,6 +126,7 @@ export const prayerRoomRepository = {
           name: input.name,
           slug: input.slug,
           description: input.description,
+          logoUrl: input.logoUrl || null,
           roomType: (input.roomType as 'AUDIO_PRAYER') ?? 'AUDIO_PRAYER',
           expectedAttendance: input.expectedAttendance ?? 1000,
           speakerPermission: (input.speakerPermission as 'ADMIN_APPROVAL_REQUIRED') ?? 'ADMIN_APPROVAL_REQUIRED',
@@ -140,6 +142,70 @@ export const prayerRoomRepository = {
     } catch (error) {
       const code = typeof error === 'object' && error && 'code' in error ? String((error as { code: string }).code) : '';
       if (code === 'P2002') throw DuplicateSlug(input.slug);
+      throw error;
+    }
+  },
+
+  async update(
+    id: string,
+    organizationId: string,
+    data: {
+      name?: string;
+      slug?: string;
+      description?: string | null;
+      logoUrl?: string | null;
+      roomType?: string;
+      expectedAttendance?: number;
+      speakerPermission?: string;
+      isRecurring?: boolean;
+      recurrenceRule?: string | null;
+      scheduledStart?: string;
+      timezone?: string;
+      recordingEnabled?: boolean;
+      appUrl?: string;
+    }
+  ): Promise<PrayerRoomRecord> {
+    const prisma = requirePrisma();
+    const room = await prisma.prayerRoom.findFirst({ where: { id, organizationId } });
+    if (!room) throw RoomNotFound(id);
+
+    if (data.slug && data.slug !== room.slug) {
+      const clash = await prisma.prayerRoom.findUnique({
+        where: { organizationId_slug: { organizationId, slug: data.slug } },
+      });
+      ensureSlugAvailable(Boolean(clash), data.slug);
+    }
+
+    try {
+      const nextSlug = data.slug !== undefined ? data.slug : room.slug;
+      const permanentUrl =
+        data.slug !== undefined && data.appUrl
+          ? `${data.appUrl.replace(/\/$/, '')}/join/${nextSlug}`
+          : undefined;
+
+      return await prisma.prayerRoom.update({
+        where: { id },
+        data: {
+          ...(data.name !== undefined ? { name: data.name } : {}),
+          ...(data.slug !== undefined ? { slug: data.slug } : {}),
+          ...(permanentUrl ? { permanentUrl } : {}),
+          ...(data.description !== undefined ? { description: data.description } : {}),
+          ...(data.logoUrl !== undefined ? { logoUrl: data.logoUrl } : {}),
+          ...(data.roomType !== undefined ? { roomType: data.roomType as 'AUDIO_PRAYER' } : {}),
+          ...(data.expectedAttendance !== undefined ? { expectedAttendance: data.expectedAttendance } : {}),
+          ...(data.speakerPermission !== undefined
+            ? { speakerPermission: data.speakerPermission as 'ADMIN_APPROVAL_REQUIRED' }
+            : {}),
+          ...(data.isRecurring !== undefined ? { isRecurring: data.isRecurring } : {}),
+          ...(data.recurrenceRule !== undefined ? { recurrenceRule: data.recurrenceRule } : {}),
+          ...(data.scheduledStart !== undefined ? { scheduledStart: data.scheduledStart } : {}),
+          ...(data.timezone !== undefined ? { timezone: data.timezone } : {}),
+          ...(data.recordingEnabled !== undefined ? { recordingEnabled: data.recordingEnabled } : {}),
+        },
+      });
+    } catch (error) {
+      const code = typeof error === 'object' && error && 'code' in error ? String((error as { code: string }).code) : '';
+      if (code === 'P2002') throw DuplicateSlug(data.slug || room.slug);
       throw error;
     }
   },

@@ -63,7 +63,7 @@ export interface AppContextType {
 
   // Prayer Room operations
   createPrayerRoom: (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PrayerRoom>;
-  updatePrayerRoom: (id: string, updates: Partial<PrayerRoom>) => void;
+  updatePrayerRoom: (id: string, updates: Partial<PrayerRoom>) => Promise<PrayerRoom>;
   deletePrayerRoom: (id: string) => Promise<void>;
   setCongregationMuted: (muted: boolean) => Promise<void>;
 
@@ -545,6 +545,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           name: data.name,
           slug: data.slug,
           description: data.description,
+          logoUrl: data.logoUrl || null,
           roomType: data.roomType,
           expectedAttendance: data.expectedAttendance,
           speakerPermission: data.speakerPermission,
@@ -558,8 +559,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
       const roomRow = created.room as Record<string, unknown>;
       const newRoom: PrayerRoom = {
+        ...mapServerPrayerRoom(roomRow),
         ...data,
         id: String(roomRow.id),
+        logoUrl:
+          typeof roomRow.logoUrl === 'string' && roomRow.logoUrl.trim()
+            ? roomRow.logoUrl.trim()
+            : data.logoUrl,
         status: 'SCHEDULED',
         createdAt: roomRow.createdAt ? String(roomRow.createdAt) : new Date().toISOString(),
         updatedAt: roomRow.updatedAt ? String(roomRow.updatedAt) : new Date().toISOString(),
@@ -588,19 +594,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const updatePrayerRoom = (id: string, updates: Partial<PrayerRoom>) => {
+  const updatePrayerRoom = async (id: string, updates: Partial<PrayerRoom>): Promise<PrayerRoom> => {
+    const current = prayerRooms.find((r) => r.id === id);
+    if (!current) {
+      throw new Error('Prayer room not found.');
+    }
     if (updates.slug) {
-      const current = prayerRooms.find((r) => r.id === id);
-      const organizationId = updates.organizationId || current?.organizationId || '';
+      const organizationId = updates.organizationId || current.organizationId || '';
       if (isSlugTaken(prayerRooms, organizationId, updates.slug, id)) {
         throw new Error('This Permanent Altar Link is already in use.');
       }
     }
-    setPrayerRooms((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r))
-    );
-    addToast('Prayer room updated', 'success');
-    AuditLogger.log('ROOM_UPDATED', { targetId: id, note: 'Updated room settings' });
+
+    try {
+      const result = await sanctumApi.updatePrayerRoom(
+        id,
+        {
+          name: updates.name,
+          slug: updates.slug,
+          description: updates.description,
+          logoUrl: updates.logoUrl === undefined ? undefined : updates.logoUrl || null,
+          roomType: updates.roomType,
+          expectedAttendance: updates.expectedAttendance,
+          speakerPermission: updates.speakerPermission,
+          isRecurring: updates.isRecurring,
+          recurrenceRule: updates.recurrenceRule,
+          scheduledStart: updates.scheduledStart,
+          timezone: updates.timezone,
+          recordingEnabled: updates.recordingEnabled,
+        },
+        actor
+      );
+      const mapped = mapServerPrayerRoom(result.room as Record<string, unknown>);
+      setPrayerRooms((prev) => prev.map((r) => (r.id === id ? { ...r, ...mapped } : r)));
+      addToast('Prayer room updated', 'success');
+      AuditLogger.log('ROOM_UPDATED', { targetId: id, note: 'Updated room settings' });
+      return mapped;
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Could not update the prayer room.';
+      addToast(message, 'error');
+      throw new Error(message);
+    }
   };
 
   const deletePrayerRoom = async (id: string) => {

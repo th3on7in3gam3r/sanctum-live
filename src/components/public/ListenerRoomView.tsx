@@ -177,7 +177,15 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex flex-col justify-between p-4 sm:p-6 transition-colors select-none">
       <header className="w-full max-w-3xl mx-auto flex items-center justify-between pb-4 border-b border-[#E5E6E1] dark:border-[#26362F]">
         <div className="flex items-center gap-3">
-          <SanctumLogo size="sm" />
+          {room?.logoUrl || organization.logoUrl ? (
+            <img
+              src={room?.logoUrl || organization.logoUrl}
+              alt=""
+              className="w-9 h-9 rounded-xl object-cover border border-[#E5E6E1] dark:border-[#26362F] bg-white dark:bg-[#17221D]"
+            />
+          ) : (
+            <SanctumLogo size="sm" />
+          )}
           <div className="hidden sm:block text-xs font-semibold text-[#68736D] dark:text-[#96A39D]">
             {organization.name}
           </div>

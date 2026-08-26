@@ -6,8 +6,12 @@ import { createPrayerRoomSchema } from '../lib/validations/prayerRoom';
 import { formatClockTime, parseClockTime } from '../services/sessionScheduler';
 import { BackButton } from '../components/common/BackButton';
 import { Breadcrumbs } from '../components/common/Breadcrumbs';
+import { LogoUrlField, isHttpUrl } from '../components/common/LogoUrlField';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
-import { Save, Radio, Shield, Users, Clock, AlertCircle } from 'lucide-react';
+import { useTour } from '../hooks/useTour';
+import { TOUR_IDS } from '../tour/tourIds';
+import { createRoomTourSteps } from '../tour/createRoomTour';
+import { Save, Radio, Shield, Users, Clock, AlertCircle, CircleHelp } from 'lucide-react';
 
 interface CreatePrayerRoomPageProps {
   onNavigate: (path: string, options?: { ignoreUnsaved?: boolean }) => void;
@@ -26,6 +30,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
   const [name, setName] = useState(existing?.name || '');
   const [slug, setSlug] = useState(existing?.slug || '');
   const [description, setDescription] = useState(existing?.description || '');
+  const [logoUrl, setLogoUrl] = useState(existing?.logoUrl || '');
   const [expectedAttendance, setExpectedAttendance] = useState<number>(existing?.expectedAttendance || 1000);
   const [roomType, setRoomType] = useState<'AUDIO_PRAYER' | 'PRAYER_LEADER_VIDEO' | 'EVENT'>(
     existing?.roomType || 'AUDIO_PRAYER'
@@ -47,6 +52,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
     suggestedAlternative: string;
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { startTour } = useTour(TOUR_IDS.createRoom, createRoomTourSteps, { delayMs: 700 });
 
   // Form dirty state detection
   const isDirty = useMemo(() => {
@@ -55,13 +61,14 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
         name !== existing.name ||
         slug !== existing.slug ||
         description !== (existing.description || '') ||
+        logoUrl !== (existing.logoUrl || '') ||
         expectedAttendance !== existing.expectedAttendance ||
         scheduledStart !== existing.scheduledStart ||
         isRecurring !== existing.isRecurring
       );
     }
-    return Boolean(name.trim() || slug.trim() || description.trim());
-  }, [name, slug, description, expectedAttendance, scheduledStart, isRecurring, existing]);
+    return Boolean(name.trim() || slug.trim() || description.trim() || logoUrl.trim());
+  }, [name, slug, description, logoUrl, expectedAttendance, scheduledStart, isRecurring, existing]);
 
   useUnsavedChanges(isDirty);
 
@@ -126,11 +133,18 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
       return;
     }
 
+    if (logoUrl.trim() && !isHttpUrl(logoUrl.trim())) {
+      setErrors({ logoUrl: 'Logo must be a public http or https image URL.' });
+      addToast('Please review the form errors', 'warning');
+      return;
+    }
+
     const formData = {
       organizationId: organization.id,
       name: name.trim(),
       slug: normalizedSlug,
       description: description.trim(),
+      logoUrl: logoUrl.trim() || undefined,
       expectedAttendance: Number(expectedAttendance),
       roomType,
       isRecurring,
@@ -157,7 +171,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
     setIsSubmitting(true);
     try {
       if (existing) {
-        updatePrayerRoom(existing.id, formData);
+        await updatePrayerRoom(existing.id, formData);
         setHasUnsavedChanges(false);
         onNavigate(`/dashboard/prayer-rooms/${existing.id}`, { ignoreUnsaved: true });
       } else {
@@ -166,7 +180,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
         onNavigate(`/dashboard/prayer-rooms/${created.id}`, { ignoreUnsaved: true });
       }
     } catch {
-      /* createPrayerRoom already surfaces the error */
+      /* create/update already surfaces the error */
     } finally {
       setIsSubmitting(false);
     }
@@ -198,9 +212,20 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
           <Breadcrumbs items={breadcrumbs} onNavigate={onNavigate} />
         </div>
 
-        <span className="text-xs font-bold text-[#C9A35A] uppercase tracking-wider hidden sm:block">
-          {existing ? 'Edit Altar' : 'New Altar Setup'}
-        </span>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <button
+            type="button"
+            onClick={() => startTour()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+            aria-label="Show create room tutorial"
+          >
+            <CircleHelp className="w-3.5 h-3.5" />
+            <span>Help</span>
+          </button>
+          <span className="text-xs font-bold text-[#C9A35A] uppercase tracking-wider hidden sm:block">
+            {existing ? 'Edit Altar' : 'New Altar Setup'}
+          </span>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-10 border border-[#E5E6E1] dark:border-[#26362F] shadow-xs">
@@ -221,7 +246,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
               <span>Room Details</span>
             </h3>
 
-            <div>
+            <div data-tour="create-room-name">
               <label className="block text-xs font-bold uppercase text-[#16251F] dark:text-[#F8F7F3] mb-1.5">
                 Prayer Room Name *
               </label>
@@ -236,7 +261,18 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
               {errors.name && <p className="text-xs text-[#B94A48] mt-1">{errors.name}</p>}
             </div>
 
-            <div>
+            <div data-tour="create-room-logo">
+              <LogoUrlField
+                value={logoUrl}
+                onChange={setLogoUrl}
+                label="Room logo URL"
+                hint="Optional. Shows on this room’s join page. Leave blank to use your church logo."
+                previewAlt="Room logo preview"
+              />
+              {errors.logoUrl && <p className="text-xs text-[#B94A48] mt-1">{errors.logoUrl}</p>}
+            </div>
+
+            <div data-tour="create-room-slug">
               <label className="block text-xs font-bold uppercase text-[#16251F] dark:text-[#F8F7F3] mb-1.5">
                 Permanent Altar Link Slug *
               </label>
@@ -500,6 +536,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
             <button
               type="submit"
               disabled={isSubmitting || Boolean(duplicateSlugWarning?.inUse)}
+              data-tour="create-room-save"
               className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />

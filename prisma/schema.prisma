@@ -168,6 +168,7 @@ model PrayerRoom {
   name               String
   slug               String
   description        String?
+  logoUrl            String?
   roomType           RoomType              @default(AUDIO_PRAYER)
   expectedAttendance Int                   @default(1000)
   speakerPermission  SpeakerPermissionMode @default(ADMIN_APPROVAL_REQUIRED)

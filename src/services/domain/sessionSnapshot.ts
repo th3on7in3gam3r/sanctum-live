@@ -38,6 +38,7 @@ export function mapServerPrayerRoom(row: Record<string, unknown>): PrayerRoom {
     name: String(row.name),
     slug: String(row.slug),
     description: typeof row.description === 'string' ? row.description : undefined,
+    logoUrl: typeof row.logoUrl === 'string' && row.logoUrl.trim() ? row.logoUrl.trim() : undefined,
     roomType: (typeof row.roomType === 'string' ? row.roomType : 'AUDIO_PRAYER') as PrayerRoom['roomType'],
     expectedAttendance: Number(row.expectedAttendance || 0),
     speakerPermission: (typeof row.speakerPermission === 'string'
