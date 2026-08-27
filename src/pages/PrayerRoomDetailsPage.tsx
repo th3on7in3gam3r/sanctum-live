@@ -150,7 +150,7 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
             <span>Test Room</span>
           </button>
           <button
-            onClick={() => onNavigate(`/join/${room.slug}`)}
+            onClick={() => window.open(`/join/${room.slug}`, '_blank', 'noopener,noreferrer')}
             type="button"
             className="px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-[#E5E6E1] dark:border-[#26362F] hover:bg-gray-50 dark:hover:bg-white/5 text-[#16251F] dark:text-[#F8F7F3] flex items-center justify-center gap-1.5 cursor-pointer"
           >

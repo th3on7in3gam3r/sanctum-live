@@ -122,7 +122,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       <div className="pt-4 border-t border-[#E5E6E1] dark:border-[#26362F] space-y-3">
         {/* Quick link to public join preview */}
         <button
-          onClick={() => onNavigate('/join')}
+          type="button"
+          onClick={() => window.open('/join', '_blank', 'noopener,noreferrer')}
           className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-[#203C32] dark:text-[#C9A35A] bg-[#203C32]/8 dark:bg-[#C9A35A]/10 hover:bg-[#203C32]/12 transition-colors cursor-pointer"
         >
           <span>Open Public Join Page</span>

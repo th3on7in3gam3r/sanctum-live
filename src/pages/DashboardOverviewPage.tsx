@@ -93,7 +93,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           room={nextRoom}
           liveSession={liveSession}
           onOpenControlRoom={(roomId) => onNavigate(`/dashboard/prayer-rooms/${roomId}/control`)}
-          onOpenPublicJoin={(slug) => onNavigate(`/join/${slug}`)}
+          onOpenPublicJoin={(slug) => window.open(`/join/${slug}`, '_blank', 'noopener,noreferrer')}
           onEditRoom={(roomId) => onNavigate(`/dashboard/prayer-rooms/${roomId}/edit`)}
           onOpenTestRoom={() => setShowTestRoomModal(true)}
           onOpenPrePrayerCheck={() => setShowPrePrayerModal(true)}

@@ -105,7 +105,11 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
           <div className="pt-4 border-t border-[#E5E6E1] dark:border-[#26362F] space-y-3">
             <button
-              onClick={() => handleNav('/join')}
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                window.open('/join', '_blank', 'noopener,noreferrer');
+              }}
               className="w-full py-3 rounded-2xl text-sm font-bold text-center bg-[#203C32]/10 text-[#203C32] dark:bg-[#C9A35A]/10 dark:text-[#C9A35A]"
             >
               Preview Public Join Link
