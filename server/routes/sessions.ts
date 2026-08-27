@@ -27,6 +27,12 @@ import {
 } from '../repositories/index.ts';
 import { createSpeakerFloorService } from '../services/createSpeakerFloorService.ts';
 import {
+  clearSessionLiveState,
+  getSessionLiveState,
+  setPrivatePrayer,
+  setPttParticipant,
+} from '../sessionLiveState.ts';
+import {
   requireCanInviteSpeaker,
   requireCanManageParticipants,
   requireCanMuteCongregation,
@@ -165,6 +171,7 @@ export async function endPrayerSessionHandler(req: Request, res: Response): Prom
       await floor.revoke({ sessionId: session.id, actorId: actor.userId });
     }
 
+    clearSessionLiveState(session.id);
     await broadcastSessionEvent(session.livekitRoomName, 'SESSION_ENDED', { sessionId: session.id });
 
     if (session.status === 'ENDING' || session.status === 'LIVE') {
@@ -238,6 +245,7 @@ export async function getSessionSnapshotHandler(req: Request, res: Response): Pr
       connectedNow,
       peakConcurrentParticipants: session.peakConcurrentParticipants,
       realtimeConfigured: isLiveKitConfigured(),
+      liveState: getSessionLiveState(session.id),
     });
   } catch (error) {
     sendError(res, error);
@@ -712,13 +720,14 @@ export async function unmuteParticipantHandler(req: Request, res: Response): Pro
     requireCanInviteSpeaker(actor);
     const participant = await participantRepository.requireById(String(req.body?.participantId || req.params.participantId || ''));
     if (participant.sessionId !== session.id) throw Unauthorized('Participant does not belong to this session');
+    const isMinister = participant.role === 'HOST' || participant.role === 'MODERATOR';
+    const holdsFloor = session.activeSpeakerParticipantId === participant.id;
+    const canPublish = isMinister || holdsFloor;
     if (isLiveKitConfigured() && session.livekitRoomName) {
       const provider = getLiveKitProvider();
-      const isMinister = participant.role === 'HOST' || participant.role === 'MODERATOR';
-      const canPublish = isMinister || session.congregationMuted === false;
       try {
-        await provider.updatePublishPermission(session.livekitRoomName, participant.realtimeIdentity, canPublish);
         if (canPublish) {
+          await provider.updatePublishPermission(session.livekitRoomName, participant.realtimeIdentity, true);
           await provider.unmuteParticipant(session.livekitRoomName, participant.realtimeIdentity);
         }
       } catch {
@@ -730,7 +739,12 @@ export async function unmuteParticipantHandler(req: Request, res: Response): Pro
       participantId: participant.id,
       muted: false,
     });
-    res.json({ muted: false, participantId: participant.id, floorRetained: session.activeSpeakerParticipantId === participant.id });
+    res.json({
+      muted: false,
+      participantId: participant.id,
+      floorRetained: session.activeSpeakerParticipantId === participant.id,
+      canPublish,
+    });
   } catch (error) {
     sendError(res, error);
   }
@@ -788,16 +802,26 @@ export async function setCongregationMuteHandler(req: Request, res: Response): P
     const congregationMuted = req.body?.muted === true;
     const updated = await sessionRepository.update(session.id, { congregationMuted });
     const participants = await participantRepository.listBySession(session.id);
+    const liveState = getSessionLiveState(session.id);
+
+    if (congregationMuted) {
+      setPttParticipant(session.id, null);
+      if (liveState.privatePrayer) {
+        setPrivatePrayer(session.id, null);
+      }
+    }
 
     if (isLiveKitConfigured() && session.livekitRoomName) {
       const provider = getLiveKitProvider();
       for (const participant of participants) {
         if (participant.leftAt) continue;
         const isMinister = participant.role === 'HOST' || participant.role === 'MODERATOR';
-        const canPublish = isMinister || !congregationMuted;
+        const holdsFloor = session.activeSpeakerParticipantId === participant.id;
+        // Discussion PTT: congregants stay without publish until they hold-to-talk.
+        const canPublish = isMinister || holdsFloor;
         try {
           await provider.updatePublishPermission(session.livekitRoomName, participant.realtimeIdentity, canPublish);
-          if (congregationMuted && !isMinister) {
+          if (!canPublish) {
             await provider.muteParticipant(session.livekitRoomName, participant.realtimeIdentity);
           }
         } catch {
@@ -812,14 +836,240 @@ export async function setCongregationMuteHandler(req: Request, res: Response): P
       actorId: actor.userId,
       action: 'ROOM_UPDATED',
       targetId: session.id,
-      metadata: { congregationMuted },
+      metadata: { congregationMuted, roomMode: congregationMuted ? 'SERMON' : 'DISCUSSION_PTT' },
     });
     await broadcastSessionEvent(session.livekitRoomName, 'CONGREGATION_MUTED', {
       sessionId: session.id,
       muted: congregationMuted,
+      roomMode: congregationMuted ? 'SERMON' : 'DISCUSSION_PTT',
+      liveState: getSessionLiveState(session.id),
     });
 
-    res.json({ session: updated });
+    res.json({ session: updated, liveState: getSessionLiveState(session.id) });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function startPttHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const session = await sessionRepository.requireById(req.params.id);
+    if (session.congregationMuted !== false) {
+      res.status(409).json({
+        error: 'DISCUSSION_CLOSED',
+        message: 'Discussion PTT is closed. The host must open Discussion first.',
+      });
+      return;
+    }
+
+    const participantId = String(req.body?.participantId || '');
+    const participant = await participantRepository.requireById(participantId);
+    if (participant.sessionId !== session.id || participant.leftAt) {
+      throw Unauthorized('Participant does not belong to this session');
+    }
+
+    const live = getSessionLiveState(session.id);
+    if (live.pttParticipantId && live.pttParticipantId !== participant.id) {
+      res.status(409).json({
+        error: 'PTT_OCCUPIED',
+        message: 'Someone else is speaking. Release and try again.',
+        pttParticipantId: live.pttParticipantId,
+      });
+      return;
+    }
+    if (live.privatePrayer) {
+      res.status(409).json({
+        error: 'PRIVATE_PRAYER_ACTIVE',
+        message: 'A private prayer exchange is in progress.',
+      });
+      return;
+    }
+
+    setPttParticipant(session.id, participant.id);
+
+    if (isLiveKitConfigured() && session.livekitRoomName) {
+      try {
+        await getLiveKitProvider().updatePublishPermission(
+          session.livekitRoomName,
+          participant.realtimeIdentity,
+          true
+        );
+      } catch {
+        /* may not be connected yet */
+      }
+    }
+
+    await broadcastSessionEvent(session.livekitRoomName, 'PTT_STARTED', {
+      sessionId: session.id,
+      participantId: participant.id,
+      realtimeIdentity: participant.realtimeIdentity,
+      liveState: getSessionLiveState(session.id),
+    });
+
+    res.json({ ok: true, liveState: getSessionLiveState(session.id) });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function endPttHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const session = await sessionRepository.requireById(req.params.id);
+    const participantId = String(req.body?.participantId || '');
+    const live = getSessionLiveState(session.id);
+
+    if (live.pttParticipantId && participantId && live.pttParticipantId !== participantId) {
+      res.status(403).json({ error: 'PTT_NOT_YOURS', message: 'You are not the active push-to-talk speaker.' });
+      return;
+    }
+
+    const activeId = live.pttParticipantId || participantId;
+    const participant = activeId ? await participantRepository.findById(activeId) : null;
+    setPttParticipant(session.id, null);
+
+    if (participant && isLiveKitConfigured() && session.livekitRoomName) {
+      const holdsFloor = session.activeSpeakerParticipantId === participant.id;
+      const isMinister = participant.role === 'HOST' || participant.role === 'MODERATOR';
+      if (!holdsFloor && !isMinister) {
+        try {
+          await getLiveKitProvider().muteParticipant(session.livekitRoomName, participant.realtimeIdentity);
+          await getLiveKitProvider().updatePublishPermission(
+            session.livekitRoomName,
+            participant.realtimeIdentity,
+            false
+          );
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+
+    await broadcastSessionEvent(session.livekitRoomName, 'PTT_ENDED', {
+      sessionId: session.id,
+      participantId: participant?.id,
+      liveState: getSessionLiveState(session.id),
+    });
+
+    res.json({ ok: true, liveState: getSessionLiveState(session.id) });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function startPrivatePrayerHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const session = await sessionRepository.requireById(req.params.id);
+    const room = await prayerRoomRepository.findById(session.prayerRoomId);
+    if (!room) throw RoomNotFound(session.prayerRoomId);
+    const actor = await actorFromRequest(req, room.organizationId);
+    requireCanMuteCongregation(actor);
+
+    const memberParticipantId = String(req.body?.memberParticipantId || '');
+    const hostParticipantId = String(req.body?.hostParticipantId || '');
+    const member = await participantRepository.requireById(memberParticipantId);
+    if (member.sessionId !== session.id || member.leftAt) {
+      throw Unauthorized('Participant does not belong to this session');
+    }
+
+    let host = hostParticipantId ? await participantRepository.findById(hostParticipantId) : null;
+    if (!host || host.sessionId !== session.id) {
+      const hosts = (await participantRepository.listBySession(session.id)).filter(
+        (p) => !p.leftAt && (p.role === 'HOST' || p.role === 'MODERATOR') && p.userId === actor.userId
+      );
+      host = hosts[0] || null;
+    }
+    if (!host) {
+      res.status(400).json({
+        error: 'HOST_REQUIRED',
+        message: 'Join the Control Room before starting a private prayer.',
+      });
+      return;
+    }
+
+    const live = getSessionLiveState(session.id);
+    if (live.privatePrayer && live.privatePrayer.memberParticipantId !== member.id) {
+      res.status(409).json({
+        error: 'PRIVATE_PRAYER_ACTIVE',
+        message: 'Another private prayer is already in progress.',
+      });
+      return;
+    }
+
+    if (live.pttParticipantId) {
+      setPttParticipant(session.id, null);
+    }
+
+    const privatePrayer = {
+      hostParticipantId: host.id,
+      memberParticipantId: member.id,
+      hostRealtimeIdentity: host.realtimeIdentity,
+      memberRealtimeIdentity: member.realtimeIdentity,
+    };
+    setPrivatePrayer(session.id, privatePrayer);
+
+    if (isLiveKitConfigured() && session.livekitRoomName) {
+      try {
+        await getLiveKitProvider().updatePublishPermission(
+          session.livekitRoomName,
+          member.realtimeIdentity,
+          true
+        );
+      } catch {
+        /* ignore */
+      }
+    }
+
+    await broadcastSessionEvent(session.livekitRoomName, 'PRIVATE_PRAYER_STARTED', {
+      sessionId: session.id,
+      ...privatePrayer,
+      liveState: getSessionLiveState(session.id),
+    });
+
+    res.json({ ok: true, privatePrayer, liveState: getSessionLiveState(session.id) });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function endPrivatePrayerHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const session = await sessionRepository.requireById(req.params.id);
+    const room = await prayerRoomRepository.findById(session.prayerRoomId);
+    if (!room) throw RoomNotFound(session.prayerRoomId);
+    const actor = await actorFromRequest(req, room.organizationId);
+    requireCanMuteCongregation(actor);
+
+    const live = getSessionLiveState(session.id);
+    const privatePrayer = live.privatePrayer;
+    setPrivatePrayer(session.id, null);
+
+    if (privatePrayer && isLiveKitConfigured() && session.livekitRoomName) {
+      const member = await participantRepository.findById(privatePrayer.memberParticipantId);
+      if (member) {
+        const holdsFloor = session.activeSpeakerParticipantId === member.id;
+        const isMinister = member.role === 'HOST' || member.role === 'MODERATOR';
+        if (!holdsFloor && !isMinister) {
+          try {
+            await getLiveKitProvider().muteParticipant(session.livekitRoomName, member.realtimeIdentity);
+            await getLiveKitProvider().updatePublishPermission(
+              session.livekitRoomName,
+              member.realtimeIdentity,
+              false
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    }
+
+    await broadcastSessionEvent(session.livekitRoomName, 'PRIVATE_PRAYER_ENDED', {
+      sessionId: session.id,
+      ...(privatePrayer || {}),
+      liveState: getSessionLiveState(session.id),
+    });
+
+    res.json({ ok: true, liveState: getSessionLiveState(session.id) });
   } catch (error) {
     sendError(res, error);
   }

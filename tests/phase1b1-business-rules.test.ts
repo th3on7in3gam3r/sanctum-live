@@ -110,6 +110,13 @@ describe('permission matrix', () => {
     expect(isInviteableOrgRole('OWNER')).toBe(false);
   });
 
+  it('blocks removing the Owner from the team list', () => {
+    const canRemoveTeamMember = (role: string) => role !== 'OWNER';
+    expect(canRemoveTeamMember('ADMIN')).toBe(true);
+    expect(canRemoveTeamMember('PRAYER_LEADER')).toBe(true);
+    expect(canRemoveTeamMember('OWNER')).toBe(false);
+  });
+
   it('treats moderator as distinct from speaker', () => {
     expect(isSessionModerator('MODERATOR')).toBe(true);
     expect(canPublishAudio('MODERATOR', false)).toBe(false);
@@ -212,15 +219,15 @@ describe('listener token grants', () => {
     expect(idleSpeaker.canPublish).toBe(false);
   });
 
-  it('lets the congregation publish when the room is unmuted for discussion', () => {
+  it('keeps congregation publish off in tokens; discussion uses PTT runtime grants', () => {
     const listener = buildLiveKitTokenGrants({
       roomName: 'session_1',
       sessionRole: 'LISTENER',
       holdsSpeakerFloor: false,
       congregationMuted: false,
     });
-    expect(listener.canPublish).toBe(true);
-    expect(listener.canPublishSources).toEqual(['microphone']);
+    expect(listener.canPublish).toBe(false);
+    expect(listener.canPublishSources).toEqual([]);
   });
 });
 

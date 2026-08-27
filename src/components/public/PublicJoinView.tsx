@@ -129,12 +129,20 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
       localStorage.setItem('sanctum_last_attendee_name', name.trim());
       await joinPrayerRoom(slug, name.trim());
       onJoinSuccess(name.trim());
-    } catch {
-      setError(
-        canJoin
-          ? 'Could not join this prayer gathering. Check the link and try again.'
-          : 'This gathering is not open yet. Ask your pastor to open it from the Control Room.'
-      );
+    } catch (joinError) {
+      if (joinError instanceof ApiClientError && joinError.code === 'REALTIME_UNAVAILABLE') {
+        setError(
+          'This gathering is open, but realtime audio is unavailable. Ask the pastor to check the LiveKit server configuration.'
+        );
+      } else if (joinError instanceof Error && joinError.message !== 'SESSION_NOT_JOINABLE') {
+        setError(joinError.message);
+      } else {
+        setError(
+          canJoin
+            ? 'Could not join this prayer gathering. Check the link and try again.'
+            : 'This gathering is not open yet. Ask your pastor to open it from the Control Room.'
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }

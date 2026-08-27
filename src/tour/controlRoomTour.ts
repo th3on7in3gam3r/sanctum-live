@@ -34,9 +34,9 @@ export const controlRoomTourSteps: TourStep[] = [
   {
     element: '[data-tour="control-congregation-mute"]',
     popover: {
-      title: 'Mute or open discussion',
+      title: 'Sermon or Discussion PTT',
       description:
-        'Mute congregation for opening prayer so only ministers speak. Later, unmute for discussion so others can talk.',
+        'Sermon mode keeps the room listen-only. Open Discussion PTT so congregants can press and hold to speak, one at a time.',
       side: 'top',
       align: 'end',
     },
@@ -46,7 +46,7 @@ export const controlRoomTourSteps: TourStep[] = [
     popover: {
       title: 'Congregation list',
       description:
-        'See who joined by name. Tap Mute next to someone if they forget to turn their mic off.',
+        'See who joined. Green mic means live, red means ready for PTT, grey means locked. Press and hold a name for private prayer with that person.',
       side: 'top',
       align: 'start',
     },
@@ -56,7 +56,7 @@ export const controlRoomTourSteps: TourStep[] = [
     popover: {
       title: 'Raised hands',
       description:
-        'When someone raises their hand to pray, they appear here. Invite them when you are ready.',
+        'When someone raises their hand to pray, they appear here. Invite them when you are ready for a longer prayer turn.',
       side: 'top',
       align: 'start',
     },

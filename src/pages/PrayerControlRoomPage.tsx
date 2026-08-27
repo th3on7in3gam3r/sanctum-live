@@ -65,23 +65,35 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
     dismissRaisedHand,
     endLiveSession,
     startPrayerSession,
+    openSanctuary,
     addToast,
     confirmAction,
     connectedNow,
     connectionState,
     connectControlRoom,
     setCongregationMuted,
+    startPrivatePrayer,
+    endPrivatePrayer,
   } = useApp();
 
   const { organization, user } = useAuth();
   const canControlCongregation =
     user?.role === 'OWNER' || user?.role === 'ADMIN' ? canMuteCongregation(user.role) : false;
   const congregationMuted = liveSession?.congregationMuted !== false;
+  const discussionOpen = !congregationMuted;
   const canMuteIndividuals = user?.role ? canModerate(user.role) : false;
   const room = (prayerRooms || []).find((r) => r?.id === roomId) || (prayerRooms || [])[0];
   const visiblePrayerRequests = (prayerRequests || []).filter(
     (req) => !req.isPrivate || hasPermission(user?.role || 'LISTENER', 'canViewPrivateRequests')
   );
+  const raisedHandIds = new Set((raisedHands || []).map((hand) => hand.participantId));
+  const prayerRequestIds = new Set(
+    visiblePrayerRequests
+      .filter((req) => req.status === 'PENDING' || req.status === 'ANSWERED')
+      .map((req) => req.participantId)
+      .filter((id): id is string => Boolean(id))
+  );
+  const privateHoldRef = React.useRef(false);
 
   const resolution = resolveAltarLink(room, liveSession, historySessions);
   const isLive = resolution.status === 'LIVE';
@@ -114,8 +126,13 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   const totalCount = isLive || resolution.status === 'WAITING' ? connectedNow || undefined : undefined;
 
   useEffect(() => {
-    if (room?.id && (resolution.status === 'LIVE' || resolution.status === 'WAITING')) {
-      void connectControlRoom(room.id);
+    if (!room?.id) return;
+    void connectControlRoom(room.id);
+    if (resolution.status === 'SCHEDULED' || resolution.status === 'ENDED') {
+      const timer = window.setInterval(() => {
+        void connectControlRoom(room.id);
+      }, 1500);
+      return () => window.clearInterval(timer);
     }
   }, [room?.id, liveSession?.id, resolution.status]);
 
@@ -277,6 +294,16 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                   <span>Start Prayer</span>
                 </button>
               )}
+              {(resolution.status === 'SCHEDULED' || resolution.status === 'ENDED') && (
+                <button
+                  onClick={() => void openSanctuary(room.id)}
+                  type="button"
+                  className="px-3.5 py-2 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-white dark:bg-[#C9A35A] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Mic className="w-4 h-4" />
+                  <span>Open sanctuary</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -317,8 +344,8 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             </p>
             <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
               {hostMicOn
-                ? 'You are live. The congregation can hear you.'
-                : 'This is how you speak as the pastor. Tap Turn on microphone — Unmute for discussion only unlocks the congregation.'}
+                ? 'You are live. The congregation can hear you (except during a private sideline).'
+                : 'This is how you speak as the pastor. Tap Turn on microphone. Open Discussion PTT so congregants can hold-to-talk.'}
             </p>
             <div className="mt-2">
               <LocalMicStatus />
@@ -356,12 +383,12 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               ) : (
                 <Volume2 className="w-4 h-4 text-emerald-600" />
               )}
-              {congregationMuted ? 'Congregation muted' : 'Discussion open — mics allowed'}
+              {congregationMuted ? 'Sermon mode' : 'Discussion PTT'}
             </p>
             <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
               {congregationMuted
-                ? 'Only you and other ministers can speak. Congregants hear you but stay muted.'
-                : 'Congregants may tap Unmute microphone on their phones. Your voice still uses Host microphone above.'}
+                ? 'Only you and ministers can speak. Congregants listen. Hold a name for private prayer.'
+                : 'Congregants press and hold to speak (one at a time). Your voice still uses Host microphone above.'}
             </p>
           </div>
           <button
@@ -369,21 +396,21 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             onClick={() => {
               if (congregationMuted) {
                 confirmAction({
-                  title: 'Unmute the room for discussion?',
+                  title: 'Open Discussion PTT?',
                   description:
-                    'Congregants will be able to turn on their microphones on their own devices. This does not turn on your host microphone.',
-                  confirmText: 'Unmute for discussion',
-                  cancelText: 'Keep muted',
+                    'Congregants will be able to press and hold to speak, one at a time. This does not turn on your host microphone.',
+                  confirmText: 'Open Discussion PTT',
+                  cancelText: 'Keep Sermon mode',
                   onConfirm: () => void setCongregationMuted(false),
                 });
                 return;
               }
               confirmAction({
-                title: 'Mute the congregation?',
+                title: 'Return to Sermon mode?',
                 description:
-                  'Everyone except the pastor, apostle, and ministers will be muted. Use this for opening prayer.',
-                confirmText: 'Mute congregation',
-                cancelText: 'Keep discussion open',
+                  'Everyone except the pastor and ministers will be muted. Use this for preaching and opening prayer.',
+                confirmText: 'Sermon mode',
+                cancelText: 'Keep Discussion PTT',
                 isDestructive: true,
                 onConfirm: () => void setCongregationMuted(true),
               });
@@ -395,22 +422,8 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             }`}
           >
             {congregationMuted ? <Mic className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            <span>{congregationMuted ? 'Unmute for discussion' : 'Mute congregation'}</span>
+            <span>{congregationMuted ? 'Open Discussion PTT' : 'Return to Sermon'}</span>
           </button>
-        </div>
-      )}
-
-      {(resolution.status === 'WAITING' || isLive) && (
-        <div data-tour="control-roster">
-          <CongregationRoster
-            participants={participants}
-            micOnByIdentity={micOnByIdentity}
-            localIdentity={livekitRealtimeProvider.getIdentity()}
-            canMute={canMuteIndividuals}
-            discussionOpen={!congregationMuted}
-            onMute={(id) => void muteParticipant(id)}
-            onUnmute={(id) => void unmuteParticipant(id)}
-          />
         </div>
       )}
 
@@ -480,13 +493,137 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             onTimeExpired={() => addToast('Prayer segment timer expired — conclude speaker turn', 'warning')}
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Column 1: Live Speakers */}
-            <div className="space-y-4">
+          {(resolution.status === 'WAITING' || isLive) ? (
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_minmax(300px,1fr)_minmax(260px,330px)] gap-4 items-start">
+              <div data-tour="control-roster">
+                <CongregationRoster
+                  participants={participants}
+                  micOnByIdentity={micOnByIdentity}
+                  localIdentity={livekitRealtimeProvider.getIdentity()}
+                  discussionOpen={discussionOpen}
+                  raisedHandParticipantIds={raisedHandIds}
+                  prayerRequestParticipantIds={prayerRequestIds}
+                  pttParticipantId={liveSession?.pttParticipantId}
+                  privatePrayerMemberId={liveSession?.privatePrayer?.memberParticipantId}
+                  canPrivatePray={canControlCongregation}
+                  onPrivatePrayStart={(id) => {
+                    privateHoldRef.current = true;
+                    void startPrivatePrayer(id);
+                  }}
+                  onPrivatePrayEnd={() => {
+                    if (!privateHoldRef.current) return;
+                    privateHoldRef.current = false;
+                    void endPrivatePrayer();
+                  }}
+                  onMute={canMuteIndividuals ? (id) => void muteParticipant(id) : undefined}
+                />
+              </div>
+
+              <div className="bg-white dark:bg-[#17221D] rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] p-6 sm:p-8 min-h-[28rem] flex flex-col items-center justify-center text-center">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#68736D] dark:text-[#96A39D]">
+                  {liveSession?.privatePrayer ? 'Private sideline' : congregationMuted ? 'Sermon mode' : 'Discussion PTT'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleToggleHostMic()}
+                  disabled={hostMicBusy || !canControlCongregation}
+                  aria-label={hostMicOn ? 'Mute host microphone' : 'Turn on host microphone'}
+                  className={`mt-6 w-40 h-40 rounded-full flex items-center justify-center border-8 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                    hostMicOn
+                      ? 'bg-[#B94A48] border-[#E7B0AD] text-white shadow-[0_0_0_14px_rgba(185,74,72,0.12)]'
+                      : 'bg-[#203C32] border-[#C9A35A]/60 text-[#F8F7F3] shadow-[0_0_0_14px_rgba(201,163,90,0.12)] dark:bg-[#C9A35A] dark:text-[#101814]'
+                  }`}
+                >
+                  {hostMicOn ? <MicOff className="w-14 h-14" /> : <Mic className="w-14 h-14" />}
+                </button>
+                <h2 className="mt-7 text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3]">
+                  {hostMicOn ? 'You are live' : 'Ready to lead'}
+                </h2>
+                <p className="mt-2 max-w-sm text-sm text-[#68736D] dark:text-[#96A39D]">
+                  {liveSession?.privatePrayer
+                    ? 'Private prayer is active. Only you and the selected congregant can hear this exchange.'
+                    : hostMicOn
+                      ? 'The congregation can hear your microphone.'
+                      : 'Press the microphone to let the congregation hear the sermon.'}
+                </p>
+                <div className="mt-5 flex items-center gap-2 text-xs font-bold text-[#68736D] dark:text-[#96A39D]">
+                  <Users className="w-4 h-4" />
+                  {connectedNow} connected
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-3" data-tour="control-raised-hands">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
+                      <Hand className="w-4 h-4 text-[#C9A35A]" />
+                      <span>Raised Hands ({raisedHands.length})</span>
+                    </h3>
+                    <span className="text-[10px] text-[#68736D] dark:text-[#96A39D]">FIFO</span>
+                  </div>
+                  {raisedHands.map((hand) => (
+                    <RaisedHandRow
+                      key={hand.id}
+                      hand={hand}
+                      onInviteToPray={(pId) => inviteSpeaker(pId)}
+                      onDismiss={(hId) => dismissRaisedHand(hId)}
+                    />
+                  ))}
+                  {raisedHands.length === 0 && (
+                    <div className="p-6 text-center bg-white dark:bg-[#17221D] rounded-2xl border border-[#E5E6E1] dark:border-[#26362F] text-xs text-[#68736D] dark:text-[#96A39D]">
+                      No raised hands in queue.
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-[#C9A35A]" />
+                      <span>Requests ({visiblePrayerRequests.length})</span>
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('/dashboard/prayer-requests')}
+                      className="text-xs text-[#203C32] dark:text-[#C9A35A] font-bold hover:underline cursor-pointer"
+                    >
+                      View All
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {visiblePrayerRequests.slice(0, 4).map((req) => (
+                      <div
+                        key={req.id}
+                        className="p-3 rounded-2xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] text-xs"
+                      >
+                        <p className="font-bold text-[#16251F] dark:text-[#F8F7F3]">{req.participantName}</p>
+                        <p className="mt-1 text-[#68736D] dark:text-[#96A39D] italic">"{req.request}"</p>
+                      </div>
+                    ))}
+                    {visiblePrayerRequests.length === 0 && (
+                      <div className="p-6 text-center bg-white dark:bg-[#17221D] rounded-2xl border border-[#E5E6E1] dark:border-[#26362F] text-xs text-[#68736D] dark:text-[#96A39D]">
+                        No incoming prayer requests.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-10 text-center bg-white dark:bg-[#17221D] rounded-3xl border border-[#E5E6E1] dark:border-[#26362F]">
+              <h2 className="text-xl font-extrabold text-[#16251F] dark:text-[#F8F7F3]">Open the sanctuary to go live</h2>
+              <p className="mt-2 text-sm text-[#68736D] dark:text-[#96A39D]">
+                Once the room is open, this console will show the live roster, large host microphone, raised hands, and requests.
+              </p>
+            </div>
+          )}
+
+          {speakers.length > 0 && (
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
                   <Mic className="w-4 h-4 text-[#C9A35A]" />
-                  <span>Current Speaker ({speakers.filter((item) => item.role === 'SPEAKER').length})</span>
+                  <span>Formal Prayer Speakers ({speakers.length})</span>
                 </h3>
                 {liveConnected ? (
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
@@ -496,8 +633,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                   <DevelopmentPreviewBadge />
                 )}
               </div>
-
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {speakers.map((speaker) => (
                   <SpeakerCard
                     key={speaker.id}
@@ -506,90 +642,9 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                     onEndSpeaker={(id) => endSpeaker(id)}
                   />
                 ))}
-
-                {speakers.length === 0 && (
-                  <div className="p-8 text-center bg-white dark:bg-[#17221D] rounded-2xl border border-[#E5E6E1] dark:border-[#26362F] text-xs text-[#68736D] dark:text-[#96A39D]">
-                    No active speakers. Invite an attendee from the queue.
-                  </div>
-                )}
               </div>
             </div>
-
-            {/* Column 2: Raised Hands Queue */}
-            <div className="space-y-4" data-tour="control-raised-hands">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
-                  <Hand className="w-4 h-4 text-[#C9A35A]" />
-                  <span>Raised Hands Queue ({raisedHands.length})</span>
-                </h3>
-                <span className="text-[11px] text-[#68736D] dark:text-[#96A39D]">
-                  First In, First Out
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {raisedHands.map((hand) => (
-                  <RaisedHandRow
-                    key={hand.id}
-                    hand={hand}
-                    onInviteToPray={(pId) => inviteSpeaker(pId)}
-                    onDismiss={(hId) => dismissRaisedHand(hId)}
-                  />
-                ))}
-
-                {raisedHands.length === 0 && (
-                  <div className="p-8 text-center bg-white dark:bg-[#17221D] rounded-2xl border border-[#E5E6E1] dark:border-[#26362F] text-xs text-[#68736D] dark:text-[#96A39D]">
-                    No raised hands in queue.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Column 3: Live Prayer Requests Stream */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-[#C9A35A]" />
-                  <span>Incoming Requests ({visiblePrayerRequests.length})</span>
-                </h3>
-                <button
-                  onClick={() => onNavigate('/dashboard/prayer-requests')}
-                  className="text-xs text-[#203C32] dark:text-[#C9A35A] font-bold hover:underline cursor-pointer"
-                >
-                  View All
-                </button>
-              </div>
-
-              <div className="space-y-3 max-h-[480px] overflow-y-auto">
-                {visiblePrayerRequests.slice(0, 6).map((req) => (
-                  <div
-                    key={req.id}
-                    className="p-3.5 rounded-2xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] text-xs space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#16251F] dark:text-[#F8F7F3]">
-                        {req.participantName}
-                      </span>
-                      {req.isPrivate && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300">
-                          Pastoral Only
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[#68736D] dark:text-[#96A39D] leading-relaxed italic">
-                      "{req.request}"
-                    </p>
-                  </div>
-                ))}
-
-                {visiblePrayerRequests.length === 0 && (
-                  <div className="p-8 text-center bg-white dark:bg-[#17221D] rounded-2xl border border-[#E5E6E1] dark:border-[#26362F] text-xs text-[#68736D] dark:text-[#96A39D]">
-                    No incoming prayer requests yet.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
 

@@ -22,7 +22,11 @@ export type RealtimeEventType =
   | 'ACTIVE_SPEAKER_CHANGED'
   | 'CHAT_MESSAGE'
   | 'CONGREGATION_MUTED'
-  | 'MIC_STATE_CHANGED';
+  | 'MIC_STATE_CHANGED'
+  | 'PTT_STARTED'
+  | 'PTT_ENDED'
+  | 'PRIVATE_PRAYER_STARTED'
+  | 'PRIVATE_PRAYER_ENDED';
 
 export interface RealtimeEventPayload {
   type: RealtimeEventType;
@@ -30,6 +34,21 @@ export interface RealtimeEventPayload {
   participantId?: string;
   displayName?: string;
   role?: Role;
+  muted?: boolean;
+  realtimeIdentity?: string;
+  hostParticipantId?: string;
+  memberParticipantId?: string;
+  hostRealtimeIdentity?: string;
+  memberRealtimeIdentity?: string;
+  liveState?: {
+    pttParticipantId?: string | null;
+    privatePrayer?: {
+      hostParticipantId: string;
+      memberParticipantId: string;
+      hostRealtimeIdentity: string;
+      memberRealtimeIdentity: string;
+    } | null;
+  };
   reactionEmoji?: string;
   activeSpeakerName?: string;
   timestamp: string;

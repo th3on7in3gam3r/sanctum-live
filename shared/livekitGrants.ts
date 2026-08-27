@@ -17,8 +17,10 @@ export function buildLiveKitTokenGrants(options: {
   congregationMuted?: boolean;
 }): LiveKitTokenGrants {
   const roomAdmin = options.sessionRole === 'HOST' || options.sessionRole === 'MODERATOR';
-  const congregationMuted = options.congregationMuted !== false;
-  const canPublish = roomAdmin || !congregationMuted;
+  // Listeners / speakers publish via runtime grants (PTT, private prayer, or speaker floor).
+  void options.holdsSpeakerFloor;
+  void options.congregationMuted;
+  const canPublish = roomAdmin;
 
   return {
     roomJoin: true,

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Mail, UserPlus } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Mail, Trash2, UserPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { ApiClientError, sanctumApi } from '../../services/api/sanctumApi';
@@ -17,15 +17,19 @@ const STATUS_LABELS: Record<string, string> = {
   SUSPENDED: 'Suspended',
 };
 
+const PAGE_SIZE = 25;
+
 type TeamMember = { userId: string; name: string; email: string; role: string; status: string };
 
 export const TeamInvitePanel: React.FC = () => {
   const { user, organization } = useAuth();
-  const { addToast } = useApp();
+  const { addToast, confirmAction } = useApp();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const actor = { userId: user?.id, organizationId: organization.id };
 
@@ -43,6 +47,25 @@ export const TeamInvitePanel: React.FC = () => {
   useEffect(() => {
     void loadMembers();
   }, [loadMembers]);
+
+  const totalPages = Math.max(1, Math.ceil(members.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+
+  const pageMembers = useMemo(() => {
+    const start = safePage * PAGE_SIZE;
+    return members.slice(start, start + PAGE_SIZE);
+  }, [members, safePage]);
+
+  const rangeLabel = useMemo(() => {
+    if (members.length === 0) return '0 of 0';
+    const start = safePage * PAGE_SIZE + 1;
+    const end = Math.min(members.length, (safePage + 1) * PAGE_SIZE);
+    return `${start}–${end} of ${members.length}`;
+  }, [members.length, safePage]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +90,34 @@ export const TeamInvitePanel: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleRemove = (member: TeamMember) => {
+    if (member.role === 'OWNER') return;
+    confirmAction({
+      title: `Remove ${member.name}?`,
+      description: `${member.email} will lose access to this Sanctum Space dashboard. They can be invited again later.`,
+      confirmText: 'Remove',
+      cancelText: 'Keep on team',
+      isDestructive: true,
+      onConfirm: () => {
+        void (async () => {
+          setRemovingUserId(member.userId);
+          try {
+            await sanctumApi.removeTeamMember(member.userId, actor);
+            addToast(`${member.name} was removed from the team.`, 'success');
+            await loadMembers();
+          } catch (error) {
+            addToast(
+              error instanceof ApiClientError ? error.message : 'Could not remove that team member.',
+              'error'
+            );
+          } finally {
+            setRemovingUserId(null);
+          }
+        })();
+      },
+    });
   };
 
   return (
@@ -112,32 +163,74 @@ export const TeamInvitePanel: React.FC = () => {
         ) : members.length === 0 ? (
           <p className="text-xs text-[#68736D] dark:text-[#96A39D]">No team members yet.</p>
         ) : (
-          members.map((member) => (
-            <div
-              key={member.userId}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 p-3 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F]"
-            >
-              <div>
-                <p className="text-sm font-semibold text-[#16251F] dark:text-[#F8F7F3]">{member.name}</p>
-                <p className="text-[11px] text-[#68736D] dark:text-[#96A39D] flex items-center gap-1">
-                  <Mail className="w-3 h-3" />
-                  {member.email}
-                </p>
+          <>
+            {pageMembers.map((member) => (
+              <div
+                key={member.userId}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F]"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-[#16251F] dark:text-[#F8F7F3]">{member.name}</p>
+                  <p className="text-[11px] text-[#68736D] dark:text-[#96A39D] flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    {member.email}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wide">
+                  <span className="text-[#203C32] dark:text-[#C9A35A]">{ROLE_LABELS[member.role] || member.role}</span>
+                  <span
+                    className={
+                      member.status === 'ACTIVE'
+                        ? 'text-[#3D6655] dark:text-[#96A39D]'
+                        : 'text-amber-800 dark:text-amber-200'
+                    }
+                  >
+                    {STATUS_LABELS[member.status] || member.status}
+                  </span>
+                  {member.role !== 'OWNER' && (
+                    <button
+                      type="button"
+                      disabled={removingUserId === member.userId}
+                      onClick={() => handleRemove(member)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[#B94A48] dark:text-red-400 hover:bg-red-500/10 cursor-pointer disabled:opacity-60"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{removingUserId === member.userId ? 'Removing…' : 'Remove'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide">
-                <span className="text-[#203C32] dark:text-[#C9A35A]">{ROLE_LABELS[member.role] || member.role}</span>
-                <span
-                  className={
-                    member.status === 'ACTIVE'
-                      ? 'text-[#3D6655] dark:text-[#96A39D]'
-                      : 'text-amber-800 dark:text-amber-200'
-                  }
-                >
-                  {STATUS_LABELS[member.status] || member.status}
-                </span>
+            ))}
+
+            {members.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between gap-3 pt-3">
+                <p className="text-[11px] text-[#68736D] dark:text-[#96A39D]">Showing {rangeLabel}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={safePage <= 0}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-[#E5E6E1] dark:border-[#26362F] text-[#16251F] dark:text-[#F8F7F3] disabled:opacity-40 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    Prev
+                  </button>
+                  <span className="text-[11px] font-semibold text-[#68736D] dark:text-[#96A39D]">
+                    {safePage + 1} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safePage >= totalPages - 1}
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-[#E5E6E1] dark:border-[#26362F] text-[#16251F] dark:text-[#F8F7F3] disabled:opacity-40 cursor-pointer"
+                  >
+                    Next
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))
+            )}
+          </>
         )}
       </div>
     </div>

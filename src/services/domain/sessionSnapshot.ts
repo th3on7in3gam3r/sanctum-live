@@ -86,6 +86,8 @@ export function mapServerSession(
     activeSpeakerTitle: extras?.activeSpeakerTitle,
     speakerDurationSeconds: extras?.speakerDurationSeconds ?? 0,
     congregationMuted: session.congregationMuted !== false,
+    pttParticipantId: extras?.pttParticipantId ?? null,
+    privatePrayer: extras?.privatePrayer ?? null,
     createdAt: session.createdAt ? String(session.createdAt) : new Date().toISOString(),
   };
 }

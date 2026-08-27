@@ -434,6 +434,12 @@ export const membershipRepository = {
       },
     });
   },
+  async remove(organizationId: string, userId: string): Promise<void> {
+    const prisma = requirePrisma();
+    await prisma.organizationMembership.delete({
+      where: { organizationId_userId: { organizationId, userId } },
+    });
+  },
 };
 
 export const sessionRepository = {

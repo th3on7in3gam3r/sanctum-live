@@ -56,6 +56,8 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     endSpeaker,
     participants,
     addToast,
+    startPtt,
+    endPtt,
   } = useApp();
   const { organization, isAuthenticated, user } = useAuth();
 
@@ -63,6 +65,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   const [isPrayerRequestOpen, setIsPrayerRequestOpen] = useState(false);
   const [selfMuted, setSelfMuted] = useState(false);
   const [micOn, setMicOn] = useState(false);
+  const [pttHolding, setPttHolding] = useState(false);
   const { startTour } = useTour(TOUR_IDS.listenerRoom, listenerRoomTourSteps, { delayMs: 900 });
 
   useEffect(() => {
@@ -91,7 +94,10 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     user?.role === 'TECHNICAL_ADMIN';
   const congregationMuted = liveSession?.congregationMuted !== false;
   const canDiscuss = !congregationMuted && !isMinister;
-  const canUseMic = isMinister || canDiscuss;
+  const privateWithMe =
+    Boolean(liveSession?.privatePrayer) &&
+    liveSession?.privatePrayer?.memberParticipantId === localParticipantId;
+  const canUseMic = isMinister || canDiscuss || privateWithMe;
   const showLiveMic = micOn && canUseMic;
   const prayerHasStarted = liveSession?.status === 'LIVE' || liveSession?.status === 'STARTING';
   const participantCount = liveConnected || localParticipantId ? connectedNow : undefined;
@@ -114,25 +120,41 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   }, [liveConnected]);
 
   useEffect(() => {
-    if (congregationMuted && !isMinister && micOn) {
+    if (congregationMuted && !isMinister && !privateWithMe && micOn) {
       void livekitRealtimeProvider.disableMicrophone();
       setMicOn(false);
       setSelfMuted(true);
+      setPttHolding(false);
     }
-  }, [congregationMuted, isMinister, micOn]);
+  }, [congregationMuted, isMinister, privateWithMe, micOn]);
 
   const prevCongregationMuted = React.useRef(congregationMuted);
   useEffect(() => {
     const wasMuted = prevCongregationMuted.current;
     prevCongregationMuted.current = congregationMuted;
     if (wasMuted && !congregationMuted && !isMinister) {
-      addToast('Discussion is open. Tap Unmute microphone to speak.', 'success');
+      addToast('Discussion PTT is open. Press and hold to speak.', 'success');
     }
     if (!wasMuted && congregationMuted && !isMinister) {
-      addToast('Opening prayer — congregation microphones are muted again.', 'info');
+      addToast('Sermon mode — congregation microphones are locked again.', 'info');
     }
   }, [congregationMuted, isMinister, addToast]);
 
+  const handlePttDown = async () => {
+    if (!localParticipantId || !canDiscuss || privateWithMe) return;
+    setPttHolding(true);
+    try {
+      await startPtt(localParticipantId);
+    } catch {
+      setPttHolding(false);
+    }
+  };
+
+  const handlePttUp = async () => {
+    if (!localParticipantId || !pttHolding) return;
+    setPttHolding(false);
+    await endPtt(localParticipantId);
+  };
   useEffect(() => {
     return livekitRealtimeProvider.subscribe((event) => {
       if (event.type !== 'PARTICIPANT_MUTED') return;
@@ -149,8 +171,8 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
       await lowerHandAttendee(localParticipantId);
       setIsHandRaised(false);
     } else {
-      await raiseHandAttendee(localParticipantId, participantName);
-      setIsHandRaised(true);
+      const raised = await raiseHandAttendee(localParticipantId, participantName);
+      setIsHandRaised(raised);
     }
   };
 
@@ -298,26 +320,36 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
               </h1>
             </div>
             <p className="text-xs text-[#68736D] dark:text-[#96A39D]">
-              {isMinister
-                ? showLiveMic
-                  ? <>You are leading: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span></>
-                  : 'You are a minister. Turn on your microphone to speak.'
-                : congregationMuted
-                  ? 'Opening prayer — the congregation is muted. You will hear the pastor and ministers.'
-                  : showLiveMic
-                    ? 'Discussion is open. Your microphone is on.'
-                    : 'Discussion is open. You may turn on your microphone.'}
+              {privateWithMe
+                ? 'Pastor is praying with you privately — only you two can hear each other.'
+                : isMinister
+                  ? showLiveMic
+                    ? <>You are leading: <span className="font-semibold text-[#16251F] dark:text-[#F8F7F3]">{participantName}</span></>
+                    : 'You are a minister. Turn on your microphone to speak.'
+                  : congregationMuted
+                    ? 'Sermon — the congregation is muted. You will hear the pastor and ministers.'
+                    : pttHolding || showLiveMic
+                      ? 'You are speaking. Release to stop.'
+                      : 'Discussion PTT is open. Press and hold to speak.'}
             </p>
             {!isMinister && (
               <p
                 className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  congregationMuted
-                    ? 'bg-[#B94A48]/10 text-[#B94A48]'
-                    : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                  privateWithMe
+                    ? 'bg-[#C9A35A]/20 text-[#203C32] dark:text-[#E8D8B2]'
+                    : congregationMuted
+                      ? 'bg-[#B94A48]/10 text-[#B94A48]'
+                      : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
                 }`}
               >
-                {congregationMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-                {congregationMuted ? 'Room mics locked' : 'Room mics allowed'}
+                {privateWithMe ? (
+                  <>Private prayer</>
+                ) : (
+                  <>
+                    {congregationMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+                    {congregationMuted ? 'Sermon mode' : 'Discussion PTT'}
+                  </>
+                )}
               </p>
             )}
             <div className="mt-2">
@@ -344,7 +376,16 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
           </div>
         </div>
 
-        {canUseMic && (
+        {privateWithMe && (
+          <div className="w-full py-4 px-4 rounded-2xl text-center border border-[#C9A35A]/40 bg-[#C9A35A]/10 space-y-1">
+            <p className="text-sm font-bold text-[#16251F] dark:text-[#F8F7F3]">Private prayer with your pastor</p>
+            <p className="text-xs text-[#68736D] dark:text-[#96A39D]">
+              Only you and the host can hear this exchange. Speak normally — your mic is open for this private moment.
+            </p>
+          </div>
+        )}
+
+        {isMinister && canUseMic && (
           <button
             type="button"
             onClick={() => void handleToggleLeadMic()}
@@ -356,13 +397,32 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
             }`}
           >
             {showLiveMic && !selfMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            <span>
-              {showLiveMic && !selfMuted
-                ? 'Mute microphone'
-                : isMinister
-                  ? 'Unmute microphone to lead'
-                  : 'Unmute microphone'}
-            </span>
+            <span>{showLiveMic && !selfMuted ? 'Mute microphone' : 'Unmute microphone to lead'}</span>
+          </button>
+        )}
+
+        {canDiscuss && !privateWithMe && (
+          <button
+            type="button"
+            data-tour="listener-mic"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              void handlePttDown();
+            }}
+            onPointerUp={() => void handlePttUp()}
+            onPointerLeave={() => {
+              if (pttHolding) void handlePttUp();
+            }}
+            onPointerCancel={() => void handlePttUp()}
+            onContextMenu={(e) => e.preventDefault()}
+            className={`w-full py-6 px-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 cursor-pointer select-none touch-none ${
+              pttHolding
+                ? 'bg-emerald-600 text-white scale-[0.98]'
+                : 'bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814]'
+            }`}
+          >
+            <Mic className="w-5 h-5" />
+            <span>{pttHolding ? 'Speaking… release to stop' : 'Hold to speak'}</span>
           </button>
         )}
 
@@ -372,18 +432,11 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
             className="w-full py-3 px-4 rounded-2xl text-center text-xs font-medium text-[#68736D] dark:text-[#96A39D] border border-dashed border-[#E5E6E1] dark:border-[#26362F] bg-white/40 dark:bg-[#17221D]/40 flex items-center justify-center gap-2"
           >
             <MicOff className="w-4 h-4 text-[#B94A48] shrink-0" />
-            Your microphone stays off until the pastor opens discussion.
+            Your microphone stays off until the pastor opens Discussion PTT.
           </div>
         )}
 
-        {canUseMic && !isMinister && !showLiveMic && (
-          <div className="w-full py-2.5 px-4 rounded-2xl text-center text-xs font-semibold text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center gap-2">
-            <Mic className="w-4 h-4 shrink-0" />
-            Discussion is open — tap Unmute microphone above to speak.
-          </div>
-        )}
-
-        {showLiveMic ? (
+        {showLiveMic && isMinister ? (
           <SpeakerLiveView
             participantName={participantName}
             participantCount={participantCount}
@@ -396,23 +449,16 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
             <AudioVisualizerPlaceholder
               speakerName={isMinister ? 'Your turn to lead' : activeSpeaker}
               speakerTitle={
-                isMinister
-                  ? 'Turn on your microphone. The congregation is waiting to hear you.'
-                  : congregationMuted
-                    ? 'The congregation is muted for opening prayer.'
-                    : 'Discussion is open. Turn on your microphone to join.'
+                privateWithMe
+                  ? 'Private prayer — only you and the host hear this.'
+                  : isMinister
+                    ? 'Turn on your microphone. The congregation is waiting to hear you.'
+                    : congregationMuted
+                      ? 'Sermon mode — listen as the pastor leads.'
+                      : 'Discussion PTT — press and hold to speak.'
               }
               isLive={prayerHasStarted}
             />
-            {!canUseMic ? null : isMinister ? (
-              <p className="text-center text-xs text-[#68736D] dark:text-[#96A39D]">
-                Use Mute microphone above if you need a moment of quiet while leading.
-              </p>
-            ) : (
-              <p className="text-center text-xs text-[#68736D] dark:text-[#96A39D]">
-                Discussion is open. Mute yourself when you are not speaking.
-              </p>
-            )}
           </div>
         )}
 

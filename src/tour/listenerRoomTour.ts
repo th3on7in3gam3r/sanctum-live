@@ -42,9 +42,9 @@ export const listenerRoomTourSteps: TourStep[] = [
   {
     element: '[data-tour="listener-mic"]',
     popover: {
-      title: 'Your microphone',
+      title: 'Hold to speak',
       description:
-        'When this button appears, you may unmute to speak. Mute yourself when you are finished.',
+        'When Discussion PTT is open, press and hold this button to talk. Release to stop so someone else can speak.',
       side: 'bottom',
       align: 'center',
     },
@@ -54,7 +54,7 @@ export const listenerRoomTourSteps: TourStep[] = [
     popover: {
       title: 'Microphone stays off for now',
       description:
-        'During opening prayer your mic stays off. When the pastor opens discussion, a unmute button will appear.',
+        'During Sermon mode your mic stays off. When the pastor opens Discussion PTT, Hold to speak will appear.',
       side: 'bottom',
       align: 'start',
     },

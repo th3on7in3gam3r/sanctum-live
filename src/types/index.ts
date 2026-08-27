@@ -149,6 +149,15 @@ export interface PrayerSession {
   activeSpeakerTitle?: string;
   speakerDurationSeconds?: number;
   congregationMuted?: boolean;
+  /** Exclusive congregant currently holding Discussion PTT. */
+  pttParticipantId?: string | null;
+  /** Active private host↔member sideline (only those two hear each other). */
+  privatePrayer?: {
+    hostParticipantId: string;
+    memberParticipantId: string;
+    hostRealtimeIdentity: string;
+    memberRealtimeIdentity: string;
+  } | null;
   totalPrayerRequests?: number;
   totalRaisedHands?: number;
   totalSpeakerInvitations?: number;

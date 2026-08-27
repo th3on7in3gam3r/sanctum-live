@@ -115,6 +115,12 @@ export const sanctumApi = {
       { method: 'POST', body: JSON.stringify(input) },
       staff(actor)
     ),
+  removeTeamMember: (userId: string, actor: Actor) =>
+    apiFetch<{ ok: true; userId: string }>(
+      `/api/team/${encodeURIComponent(userId)}`,
+      { method: 'DELETE' },
+      staff(actor)
+    ),
   listPrayerRooms: (actor: Actor) =>
     apiFetch<{ rooms: Array<Record<string, unknown>> }>('/api/prayer-rooms', undefined, staff(actor)),
   createPrayerRoom: (input: Record<string, unknown>, actor: Actor) =>
@@ -147,10 +153,40 @@ export const sanctumApi = {
       body: JSON.stringify({}),
     }, staff(actor)),
   setCongregationMute: (sessionId: string, muted: boolean, actor: Actor) =>
-    apiFetch<{ session: Record<string, unknown> }>(`/api/sessions/${sessionId}/congregation-mute`, {
+    apiFetch<{ session: Record<string, unknown>; liveState?: Record<string, unknown> }>(
+      `/api/sessions/${sessionId}/congregation-mute`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ muted }),
+      },
+      staff(actor)
+    ),
+  startPtt: (sessionId: string, participantId: string) =>
+    apiFetch<{ ok: true; liveState?: Record<string, unknown> }>(`/api/sessions/${sessionId}/ptt/start`, {
       method: 'POST',
-      body: JSON.stringify({ muted }),
-    }, staff(actor)),
+      body: JSON.stringify({ participantId }),
+    }),
+  endPtt: (sessionId: string, participantId: string) =>
+    apiFetch<{ ok: true; liveState?: Record<string, unknown> }>(`/api/sessions/${sessionId}/ptt/end`, {
+      method: 'POST',
+      body: JSON.stringify({ participantId }),
+    }),
+  startPrivatePrayer: (
+    sessionId: string,
+    input: { memberParticipantId: string; hostParticipantId?: string },
+    actor: Actor
+  ) =>
+    apiFetch<{ ok: true; privatePrayer: Record<string, string>; liveState?: Record<string, unknown> }>(
+      `/api/sessions/${sessionId}/private-prayer/start`,
+      { method: 'POST', body: JSON.stringify(input) },
+      staff(actor)
+    ),
+  endPrivatePrayer: (sessionId: string, actor: Actor) =>
+    apiFetch<{ ok: true; liveState?: Record<string, unknown> }>(
+      `/api/sessions/${sessionId}/private-prayer/end`,
+      { method: 'POST', body: JSON.stringify({}) },
+      staff(actor)
+    ),
   joinSession: (
     sessionId: string,
     input: {
@@ -239,6 +275,15 @@ export const sanctumApi = {
       connectedNow: number;
       peakConcurrentParticipants: number;
       realtimeConfigured: boolean;
+      liveState?: {
+        pttParticipantId?: string | null;
+        privatePrayer?: {
+          hostParticipantId: string;
+          memberParticipantId: string;
+          hostRealtimeIdentity: string;
+          memberRealtimeIdentity: string;
+        } | null;
+      };
     }>(`/api/sessions/${sessionId}`),
   sendChat: (
     sessionId: string,

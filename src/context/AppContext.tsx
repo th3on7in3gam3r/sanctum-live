@@ -66,6 +66,10 @@ export interface AppContextType {
   updatePrayerRoom: (id: string, updates: Partial<PrayerRoom>) => Promise<PrayerRoom>;
   deletePrayerRoom: (id: string) => Promise<void>;
   setCongregationMuted: (muted: boolean) => Promise<void>;
+  startPtt: (participantId: string) => Promise<void>;
+  endPtt: (participantId: string) => Promise<void>;
+  startPrivatePrayer: (memberParticipantId: string) => Promise<void>;
+  endPrivatePrayer: () => Promise<void>;
 
   // Session Lifecycle Machine
   openSanctuary: (roomId: string) => void;
@@ -90,7 +94,7 @@ export interface AppContextType {
 
   // Public / Attendee actions
   joinPrayerRoom: (roomSlug: string, name: string) => Promise<{ participantId: string; role: Role }>;
-  raiseHandAttendee: (participantId: string, name: string) => Promise<void>;
+  raiseHandAttendee: (participantId: string, name: string) => Promise<boolean>;
   lowerHandAttendee: (participantId: string) => Promise<void>;
   sendReactionAttendee: (emoji: 'AMEN' | 'PRAISE_GOD') => void;
   submitPrayerRequest: (data: { request: string; isPrivate: boolean; participantName: string; roomName?: string }) => void;
@@ -371,6 +375,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             listenersWaitingCount: snapshot.connectedNow,
             activeSpeakerName: speaker?.guestName || speaker?.realtimeIdentity,
             activeSpeakerTitle: speaker ? 'Current speaker' : 'Waiting for the next prayer leader.',
+            pttParticipantId: snapshot.liveState?.pttParticipantId ?? null,
+            privatePrayer: snapshot.liveState?.privatePrayer ?? null,
           })
         );
         const roomStatus =
@@ -398,7 +404,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const timer = window.setInterval(() => {
       void applySnapshot(sessionId);
-    }, 4000);
+    }, 1500);
     return () => window.clearInterval(timer);
   }, [liveSession?.id, liveSession?.status, applySnapshot]);
 
@@ -482,8 +488,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
       if (event.type === 'CONGREGATION_MUTED') {
-        const muted = event.metadata?.muted !== false;
-        setLiveSession((prev) => (prev ? { ...prev, congregationMuted: muted } : prev));
+        const muted = event.muted !== false;
+        setLiveSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                congregationMuted: muted,
+                pttParticipantId: event.liveState?.pttParticipantId ?? (muted ? null : prev.pttParticipantId),
+                privatePrayer: muted ? null : event.liveState?.privatePrayer ?? prev.privatePrayer,
+              }
+            : prev
+        );
+      }
+      if (event.type === 'PTT_STARTED' || event.type === 'PTT_ENDED') {
+        setLiveSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                pttParticipantId:
+                  event.liveState?.pttParticipantId ??
+                  (event.type === 'PTT_ENDED' ? null : event.participantId),
+                privatePrayer: event.liveState?.privatePrayer ?? prev.privatePrayer,
+              }
+            : prev
+        );
+      }
+      if (event.type === 'PRIVATE_PRAYER_STARTED' || event.type === 'PRIVATE_PRAYER_ENDED') {
+        const meta = event;
+        void (async () => {
+          const identity = livekitRealtimeProvider.getIdentity();
+          if (event.type === 'PRIVATE_PRAYER_STARTED' && identity) {
+            const hostId = String(event.hostRealtimeIdentity || '');
+            const memberId = String(event.memberRealtimeIdentity || '');
+            if (identity === hostId && memberId) {
+              await livekitRealtimeProvider.beginPrivatePrayer(memberId);
+            } else if (identity === memberId && hostId) {
+              await livekitRealtimeProvider.beginPrivatePrayer(hostId);
+            }
+          }
+          if (event.type === 'PRIVATE_PRAYER_ENDED' && identity) {
+            const hostId = String(event.hostRealtimeIdentity || '');
+            const memberId = String(event.memberRealtimeIdentity || '');
+            if (identity === hostId || identity === memberId) {
+              await livekitRealtimeProvider.endPrivatePrayer();
+            }
+          }
+        })();
+        setLiveSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                pttParticipantId: event.liveState?.pttParticipantId ?? prev.pttParticipantId,
+                privatePrayer:
+                  event.type === 'PRIVATE_PRAYER_ENDED'
+                    ? null
+                    : event.liveState?.privatePrayer ||
+                      (event.hostParticipantId
+                        ? {
+                            hostParticipantId: String(event.hostParticipantId),
+                            memberParticipantId: String(event.memberParticipantId),
+                            hostRealtimeIdentity: String(event.hostRealtimeIdentity),
+                            memberRealtimeIdentity: String(event.memberRealtimeIdentity),
+                          }
+                        : prev.privatePrayer),
+              }
+            : prev
+        );
       }
       if (event.type === 'PARTICIPANT_MUTED') {
         const muted = event.metadata?.muted !== false;
@@ -520,7 +590,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         event.type === 'PARTICIPANT_REMOVED' ||
         event.type === 'SPEAKER_DECLINED' ||
         event.type === 'CONGREGATION_MUTED' ||
-        event.type === 'PARTICIPANT_MUTED'
+        event.type === 'PARTICIPANT_MUTED' ||
+        event.type === 'PTT_STARTED' ||
+        event.type === 'PTT_ENDED' ||
+        event.type === 'PRIVATE_PRAYER_STARTED' ||
+        event.type === 'PRIVATE_PRAYER_ENDED'
       ) {
         const sessionId = liveSessionIdRef.current;
         if (sessionId) void applySnapshot(sessionId);
@@ -681,33 +755,123 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setCongregationMuted = async (muted: boolean) => {
     if (!liveSession || !isServerSessionId(liveSession.id)) {
-      addToast('Open the sanctuary before changing congregation mute.', 'warning');
+      addToast('Open the sanctuary before changing room mode.', 'warning');
       return;
     }
     try {
       await sanctumApi.setCongregationMute(liveSession.id, muted, actor);
-      setLiveSession((prev) => (prev ? { ...prev, congregationMuted: muted } : prev));
+      setLiveSession((prev) =>
+        prev
+          ? {
+              ...prev,
+              congregationMuted: muted,
+              pttParticipantId: muted ? null : prev.pttParticipantId,
+              privatePrayer: muted ? null : prev.privatePrayer,
+            }
+          : prev
+      );
       addToast(
         muted
-          ? 'Congregation muted. Only the pastor and ministers can speak.'
-          : 'Discussion open — congregants can unmute on their phones. Use Turn on microphone above to speak as the host.',
+          ? 'Sermon mode — only you and ministers can speak.'
+          : 'Discussion PTT open — congregants press and hold to speak, one at a time.',
         'info'
       );
     } catch (error) {
       addToast(
-        error instanceof ApiClientError ? error.message : 'Could not change congregation mute.',
+        error instanceof ApiClientError ? error.message : 'Could not change room mode.',
         'error'
       );
     }
   };
 
+  const startPtt = async (participantId: string) => {
+    if (!liveSession || !isServerSessionId(liveSession.id)) return;
+    try {
+      await sanctumApi.startPtt(liveSession.id, participantId);
+      await livekitRealtimeProvider.setPttActive(true);
+      setLiveSession((prev) => (prev ? { ...prev, pttParticipantId: participantId } : prev));
+    } catch (error) {
+      addToast(error instanceof ApiClientError ? error.message : 'Could not start push-to-talk.', 'warning');
+      throw error;
+    }
+  };
+
+  const endPtt = async (participantId: string) => {
+    if (!liveSession || !isServerSessionId(liveSession.id)) return;
+    try {
+      await livekitRealtimeProvider.setPttActive(false);
+      await sanctumApi.endPtt(liveSession.id, participantId);
+      setLiveSession((prev) => (prev ? { ...prev, pttParticipantId: null } : prev));
+    } catch (error) {
+      addToast(error instanceof ApiClientError ? error.message : 'Could not end push-to-talk.', 'warning');
+    }
+  };
+
+  const startPrivatePrayer = async (memberParticipantId: string) => {
+    if (!liveSession || !isServerSessionId(liveSession.id)) return;
+    try {
+      const result = await sanctumApi.startPrivatePrayer(
+        liveSession.id,
+        { memberParticipantId, hostParticipantId: localParticipantIdRef.current || undefined },
+        actor
+      );
+      const privatePrayer = {
+        hostParticipantId: String(result.privatePrayer.hostParticipantId),
+        memberParticipantId: String(result.privatePrayer.memberParticipantId),
+        hostRealtimeIdentity: String(result.privatePrayer.hostRealtimeIdentity),
+        memberRealtimeIdentity: String(result.privatePrayer.memberRealtimeIdentity),
+      };
+      setLiveSession((prev) => (prev ? { ...prev, privatePrayer, pttParticipantId: null } : prev));
+      const identity = livekitRealtimeProvider.getIdentity();
+      if (identity === privatePrayer.hostRealtimeIdentity) {
+        await livekitRealtimeProvider.beginPrivatePrayer(privatePrayer.memberRealtimeIdentity);
+      }
+    } catch (error) {
+      addToast(error instanceof ApiClientError ? error.message : 'Could not start private prayer.', 'error');
+    }
+  };
+
+  const endPrivatePrayer = async () => {
+    if (!liveSession || !isServerSessionId(liveSession.id)) return;
+    const current = liveSession.privatePrayer;
+    try {
+      await sanctumApi.endPrivatePrayer(liveSession.id, actor);
+      const identity = livekitRealtimeProvider.getIdentity();
+      if (
+        current &&
+        identity &&
+        (identity === current.hostRealtimeIdentity || identity === current.memberRealtimeIdentity)
+      ) {
+        await livekitRealtimeProvider.endPrivatePrayer();
+      }
+      setLiveSession((prev) => (prev ? { ...prev, privatePrayer: null } : prev));
+    } catch (error) {
+      addToast(error instanceof ApiClientError ? error.message : 'Could not end private prayer.', 'error');
+    }
+  };
+
   const connectControlRoom = async (roomId: string) => {
     const room = prayerRooms.find((r) => r.id === roomId) || prayerRooms[0];
-    const sessionId =
+    let sessionId =
       liveSession && liveSession.prayerRoomId === room?.id && isServerSessionId(liveSession.id)
         ? liveSession.id
         : liveSessionIdRef.current;
-    if (!room || !sessionId) return;
+    if (!room) return;
+    if (!sessionId) {
+      try {
+        const altar = await sanctumApi.getAltar(room.slug);
+        const session = altar.session;
+        const status = session?.status;
+        if (!session?.id || (status !== 'WAITING' && status !== 'LIVE' && status !== 'STARTING')) {
+          return;
+        }
+        sessionId = String(session.id);
+        liveSessionIdRef.current = sessionId;
+        await applySnapshot(sessionId, room);
+      } catch {
+        return;
+      }
+    }
     if (connectedRoomRef.current === sessionId && livekitRealtimeProvider.connectionState === 'CONNECTED') {
       return;
     }
@@ -1096,7 +1260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const apiResult = await sessionApiAdapter.raiseHand(liveSession?.id, participantId);
     if (!apiResult.ok) {
       addToast(apiResult.reason || 'Realtime Engine: Not configured', 'warning');
-      return;
+      return false;
     }
     if (liveSession?.id) await applySnapshot(liveSession.id);
 
@@ -1106,6 +1270,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       message: `${name} has raised a hand in the prayer gathering queue`,
       meta: { participantName: name },
     });
+    return true;
   };
 
   const lowerHandAttendee = async (participantId: string) => {
@@ -1357,6 +1522,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatePrayerRoom,
         deletePrayerRoom,
         setCongregationMuted,
+        startPtt,
+        endPtt,
+        startPrivatePrayer,
+        endPrivatePrayer,
         openSanctuary,
         startPrayerSession,
         endPrayerSession,

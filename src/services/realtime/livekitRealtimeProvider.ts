@@ -109,6 +109,30 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     await this.room.localParticipant.setMicrophoneEnabled(false);
   }
 
+  /** Restrict who can hear this tab's mic to a single peer (private sideline). */
+  async beginPrivatePrayer(peerIdentity: string): Promise<void> {
+    if (!this.room) throw new Error('Not connected to prayer.');
+    this.room.localParticipant.setTrackSubscriptionPermissions(false, [
+      { participantIdentity: peerIdentity, allowAll: true },
+    ]);
+    await this.room.localParticipant.setMicrophoneEnabled(true);
+    this.emitMicStateChanged();
+  }
+
+  /** Restore room-wide subscription so everyone can hear this tab again. */
+  async endPrivatePrayer(): Promise<void> {
+    if (!this.room) return;
+    this.room.localParticipant.setTrackSubscriptionPermissions(true);
+    await this.room.localParticipant.setMicrophoneEnabled(false);
+    this.emitMicStateChanged();
+  }
+
+  async setPttActive(active: boolean): Promise<void> {
+    if (!this.room) throw new Error('Not connected to prayer.');
+    await this.room.localParticipant.setMicrophoneEnabled(active);
+    this.emitMicStateChanged();
+  }
+
   async leaveRoom(_sessionId: string, _participantId: string): Promise<void> {
     this.teardownMicAnalyser();
     this.audioElements.forEach((el) => {
@@ -117,6 +141,11 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     });
     this.audioElements.clear();
     if (this.room) {
+      try {
+        this.room.localParticipant.setTrackSubscriptionPermissions(true);
+      } catch {
+        /* disconnecting */
+      }
       this.room.removeAllListeners();
       await this.room.disconnect();
     }

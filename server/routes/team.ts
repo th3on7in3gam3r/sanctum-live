@@ -99,3 +99,35 @@ export async function inviteTeamMemberHandler(req: Request, res: Response): Prom
     sendError(res, error);
   }
 }
+
+export async function removeTeamMemberHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = await resolveActorFromRequest(req);
+    requireCanManageTeam(actor);
+    if (!actor.organizationId) throw Unauthorized();
+
+    const userId = String(req.params.userId || '').trim();
+    if (!userId) {
+      res.status(400).json({ error: 'INVALID_MEMBER', message: 'A team member is required.' });
+      return;
+    }
+
+    const membership = await membershipRepository.find(actor.organizationId, userId);
+    if (!membership) {
+      res.status(404).json({ error: 'MEMBER_NOT_FOUND', message: 'That person is not on this church team.' });
+      return;
+    }
+    if (membership.role === 'OWNER') {
+      res.status(403).json({
+        error: 'CANNOT_REMOVE_OWNER',
+        message: 'The Owner cannot be removed from this Sanctum Space.',
+      });
+      return;
+    }
+
+    await membershipRepository.remove(actor.organizationId, userId);
+    res.json({ ok: true, userId });
+  } catch (error) {
+    sendError(res, error);
+  }
+}

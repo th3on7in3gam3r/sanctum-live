@@ -40,6 +40,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
   const [allowPrayerRequests, setAllowPrayerRequests] = useState(true);
   const [confirmDeleteName, setConfirmDeleteName] = useState('');
   const [deletingSpace, setDeletingSpace] = useState(false);
+  const [savingGeneral, setSavingGeneral] = useState(false);
+  const [savingBranding, setSavingBranding] = useState(false);
 
   const [savedDefaults, setSavedDefaults] = useState({
     defaultLowBandwidth: true,
@@ -99,7 +101,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
 
   const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingGeneral) return;
     const nextSlug = slug || slugify(name);
+    setSavingGeneral(true);
     try {
       const result = await sanctumApi.updateCurrentSpace(
         { name, slug: nextSlug, country, timezone, website },
@@ -117,11 +121,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
       setHasUnsavedChanges(false);
     } catch (error) {
       addToast(error instanceof ApiClientError ? error.message : 'Could not save settings.', 'error');
+    } finally {
+      setSavingGeneral(false);
     }
   };
 
   const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingBranding) return;
+    setSavingBranding(true);
     try {
       const result = await sanctumApi.updateCurrentSpace(
         { joinPageMessage, accentColor, logoUrl },
@@ -138,6 +146,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
       setHasUnsavedChanges(false);
     } catch (error) {
       addToast(error instanceof ApiClientError ? error.message : 'Could not save branding.', 'error');
+    } finally {
+      setSavingBranding(false);
     }
   };
 
@@ -297,10 +307,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
           <div className="pt-4 border-t border-[#E5E6E1] dark:border-[#26362F] flex justify-end">
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer"
+              disabled={savingGeneral}
+              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              <span>Save General Settings</span>
+              <span>{savingGeneral ? 'Saving…' : 'Save General Settings'}</span>
             </button>
           </div>
         </form>
@@ -364,10 +375,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
           <div className="pt-4 border-t border-[#E5E6E1] dark:border-[#26362F] flex justify-end">
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer"
+              disabled={savingBranding}
+              className="px-6 py-2.5 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              <span>Save Branding</span>
+              <span>{savingBranding ? 'Saving…' : 'Save Branding'}</span>
             </button>
           </div>
         </form>

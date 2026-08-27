@@ -26,6 +26,10 @@ import {
   raiseHandHandler,
   removeParticipantHandler,
   setCongregationMuteHandler,
+  startPttHandler,
+  endPttHandler,
+  startPrivatePrayerHandler,
+  endPrivatePrayerHandler,
   revokeSpeakerHandler,
   startPrayerSessionHandler,
   transferSpeakerHandler,
@@ -34,7 +38,7 @@ import { clerkMiddleware } from '@clerk/express';
 import { isClerkConfigured } from './env.ts';
 import { meHandler } from './routes/me.ts';
 import { createSpaceHandler, deleteCurrentSpaceHandler, updateCurrentSpaceHandler } from './routes/spaces.ts';
-import { inviteTeamMemberHandler, listTeamHandler } from './routes/team.ts';
+import { inviteTeamMemberHandler, listTeamHandler, removeTeamMemberHandler } from './routes/team.ts';
 import { livekitWebhookHandler } from './routes/webhooks.ts';
 
 export function createApp() {
@@ -59,6 +63,7 @@ export function createApp() {
   app.delete('/api/spaces/current', deleteCurrentSpaceHandler);
   app.get('/api/team', listTeamHandler);
   app.post('/api/team/invite', inviteTeamMemberHandler);
+  app.delete('/api/team/:userId', removeTeamMemberHandler);
   app.get('/api/prayer-rooms', listPrayerRoomsHandler);
   app.post('/api/prayer-rooms', createPrayerRoomHandler);
   app.patch('/api/prayer-rooms/:roomId', updatePrayerRoomHandler);
@@ -90,6 +95,10 @@ export function createApp() {
   app.post('/api/sessions/:id/participants/:participantId/remove', removeParticipantHandler);
   app.post('/api/sessions/:id/chat', postChatHandler);
   app.post('/api/sessions/:id/congregation-mute', setCongregationMuteHandler);
+  app.post('/api/sessions/:id/ptt/start', startPttHandler);
+  app.post('/api/sessions/:id/ptt/end', endPttHandler);
+  app.post('/api/sessions/:id/private-prayer/start', startPrivatePrayerHandler);
+  app.post('/api/sessions/:id/private-prayer/end', endPrivatePrayerHandler);
 
   const here = path.dirname(fileURLToPath(import.meta.url));
   const distDir = existsSync(path.join(here, 'index.html'))
