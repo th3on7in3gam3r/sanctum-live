@@ -56,7 +56,7 @@ export const dashboardTourSteps: TourStep[] = [
     popover: {
       title: 'Lead from the Control Room',
       description:
-        'Pastors and ministers lead prayer from the Control Room — not the public join page. Open it when you are ready to start.',
+        'Open the shared Control Room when you are ready to start. Admins can operate and moderate while the named sermon leader speaks from another Control Room. Congregants use the public join link.',
       side: 'left',
       align: 'center',
     },

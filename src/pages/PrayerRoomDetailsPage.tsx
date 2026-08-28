@@ -33,7 +33,7 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
 
   const room = prayerRooms.find((r) => r.id === roomId) || prayerRooms[0];
   const resolution = resolveAltarLink(room, liveSession, historySessions);
-  const fullUrl = `https://sanctum.live/join/${room?.slug || ''}`;
+  const fullUrl = `${window.location.origin}/join/${room?.slug || ''}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(fullUrl);
@@ -150,7 +150,7 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
             <span>Test Room</span>
           </button>
           <button
-            onClick={() => window.open(`/join/${room.slug}`, '_blank', 'noopener,noreferrer')}
+            onClick={() => window.open(`${window.location.origin}/join/${room.slug}`, '_blank', 'noopener,noreferrer')}
             type="button"
             className="px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-[#E5E6E1] dark:border-[#26362F] hover:bg-gray-50 dark:hover:bg-white/5 text-[#16251F] dark:text-[#F8F7F3] flex items-center justify-center gap-1.5 cursor-pointer"
           >

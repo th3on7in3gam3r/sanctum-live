@@ -138,6 +138,7 @@ export interface PrayerSession {
   waitingRoomOpenedAt?: string;
   startedAt?: string;
   endedAt?: string;
+  sermonLeaderName?: string | null;
   durationSeconds: number;
   // Core Analytics Definitions
   totalUniqueParticipants: number;

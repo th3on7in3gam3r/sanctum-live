@@ -30,6 +30,7 @@ function createMemoryFloorStore(seed?: { occupiedBy?: string | null }): SpeakerF
     actualStart: new Date(),
     endedAt: null,
     livekitRoomName: 'lk_room',
+    sermonLeaderName: '',
     activeSpeakerParticipantId: seed?.occupiedBy ?? null,
     peakConcurrentParticipants: 0,
   });
@@ -232,6 +233,17 @@ describe('listener token grants', () => {
 });
 
 describe('speaker floor exclusivity', () => {
+  it('does not invite a speaker before the session is live', async () => {
+    const store = createMemoryFloorStore();
+    const session = store.sessions.get('sess_1');
+    if (session) session.status = 'WAITING';
+    const floor = new SpeakerFloorService(store);
+
+    await expect(floor.invite({ sessionId: 'sess_1', participantId: 'p_listener' })).rejects.toMatchObject({
+      code: 'SESSION_NOT_LIVE',
+    });
+  });
+
   it('rejects grant when another participant already holds the floor', async () => {
     const store = createMemoryFloorStore({ occupiedBy: 'p_other' });
     const floor = new SpeakerFloorService(store);
@@ -264,6 +276,9 @@ describe('guest identity', () => {
     expect(first.length).toBeGreaterThan('guest_'.length + 16);
     expect(resolveJoinRealtimeIdentity(null, 'host')).toMatch(/^guest_/);
     expect(resolveJoinRealtimeIdentity(null, 'host')).not.toBe('host');
+    expect(resolveJoinRealtimeIdentity(null, 'guest_0123456789abcdef0123456789abcdef')).toBe(
+      'guest_0123456789abcdef0123456789abcdef'
+    );
     expect(resolveJoinRealtimeIdentity('user_1', 'admin')).toBe('user_user_1');
   });
 });

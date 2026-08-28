@@ -76,6 +76,8 @@ export function mapServerSession(
       status === 'WAITING' ? extras?.waitingRoomOpenedAt || new Date().toISOString() : extras?.waitingRoomOpenedAt,
     startedAt: session.actualStart ? String(session.actualStart) : extras?.startedAt,
     endedAt: session.endedAt ? String(session.endedAt) : extras?.endedAt,
+    sermonLeaderName:
+      typeof session.sermonLeaderName === 'string' ? session.sermonLeaderName : extras?.sermonLeaderName,
     durationSeconds: extras?.durationSeconds ?? 0,
     totalUniqueParticipants: connected,
     peakConcurrentParticipants: peak,

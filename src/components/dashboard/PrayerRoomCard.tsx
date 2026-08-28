@@ -28,7 +28,7 @@ export const PrayerRoomCard: React.FC<PrayerRoomCardProps> = ({
   const [copied, setCopied] = useState(false);
 
   const resolution = resolveAltarLink(room, liveSession, historySessions);
-  const fullUrl = `https://sanctum.live/join/${room.slug}`;
+  const fullUrl = `${window.location.origin}/join/${room.slug}`;
   const canDelete = user?.role === 'OWNER' || user?.role === 'ADMIN' ? canDeletePrayerRoom(user.role) : false;
 
   const handleCopy = () => {

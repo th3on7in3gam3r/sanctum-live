@@ -10,7 +10,8 @@ export type SanctumErrorCode =
   | 'DUPLICATE_SLUG'
   | 'SESSION_NOT_JOINABLE'
   | 'INVITATION_INVALID'
-  | 'SESSION_NOT_LIVE';
+  | 'SESSION_NOT_LIVE'
+  | 'SERMON_LEADER_REQUIRED';
 
 export class SanctumError extends Error {
   readonly code: SanctumErrorCode;
@@ -81,3 +82,6 @@ export const InvitationInvalid = (message = 'Speaker invitation is not active.')
 
 export const SessionNotLive = () =>
   new SanctumError('SESSION_NOT_LIVE', 'Prayer has not started.', 409);
+
+export const SermonLeaderRequired = () =>
+  new SanctumError('SERMON_LEADER_REQUIRED', 'Enter the sermon or prayer leader for this session.', 400);

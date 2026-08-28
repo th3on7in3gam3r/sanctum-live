@@ -72,8 +72,8 @@ export interface AppContextType {
   endPrivatePrayer: () => Promise<void>;
 
   // Session Lifecycle Machine
-  openSanctuary: (roomId: string) => void;
-  startPrayerSession: (roomId: string) => void;
+  openSanctuary: (roomId: string, sermonLeaderName: string) => Promise<void>;
+  startPrayerSession: (roomId: string, sermonLeaderName?: string) => Promise<void>;
   endPrayerSession: (sessionIdOrAdminId?: string, adminId?: string) => Promise<void>;
   cancelPrayerSession: (sessionId: string) => void;
   startLiveSession: (roomId: string) => void;
@@ -415,6 +415,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       asGuest: boolean;
       roomSlug: string;
       connectionKind?: 'listener' | 'control';
+      realtimeIdentity?: string;
     }) => {
       const join = await sessionApiAdapter.join(
         params.sessionId,
@@ -423,6 +424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         {
           asGuest: params.asGuest,
           connectionKind: params.connectionKind || 'listener',
+          realtimeIdentity: params.realtimeIdentity,
         }
       );
       if (!join.ok || !join.token || !join.livekitUrl || !join.participant) {
@@ -889,8 +891,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // LIFECYCLE: Open Sanctuary (WAITING State)
-  const openSanctuary = async (roomId: string) => {
+  const openSanctuary = async (roomId: string, sermonLeaderName: string) => {
     if (isMutatingRef.current) return;
+    const leaderName = sermonLeaderName.trim();
+    if (!leaderName) {
+      addToast('Enter the sermon or prayer leader for this session.', 'warning');
+      return;
+    }
     isMutatingRef.current = true;
     try {
       const room = prayerRooms.find((r) => r.id === roomId) || prayerRooms[0];
@@ -898,7 +905,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setPrayerComplete(false);
 
       try {
-        const opened = await sanctumApi.openSessionForRoom(room.id, actor);
+        const opened = await sanctumApi.openSessionForRoom(room.id, actor, leaderName);
         const mapped = mapServerSession(opened.session, room, {
           listenersWaitingCount: 0,
           totalParticipants: 0,
@@ -928,7 +935,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // LIFECYCLE: Start Live Session (LIVE State)
-  const startPrayerSession = async (roomId: string) => {
+  const startPrayerSession = async (roomId: string, sermonLeaderName = '') => {
     if (isMutatingRef.current) return;
     isMutatingRef.current = true;
     try {
@@ -947,8 +954,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : null;
 
       try {
-        if (!sessionId) {
-          const opened = await sanctumApi.openSessionForRoom(room.id, actor);
+        if (!sessionId || liveSession?.status === 'SCHEDULED') {
+          const leaderName = sermonLeaderName.trim() || liveSession?.sermonLeaderName?.trim() || '';
+          const opened = await sanctumApi.openSessionForRoom(room.id, actor, leaderName);
           sessionId = String(opened.session.id);
           setLiveSession(mapServerSession(opened.session, room));
           liveSessionIdRef.current = sessionId;
@@ -1226,7 +1234,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setLiveSession((prev) =>
       mapServerSession(
-        { id: altar.session!.id, status: altar.session!.status, prayerRoomId: room.id },
+        {
+          id: altar.session!.id,
+          status: altar.session!.status,
+          prayerRoomId: room.id,
+          sermonLeaderName: altar.session!.sermonLeaderName,
+        },
         room,
         prev || undefined
       )
@@ -1305,6 +1318,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           asGuest: false,
           roomSlug: stored.sessionId,
           connectionKind: stored.realtimeIdentity?.endsWith('_control') ? 'control' : 'listener',
+          realtimeIdentity: stored.realtimeIdentity,
         });
       } else if (actor.userId && stored.asGuest) {
         await connectLiveKit({
@@ -1313,22 +1327,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           asGuest: true,
           roomSlug: stored.sessionId,
           connectionKind: 'listener',
+          realtimeIdentity: stored.realtimeIdentity,
         });
       } else {
-        await livekitRealtimeProvider.joinRoom({
+        await connectLiveKit({
+          sessionId: stored.sessionId,
+          guestName: stored.guestName,
+          asGuest: true,
           roomSlug: stored.sessionId,
-          displayName: stored.guestName,
-          role: 'LISTENER',
-          token: stored.token,
-          livekitUrl: stored.livekitUrl,
+          connectionKind: 'listener',
+          realtimeIdentity: stored.realtimeIdentity,
         });
-        connectedRoomRef.current = stored.sessionId;
-        setLocalParticipantId(stored.participantId);
-        localParticipantIdRef.current = stored.participantId;
-        setConnectionState(livekitRealtimeProvider.connectionState);
-        setAudioBlocked(livekitRealtimeProvider.audioBlocked);
-        setConnectedNow(livekitRealtimeProvider.connectedCount);
-        await applySnapshot(stored.sessionId);
       }
       if (!opts?.silent) addToast('Reconnected to prayer', 'success');
     } catch (error) {
@@ -1340,6 +1349,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const stored = loadJoinSession();
     const participantId = pendingSpeakerInvite?.participantId || localParticipantId || stored?.participantId;
     if (!participantId || !liveSession?.id) return;
+    if (liveSession.status !== 'LIVE') {
+      addToast('Prayer has not started. The host must click Start Prayer before you can speak.', 'warning');
+      return;
+    }
     const apiResult = await sessionApiAdapter.acceptSpeaker(liveSession.id, {
       participantId,
       invitationId: pendingSpeakerInvite?.invitationId,

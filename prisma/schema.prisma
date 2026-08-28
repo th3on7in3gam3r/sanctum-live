@@ -203,6 +203,7 @@ model PrayerSession {
   actualStart                DateTime?
   endedAt                    DateTime?
   livekitRoomName            String?
+  sermonLeaderName           String        @default("")
   activeSpeakerParticipantId String?
   peakConcurrentParticipants Int           @default(0)
   congregationMuted          Boolean       @default(true)

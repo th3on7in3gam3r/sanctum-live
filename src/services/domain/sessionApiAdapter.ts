@@ -22,7 +22,7 @@ export const sessionApiAdapter = {
     sessionId: string | undefined,
     guestName: string,
     actor?: { userId?: string; organizationId?: string },
-    options?: { asGuest?: boolean; connectionKind?: 'listener' | 'control' }
+    options?: { asGuest?: boolean; connectionKind?: 'listener' | 'control'; realtimeIdentity?: string }
   ) {
     if (!isServerSessionId(sessionId)) {
       return { ok: false as const, reason: UNCONFIGURED, participant: null, token: null, livekitUrl: null };
@@ -36,6 +36,7 @@ export const sessionApiAdapter = {
           userId: asGuest ? undefined : actor?.userId,
           asGuest,
           connectionKind: options?.connectionKind || 'listener',
+          realtimeIdentity: options?.realtimeIdentity,
         },
         asGuest ? undefined : actor
       );

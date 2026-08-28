@@ -6,7 +6,7 @@ export const controlRoomTourSteps: TourStep[] = [
     popover: {
       title: 'You are in the Control Room',
       description:
-        'Lead prayer from here. Your congregation joins the public link as listeners. You stay on this screen to host.',
+        'This is one shared Control Room. Admins operate the room and moderate; the named sermon leader turns on the sermon microphone. Multiple control identities can work in the same live room.',
       side: 'bottom',
       align: 'start',
     },
@@ -26,7 +26,7 @@ export const controlRoomTourSteps: TourStep[] = [
     popover: {
       title: 'Turn on your microphone',
       description:
-        'Tap this so the congregation can hear you. Your browser may ask for permission the first time — tap Allow.',
+        'Host microphone — sermon audio. The control identity that turns it on is the voice congregants hear, so the named sermon leader can lead from another Control Room.',
       side: 'top',
       align: 'end',
     },
@@ -46,7 +46,7 @@ export const controlRoomTourSteps: TourStep[] = [
     popover: {
       title: 'Congregation list',
       description:
-        'See who joined. Green mic means live, red means ready for PTT, grey means locked. Press and hold a name for private prayer with that person.',
+        'Admins and permitted room operators can moderate here. Green mic means live, red means ready for PTT, grey means locked. Press and hold a name for private prayer with that person.',
       side: 'top',
       align: 'start',
     },

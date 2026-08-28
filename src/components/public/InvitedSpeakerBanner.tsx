@@ -5,12 +5,14 @@ interface InvitedSpeakerBannerProps {
   isOpen: boolean;
   onAccept: () => void;
   onDecline: () => void;
+  canAccept?: boolean;
 }
 
 export const InvitedSpeakerBanner: React.FC<InvitedSpeakerBannerProps> = ({
   isOpen,
   onAccept,
   onDecline,
+  canAccept = true,
 }) => {
   if (!isOpen) return null;
 
@@ -44,7 +46,9 @@ export const InvitedSpeakerBanner: React.FC<InvitedSpeakerBannerProps> = ({
 
         {/* Informative Note */}
         <div className="my-5 p-3.5 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] text-xs text-[#68736D] dark:text-[#96A39D]">
-          When you tap Accept, your microphone will be enabled to lead in prayer.
+          {canAccept
+            ? 'When you tap Accept, your microphone will be enabled to lead in prayer.'
+            : 'The prayer session has not started yet. The host must tap Start Prayer before you can speak.'}
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -58,9 +62,10 @@ export const InvitedSpeakerBanner: React.FC<InvitedSpeakerBannerProps> = ({
           <button
             onClick={onAccept}
             type="button"
-            className="w-full sm:w-1/2 py-3 px-4 rounded-xl font-bold text-sm bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg transition-transform active:scale-95 cursor-pointer"
+            disabled={!canAccept}
+            className="w-full sm:w-1/2 py-3 px-4 rounded-xl font-bold text-sm bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg transition-transform active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Accept & Pray
+            {canAccept ? 'Accept & Pray' : 'Waiting for Start'}
           </button>
         </div>
       </div>

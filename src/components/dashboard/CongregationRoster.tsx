@@ -38,10 +38,20 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
   onPrivatePrayEnd,
   onMute,
 }) => {
-  const congregation = participants
+  const connectedCongregants = participants
     .filter((person) => !person.leftAt && !isMinister(person.role))
-    .filter((person) => !localIdentity || person.externalIdentity !== localIdentity)
+    .filter((person) => !localIdentity || person.externalIdentity !== localIdentity);
+  const nameTotals = new Map<string, number>();
+  connectedCongregants.forEach((person) => {
+    const key = person.displayName.trim().toLocaleLowerCase();
+    nameTotals.set(key, (nameTotals.get(key) || 0) + 1);
+  });
+  const nameOccurrences = new Map<string, number>();
+  const congregation = connectedCongregants
     .map((person) => {
+      const nameKey = person.displayName.trim().toLocaleLowerCase();
+      const occurrence = (nameOccurrences.get(nameKey) || 0) + 1;
+      nameOccurrences.set(nameKey, occurrence);
       const micOn = Boolean(person.externalIdentity && micOnByIdentity[person.externalIdentity]);
       let micTone: MicTone = 'locked';
       if (micOn || person.id === pttParticipantId || person.id === privatePrayerMemberId) {
@@ -49,7 +59,15 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
       } else if (discussionOpen) {
         micTone = 'ready';
       }
-      return { ...person, micOn, micTone };
+      return {
+        ...person,
+        displayName:
+          nameTotals.get(nameKey) && nameTotals.get(nameKey)! > 1
+            ? `${person.displayName} · ${occurrence}`
+            : person.displayName,
+        micOn,
+        micTone,
+      };
     })
     .sort((a, b) => {
       if (a.micTone === 'live' && b.micTone !== 'live') return -1;

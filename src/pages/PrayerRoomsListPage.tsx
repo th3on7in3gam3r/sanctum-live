@@ -106,7 +106,7 @@ export const PrayerRoomsListPage: React.FC<PrayerRoomsListPageProps> = ({ onNavi
               room={room}
               onOpenDetails={(id) => onNavigate(`/dashboard/prayer-rooms/${id}`)}
               onOpenControlRoom={(id) => onNavigate(`/dashboard/prayer-rooms/${id}/control`)}
-              onOpenJoinPage={(slug) => window.open(`/join/${slug}`, '_blank', 'noopener,noreferrer')}
+              onOpenJoinPage={(slug) => window.open(`${window.location.origin}/join/${slug}`, '_blank', 'noopener,noreferrer')}
               onEdit={(id) => onNavigate(`/dashboard/prayer-rooms/${id}/edit`)}
             />
           ))}

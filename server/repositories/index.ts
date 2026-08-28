@@ -32,6 +32,7 @@ export interface PrayerSessionRecord {
   actualStart: Date | null;
   endedAt: Date | null;
   livekitRoomName: string | null;
+  sermonLeaderName: string;
   activeSpeakerParticipantId: string | null;
   peakConcurrentParticipants: number;
   congregationMuted?: boolean;
@@ -459,6 +460,7 @@ export const sessionRepository = {
     status?: SessionLifecycleState;
     scheduledStart?: Date | null;
     livekitRoomName?: string;
+    sermonLeaderName?: string | null;
   }): Promise<PrayerSessionRecord> {
     const prisma = requirePrisma();
     const room = await prisma.prayerRoom.findUnique({ where: { id: input.prayerRoomId } });
@@ -469,6 +471,7 @@ export const sessionRepository = {
         status: input.status ?? 'SCHEDULED',
         scheduledStart: input.scheduledStart ?? null,
         livekitRoomName: input.livekitRoomName,
+        sermonLeaderName: input.sermonLeaderName ?? '',
       },
     }) as Promise<PrayerSessionRecord>;
   },
@@ -483,6 +486,7 @@ export const sessionRepository = {
         actualStart: data.actualStart,
         endedAt: data.endedAt,
         livekitRoomName: data.livekitRoomName,
+        sermonLeaderName: data.sermonLeaderName,
         activeSpeakerParticipantId: data.activeSpeakerParticipantId,
         peakConcurrentParticipants: data.peakConcurrentParticipants,
         congregationMuted: data.congregationMuted,

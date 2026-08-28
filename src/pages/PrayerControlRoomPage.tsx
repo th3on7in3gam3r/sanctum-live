@@ -16,6 +16,7 @@ import { RealtimeEngineStatus } from '../components/common/RealtimeEngineStatus'
 import { LocalMicStatus } from '../components/common/LocalMicStatus';
 import { TestPrayerRoomModal } from '../components/dashboard/TestPrayerRoomModal';
 import { PrePrayerCheckModal } from '../components/dashboard/PrePrayerCheckModal';
+import { OpenSanctuaryModal } from '../components/dashboard/OpenSanctuaryModal';
 import { PrayerChatPanel } from '../components/public/PrayerChatPanel';
 import { resolveAltarLink } from '../services/altarLinkResolver';
 import {
@@ -83,6 +84,10 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   const discussionOpen = !congregationMuted;
   const canMuteIndividuals = user?.role ? canModerate(user.role) : false;
   const room = (prayerRooms || []).find((r) => r?.id === roomId) || (prayerRooms || [])[0];
+  const sermonLeaderName = liveSession?.sermonLeaderName?.trim() || '';
+  const isSermonLeader =
+    Boolean(sermonLeaderName && user?.name) &&
+    sermonLeaderName.toLocaleLowerCase() === user?.name?.trim().toLocaleLowerCase();
   const visiblePrayerRequests = (prayerRequests || []).filter(
     (req) => !req.isPrivate || hasPermission(user?.role || 'LISTENER', 'canViewPrivateRequests')
   );
@@ -103,6 +108,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   const [activeTab, setActiveTab] = useState<'CONSOLE' | 'PARTICIPANTS' | 'REQUESTS' | 'CHAT'>('CONSOLE');
   const [showTestRoomModal, setShowTestRoomModal] = useState(false);
   const [showPrePrayerModal, setShowPrePrayerModal] = useState(false);
+  const [showOpenSanctuaryModal, setShowOpenSanctuaryModal] = useState(false);
   const [hostMicOn, setHostMicOn] = useState(false);
   const [hostMicBusy, setHostMicBusy] = useState(false);
   const [micOnByIdentity, setMicOnByIdentity] = useState<Record<string, boolean>>({});
@@ -172,8 +178,8 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
     });
   };
 
-  const handleStartFromPrePrayer = () => {
-    startPrayerSession(room.id);
+  const handleStartFromPrePrayer = (sermonLeaderName: string) => {
+    void startPrayerSession(room.id, sermonLeaderName);
   };
 
   const handleToggleHostMic = async () => {
@@ -255,6 +261,20 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             {organization.name} • Lead from this Control Room. Congregants join as listeners at{' '}
             <span className="font-mono text-[#203C32] dark:text-[#C9A35A]">/join/{room?.slug}</span>
           </p>
+          {sermonLeaderName && (
+            <p className="mt-2 text-xs font-semibold text-[#203C32] dark:text-[#E8D8B2]">
+              Sermon leader: {sermonLeaderName}
+            </p>
+          )}
+          {user?.role === 'ADMIN' ? (
+            <p className="mt-2 inline-flex rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+              You are operating this room as Admin. Moderate here while the named sermon leader speaks.
+            </p>
+          ) : isSermonLeader ? (
+            <p className="mt-2 inline-flex rounded-full bg-[#C9A35A]/15 px-2.5 py-1 text-[11px] font-bold text-[#203C32] dark:text-[#E8D8B2]">
+              You are leading as Sermon leader.
+            </p>
+          ) : null}
         </div>
 
         {/* Live Counters & Actions */}
@@ -286,7 +306,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
 
               {resolution.status === 'WAITING' && (
                 <button
-                  onClick={() => void startPrayerSession(room.id)}
+                  onClick={() => void startPrayerSession(room.id, liveSession?.sermonLeaderName || '')}
                   type="button"
                   className="px-3.5 py-2 rounded-xl font-bold text-xs bg-[#D7473F] hover:bg-[#C23C35] text-white shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
@@ -296,7 +316,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               )}
               {(resolution.status === 'SCHEDULED' || resolution.status === 'ENDED') && (
                 <button
-                  onClick={() => void openSanctuary(room.id)}
+                  onClick={() => setShowOpenSanctuaryModal(true)}
                   type="button"
                   className="px-3.5 py-2 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-white dark:bg-[#C9A35A] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
@@ -310,7 +330,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
           <button
             onClick={() => {
               if (!room?.slug) return;
-              window.open(`/join/${room.slug}`, '_blank', 'noopener,noreferrer');
+              window.open(`${window.location.origin}/join/${room.slug}`, '_blank', 'noopener,noreferrer');
             }}
             type="button"
             className="px-3 py-2 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-1 cursor-pointer"
@@ -340,12 +360,12 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
           <div>
             <p className="text-sm font-bold text-[#16251F] dark:text-[#F8F7F3] flex items-center gap-1.5">
               {hostMicOn ? <Mic className="w-4 h-4 text-emerald-600" /> : <MicOff className="w-4 h-4 text-[#68736D]" />}
-              Host microphone
+              Host microphone — sermon audio
             </p>
             <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
               {hostMicOn
                 ? 'You are live. The congregation can hear you (except during a private sideline).'
-                : 'This is how you speak as the pastor. Tap Turn on microphone. Open Discussion PTT so congregants can hold-to-talk.'}
+                : 'The control identity that turns this on is the voice the congregation hears. The named sermon leader can lead from another Control Room.'}
             </p>
             <div className="mt-2">
               <LocalMicStatus />
@@ -383,7 +403,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               ) : (
                 <Volume2 className="w-4 h-4 text-emerald-600" />
               )}
-              {congregationMuted ? 'Sermon mode' : 'Discussion PTT'}
+              Room operator — PTT and moderation
             </p>
             <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
               {congregationMuted
@@ -523,6 +543,11 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#68736D] dark:text-[#96A39D]">
                   {liveSession?.privatePrayer ? 'Private sideline' : congregationMuted ? 'Sermon mode' : 'Discussion PTT'}
                 </p>
+                {sermonLeaderName && (
+                  <p className="mt-2 text-sm font-bold text-[#203C32] dark:text-[#E8D8B2]">
+                    Sermon leader: {sermonLeaderName}
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => void handleToggleHostMic()}
@@ -567,6 +592,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                       hand={hand}
                       onInviteToPray={(pId) => inviteSpeaker(pId)}
                       onDismiss={(hId) => dismissRaisedHand(hId)}
+                      canInvite={isLive}
                     />
                   ))}
                   {raisedHands.length === 0 && (
@@ -755,6 +781,15 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
         session={liveSession}
         waitingCount={liveSession?.status === 'WAITING' ? (liveSession.listenersWaitingCount || participants.length || 0) : 0}
         onStartPrayer={handleStartFromPrePrayer}
+      />
+      <OpenSanctuaryModal
+        isOpen={showOpenSanctuaryModal}
+        roomName={room?.name || 'Prayer Altar'}
+        onClose={() => setShowOpenSanctuaryModal(false)}
+        onSubmit={(sermonLeaderName) => {
+          setShowOpenSanctuaryModal(false);
+          void openSanctuary(room.id, sermonLeaderName);
+        }}
       />
     </div>
   );

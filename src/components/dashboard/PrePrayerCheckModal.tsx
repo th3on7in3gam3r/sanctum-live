@@ -24,7 +24,7 @@ interface PrePrayerCheckModalProps {
   room: PrayerRoom;
   session?: PrayerSession | null;
   waitingCount?: number;
-  onStartPrayer: () => void;
+  onStartPrayer: (sermonLeaderName: string) => void;
 }
 
 export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
@@ -42,16 +42,20 @@ export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
   const [networkLatency, setNetworkLatency] = useState<number>(34);
   const [isPlayingChime, setIsPlayingChime] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [sermonLeaderName, setSermonLeaderName] = useState('');
+  const [leaderError, setLeaderError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
+      setSermonLeaderName(session?.sermonLeaderName || '');
+      setLeaderError('');
       // Auto run basic check
       DeviceTestService.checkBasicNetwork().then((res) => {
         setNetworkStatus(res.status);
         setNetworkLatency(res.latencyMs);
       });
     }
-  }, [isOpen]);
+  }, [isOpen, session?.sermonLeaderName]);
 
   const handleTestMic = async () => {
     setMicStatus('NOT_TESTED');
@@ -69,12 +73,16 @@ export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
   };
 
   const handleInitiateStart = () => {
+    if (!sermonLeaderName.trim()) {
+      setLeaderError('Enter the sermon or prayer leader before starting.');
+      return;
+    }
     setIsConfirming(true);
   };
 
   const handleFinalConfirm = () => {
     setIsConfirming(false);
-    onStartPrayer();
+    onStartPrayer(sermonLeaderName.trim());
     onClose();
   };
 
@@ -157,6 +165,28 @@ export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
           <>
             {/* Checklist Grid */}
             <div className="p-6 space-y-3.5 overflow-y-auto flex-1 text-xs">
+              <div className="p-3.5 rounded-2xl bg-[#C9A35A]/10 border border-[#C9A35A]/30">
+                <label htmlFor="preflight-sermon-leader" className="font-bold text-[#16251F] dark:text-[#F8F7F3]">
+                  Sermon / prayer leader for this session
+                </label>
+                <p className="text-[11px] text-[#68736D] dark:text-[#96A39D] mt-1">
+                  Required so congregants know who is leading today.
+                </p>
+                <input
+                  id="preflight-sermon-leader"
+                  required
+                  value={sermonLeaderName}
+                  onChange={(event) => {
+                    setSermonLeaderName(event.target.value);
+                    if (event.target.value.trim()) setLeaderError('');
+                  }}
+                  placeholder="e.g. Pastor Michael"
+                  maxLength={120}
+                  className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-white dark:bg-[#101814] text-sm text-[#16251F] dark:text-[#F8F7F3] outline-none focus:ring-2 focus:ring-[#C9A35A]/60"
+                />
+                {leaderError && <p className="mt-1.5 text-[11px] font-semibold text-[#B94A48]">{leaderError}</p>}
+              </div>
+
               {/* Host Microphone */}
               <div className="p-3.5 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">

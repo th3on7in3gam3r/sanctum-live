@@ -25,6 +25,7 @@ function createMemoryFloorStore(seed?: { occupiedBy?: string | null; hostId?: st
     actualStart: new Date(),
     endedAt: null,
     livekitRoomName: 'sanctum_sess_1',
+    sermonLeaderName: '',
     activeSpeakerParticipantId: seed?.occupiedBy ?? null,
     peakConcurrentParticipants: 0,
   });

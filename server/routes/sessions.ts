@@ -5,10 +5,12 @@ import {
   RoomNotFound,
   SessionNotJoinable,
   SessionNotLive,
+  SermonLeaderRequired,
   Unauthorized,
 } from '../../shared/errors.ts';
 import { deriveSessionRoleFromOrgRole } from '../../shared/roles.ts';
 import { assertCanTransitionSession, isJoinableSessionStatus } from '../../shared/sessionStateMachine.ts';
+import { normalizeSermonLeaderName } from '../../shared/sessionLeader.ts';
 import { isLiveKitConfigured } from '../env.ts';
 import { sendError } from '../http.ts';
 import { getPrisma } from '../prisma.ts';
@@ -71,6 +73,9 @@ export async function createPrayerSessionHandler(req: Request, res: Response): P
 
 export async function openPrayerSessionHandler(req: Request, res: Response): Promise<void> {
   try {
+    const sermonLeaderName = normalizeSermonLeaderName(req.body?.sermonLeaderName);
+    if (!sermonLeaderName) throw SermonLeaderRequired();
+
     const roomId = typeof req.body?.prayerRoomId === 'string' ? req.body.prayerRoomId : '';
     let session = req.params.id ? await sessionRepository.findById(req.params.id) : null;
 
@@ -96,9 +101,14 @@ export async function openPrayerSessionHandler(req: Request, res: Response): Pro
 
     if (session.status === 'SCHEDULED') {
       assertCanTransitionSession('SCHEDULED', 'WAITING');
-      session = await sessionRepository.update(session.id, { status: 'WAITING' });
-    } else if (session.status !== 'WAITING') {
-      assertCanTransitionSession(session.status, 'WAITING');
+      session = await sessionRepository.update(session.id, { status: 'WAITING', sermonLeaderName });
+    } else {
+      if (session.status !== 'WAITING') {
+        assertCanTransitionSession(session.status, 'WAITING');
+      }
+      if (session.sermonLeaderName !== sermonLeaderName) {
+        session = await sessionRepository.update(session.id, { sermonLeaderName });
+      }
     }
 
     session = await ensureLiveKitRoom(session);

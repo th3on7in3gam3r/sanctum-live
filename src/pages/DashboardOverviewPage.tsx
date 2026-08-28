@@ -37,9 +37,9 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
   const hours = totalDurationSeconds / 3600;
   const totalPrayerHours = Number.isInteger(hours) ? String(hours) : hours.toFixed(1).replace(/\.0$/, '');
 
-  const handleStartFromPrePrayer = () => {
+  const handleStartFromPrePrayer = (sermonLeaderName: string) => {
     if (!nextRoom) return;
-    startPrayerSession(nextRoom.id);
+    void startPrayerSession(nextRoom.id, sermonLeaderName);
     onNavigate(`/dashboard/prayer-rooms/${nextRoom.id}/control`);
   };
 
@@ -93,7 +93,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
           room={nextRoom}
           liveSession={liveSession}
           onOpenControlRoom={(roomId) => onNavigate(`/dashboard/prayer-rooms/${roomId}/control`)}
-          onOpenPublicJoin={(slug) => window.open(`/join/${slug}`, '_blank', 'noopener,noreferrer')}
+          onOpenPublicJoin={(slug) => window.open(`${window.location.origin}/join/${slug}`, '_blank', 'noopener,noreferrer')}
           onEditRoom={(roomId) => onNavigate(`/dashboard/prayer-rooms/${roomId}/edit`)}
           onOpenTestRoom={() => setShowTestRoomModal(true)}
           onOpenPrePrayerCheck={() => setShowPrePrayerModal(true)}

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Participant, Role } from '../../types';
 import { RoleBadge } from '../common/RoleBadge';
 import { ConnectionStatus } from '../common/ConnectionStatus';
@@ -27,7 +28,26 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
   onOpenDetail,
 }) => {
   const { confirmAction } = useApp();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuPosition) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuPosition(null);
+    };
+    const closeOnViewportChange = () => setMenuPosition(null);
+
+    document.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', closeOnViewportChange);
+    window.addEventListener('scroll', closeOnViewportChange, true);
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('resize', closeOnViewportChange);
+      window.removeEventListener('scroll', closeOnViewportChange, true);
+    };
+  }, [menuPosition]);
 
   const joinedTime = new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
@@ -35,7 +55,7 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
   }).format(new Date(participant.joinedAt));
 
   const handleRemoveClick = () => {
-    setMenuOpen(false);
+    setMenuPosition(null);
     confirmAction({
       title: `Remove ${participant.displayName}?`,
       description: `Are you sure you want to disconnect ${participant.displayName} from this prayer session? Their live audio stream will be severed.`,
@@ -44,6 +64,24 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
       isDestructive: true,
       onConfirm: () => onRemove(participant.id),
     });
+  };
+
+  const toggleMenu = () => {
+    if (menuPosition) {
+      setMenuPosition(null);
+      return;
+    }
+    const button = menuButtonRef.current;
+    if (!button) return;
+    const rect = button.getBoundingClientRect();
+    const menuWidth = 224;
+    const estimatedMenuHeight = 330;
+    const top =
+      window.innerHeight - rect.bottom >= estimatedMenuHeight + 12
+        ? rect.bottom + 8
+        : Math.max(8, rect.top - estimatedMenuHeight - 8);
+    const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
+    setMenuPosition({ top, left });
   };
 
 
@@ -126,24 +164,33 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
       <td className="px-6 py-4 text-right">
         <div className="relative inline-block text-left">
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={toggleMenu}
             type="button"
             aria-label="Participant moderation options"
+            aria-expanded={Boolean(menuPosition)}
+            aria-haspopup="menu"
+            ref={menuButtonRef}
             className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
-
-          {menuOpen && (
-            <>
-              <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#17221D] rounded-2xl shadow-xl border border-[#E5E6E1] dark:border-[#26362F] py-1.5 z-30 animate-in fade-in zoom-in-95">
+          {menuPosition &&
+            createPortal(
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setMenuPosition(null)} />
+                <div
+                  role="menu"
+                  aria-label={`${participant.displayName} moderation options`}
+                  style={{ top: menuPosition.top, left: menuPosition.left }}
+                  className="fixed w-56 bg-white dark:bg-[#17221D] rounded-2xl shadow-xl border border-[#E5E6E1] dark:border-[#26362F] py-1.5 z-30 animate-in fade-in zoom-in-95"
+                >
                 {participant.role === 'LISTENER' && (
                   <button
                     onClick={() => {
                       onInviteToSpeak(participant.id);
-                      setMenuOpen(false);
+                      setMenuPosition(null);
                     }}
+                    role="menuitem"
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-[#16251F] dark:text-[#F8F7F3] hover:bg-gray-100 dark:hover:bg-white/5 text-left cursor-pointer"
                   >
                     <Mic className="w-3.5 h-3.5 text-[#C9A35A]" />
@@ -158,8 +205,9 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
                     <button
                       onClick={() => {
                         onMute(participant.id);
-                        setMenuOpen(false);
+                        setMenuPosition(null);
                       }}
+                      role="menuitem"
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-gray-100 dark:hover:bg-white/5 text-left cursor-pointer"
                     >
                       <VolumeX className="w-3.5 h-3.5" />
@@ -170,8 +218,9 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
                       <button
                         onClick={() => {
                           onReturnToListener(participant.id);
-                          setMenuOpen(false);
+                          setMenuPosition(null);
                         }}
+                        role="menuitem"
                         className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-[#16251F] dark:text-[#F8F7F3] hover:bg-gray-100 dark:hover:bg-white/5 text-left cursor-pointer"
                       >
                         <UserCheck className="w-3.5 h-3.5" />
@@ -185,8 +234,9 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
                   <button
                     onClick={() => {
                       onMakePrayerLeader(participant.id);
-                      setMenuOpen(false);
+                      setMenuPosition(null);
                     }}
+                    role="menuitem"
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-[#203C32] dark:text-[#E8D8B2] hover:bg-gray-100 dark:hover:bg-white/5 text-left cursor-pointer"
                   >
                     <Shield className="w-3.5 h-3.5 text-emerald-600" />
@@ -198,14 +248,16 @@ export const ParticipantRow: React.FC<ParticipantRowProps> = ({
 
                 <button
                   onClick={handleRemoveClick}
+                  role="menuitem"
                   className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-semibold text-[#B94A48] dark:text-red-400 hover:bg-red-500/10 text-left cursor-pointer"
                 >
                   <UserMinus className="w-3.5 h-3.5" />
                   <span>Remove from Room</span>
                 </button>
-              </div>
-            </>
-          )}
+                </div>
+              </>,
+              document.body
+            )}
         </div>
       </td>
     </tr>

@@ -17,11 +17,15 @@ export function createControlRealtimeIdentity(userId: string): string {
 
 export function resolveJoinRealtimeIdentity(
   userId: string | null,
-  _clientSuppliedIdentity?: string,
+  clientSuppliedIdentity?: string,
   connectionKind: JoinConnectionKind = 'listener'
 ): string {
-  void _clientSuppliedIdentity;
-  if (!userId) return createGuestRealtimeIdentity();
+  if (!userId) {
+    if (clientSuppliedIdentity && /^guest_[a-f0-9]{32}$/.test(clientSuppliedIdentity)) {
+      return clientSuppliedIdentity;
+    }
+    return createGuestRealtimeIdentity();
+  }
   if (connectionKind === 'control') return createControlRealtimeIdentity(userId);
   return createMemberRealtimeIdentity(userId);
 }

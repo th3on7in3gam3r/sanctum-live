@@ -277,7 +277,7 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
                 Permanent Altar Link Slug *
               </label>
               <div className="flex items-center px-4 py-3 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-xs font-mono text-[#68736D] dark:text-[#96A39D]">
-                <span>https://sanctum.live/join/</span>
+                <span>{window.location.origin}/join/</span>
                 <input
                   type="text"
                   required

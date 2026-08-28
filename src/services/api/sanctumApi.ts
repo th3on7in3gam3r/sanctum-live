@@ -195,6 +195,7 @@ export const sanctumApi = {
       role?: string;
       asGuest?: boolean;
       connectionKind?: 'listener' | 'control';
+      realtimeIdentity?: string;
     },
     actor?: Actor
   ) =>
@@ -249,15 +250,15 @@ export const sanctumApi = {
       method: 'POST',
       body: JSON.stringify({}),
     }, staff(actor)),
-  openPrayerSession: (sessionId: string, actor: Actor) =>
+  openPrayerSession: (sessionId: string, sermonLeaderName: string, actor: Actor) =>
     apiFetch<{ session: Record<string, unknown> }>(`/api/prayer-sessions/${sessionId}/open`, {
       method: 'POST',
-      body: JSON.stringify({}),
+      body: JSON.stringify({ sermonLeaderName }),
     }, staff(actor)),
-  openSessionForRoom: (roomId: string, actor: Actor) =>
+  openSessionForRoom: (roomId: string, actor: Actor, sermonLeaderName: string) =>
     apiFetch<{ session: Record<string, unknown> }>(`/api/prayer-rooms/${roomId}/open-session`, {
       method: 'POST',
-      body: JSON.stringify({ prayerRoomId: roomId }),
+      body: JSON.stringify({ prayerRoomId: roomId, sermonLeaderName }),
     }, staff(actor)),
   getSession: (sessionId: string) =>
     apiFetch<{
@@ -308,7 +309,7 @@ export const sanctumApi = {
         scheduledStart?: string;
         timezone?: string;
       };
-      session: { id: string; status: string } | null;
+      session: { id: string; status: string; sermonLeaderName?: string | null } | null;
     }>(`/api/altar/${encodeURIComponent(slug)}`),
   listLiveAltars: (organizationSlug?: string) => {
     const query = organizationSlug ? `?organization=${encodeURIComponent(organizationSlug)}` : '';
@@ -342,10 +343,13 @@ export const sanctumApi = {
     sessionId: string,
     input: { participantId: string; invitationId?: string; realtimeIdentity?: string }
   ) =>
-    apiFetch(`/api/sessions/${sessionId}/speaker/accept`, {
+    apiFetch<{ speakerFloor: { sessionId: string; activeSpeakerParticipantId: string | null }; invitationId: string }>(
+      `/api/sessions/${sessionId}/speaker/accept`,
+      {
       method: 'POST',
       body: JSON.stringify(input),
-    }),
+      }
+    ),
   declineSpeaker: (sessionId: string, participantId: string) =>
     apiFetch(`/api/sessions/${sessionId}/speaker/decline`, {
       method: 'POST',

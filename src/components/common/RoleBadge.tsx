@@ -20,7 +20,7 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, size = 's
         };
       case 'ADMIN':
         return {
-          label: 'Admin',
+          label: 'Admin · Room operator',
           bg: 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30',
           icon: Shield,
         };

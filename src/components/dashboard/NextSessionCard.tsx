@@ -36,7 +36,7 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
   onOpenTestRoom,
   onOpenPrePrayerCheck,
 }) => {
-  const { addToast, historySessions, openSanctuary } = useApp();
+  const { addToast, historySessions } = useApp();
   const [copied, setCopied] = useState(false);
 
   const resolution = resolveAltarLink(room, liveSession, historySessions);
@@ -44,7 +44,7 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
   const isWaiting = resolution.status === 'WAITING';
   const attendeeCount = isLive ? liveSession?.totalParticipants : undefined;
 
-  const fullUrl = `https://sanctum.live/join/${room.slug}`;
+  const fullUrl = `${window.location.origin}/join/${room.slug}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(fullUrl);
@@ -133,12 +133,12 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
 
               {!isWaiting && (
                 <button
-                  onClick={() => openSanctuary(room.id)}
+                  onClick={() => onOpenControlRoom(room.id)}
                   type="button"
                   className="px-4 py-2 rounded-xl text-xs font-bold border border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Open Sanctuary (Waiting Room)</span>
+                  <span>Open Control Room to begin</span>
                 </button>
               )}
             </div>

@@ -39,6 +39,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
     logoUrl?: string;
     scheduledStart?: string;
     timezone?: string;
+    sermonLeaderName?: string;
   } | null>(null);
 
   const localRoom = prayerRooms.find((r) => r.slug === slug);
@@ -100,6 +101,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           logoUrl: result.room?.logoUrl,
           scheduledStart: result.room?.scheduledStart,
           timezone: result.room?.timezone,
+          sermonLeaderName: typeof result.session?.sermonLeaderName === 'string' ? result.session.sermonLeaderName : undefined,
         });
         const next = result.session?.status;
         setAltarStatus((next as SessionLifecycleStatus) || 'SCHEDULED');
@@ -198,6 +200,11 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         <p className="text-sm font-semibold text-[#203C32] dark:text-[#C9A35A] mt-1">
           {churchName}
         </p>
+        {altarRoom?.sermonLeaderName && (
+          <p className="text-xs font-semibold text-[#203C32] dark:text-[#E8D8B2] mt-2">
+            Sermon leader: {altarRoom.sermonLeaderName}
+          </p>
+        )}
 
         <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
           {scheduledStart} ({timezone})

@@ -2,6 +2,7 @@ import {
   ParticipantNotFound,
   SessionNotFound,
   SpeakerFloorOccupied,
+  SessionNotLive,
 } from '../../shared/errors.ts';
 import type { SessionRole } from '../../shared/roles.ts';
 import { isLiveKitConfigured } from '../env.ts';
@@ -47,6 +48,7 @@ export class SpeakerFloorService {
     actorId?: string | null;
   }): Promise<SpeakerFloorResult> {
     const session = await this.requireSession(input.sessionId);
+    if (session.status !== 'LIVE') throw SessionNotLive();
     const participant = await this.requireParticipant(input.participantId, input.sessionId);
     const invitation = await this.store.createInvitation({
       sessionId: session.id,
