@@ -1,9 +1,9 @@
 import React from 'react';
 import { DashboardSidebar } from './DashboardSidebar';
 import { MobileHeader } from './MobileHeader';
-import { useTour } from '../../hooks/useTour';
-import { TOUR_IDS } from '../../tour/tourIds';
-import { dashboardTourSteps } from '../../tour/dashboardTour';
+import { AdminHelpChatWidget } from './AdminHelpChatWidget';
+import { usePastorJourney } from '../../hooks/usePastorJourney';
+import { isPastorJourneyActive } from '../../tour/pastorJourney/storage';
 
 interface DashboardLayoutProps {
   currentPath: string;
@@ -16,18 +16,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   onNavigate,
   children,
 }) => {
-  const { startTour } = useTour(TOUR_IDS.dashboard, dashboardTourSteps, {
-    enabled: currentPath === '/dashboard',
-    delayMs: 700,
+  const { startPastorJourney } = usePastorJourney(currentPath, onNavigate, {
+    enabled: !currentPath.includes('/edit'),
+    delayMs: 800,
   });
 
   const handleShowTutorial = () => {
-    if (currentPath !== '/dashboard') {
-      onNavigate('/dashboard');
-      window.setTimeout(() => startTour(), 400);
-      return;
-    }
-    startTour();
+    startPastorJourney();
   };
 
   return (
@@ -37,6 +32,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         currentPath={currentPath}
         onNavigate={onNavigate}
         onShowTutorial={handleShowTutorial}
+        showPastorWalkthrough={isPastorJourneyActive()}
         className="hidden md:flex"
       />
 
@@ -53,6 +49,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {children}
         </main>
       </div>
+
+      <AdminHelpChatWidget currentPath={currentPath} />
     </div>
   );
 };

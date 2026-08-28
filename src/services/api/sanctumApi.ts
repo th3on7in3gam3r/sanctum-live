@@ -365,4 +365,20 @@ export const sanctumApi = {
       method: 'POST',
       body: JSON.stringify({ participantId }),
     }, staff(actor)),
+  helpChat: (
+    input: {
+      message: string;
+      pageContext?: string;
+      history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    },
+    actor?: Actor
+  ) =>
+    apiFetch<{ reply: string }>(
+      '/api/help/chat',
+      {
+        method: 'POST',
+        body: JSON.stringify(input),
+      },
+      staff(actor)
+    ),
 };

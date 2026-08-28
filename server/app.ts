@@ -40,6 +40,7 @@ import { meHandler } from './routes/me.ts';
 import { createSpaceHandler, deleteCurrentSpaceHandler, updateCurrentSpaceHandler } from './routes/spaces.ts';
 import { inviteTeamMemberHandler, listTeamHandler, removeTeamMemberHandler } from './routes/team.ts';
 import { livekitWebhookHandler } from './routes/webhooks.ts';
+import { helpChatHandler } from './routes/help.ts';
 
 export function createApp() {
   const app = express();
@@ -57,6 +58,7 @@ export function createApp() {
   }
 
   app.get('/api/health', healthHandler);
+  app.post('/api/help/chat', helpChatHandler);
   app.get('/api/me', meHandler);
   app.post('/api/spaces', createSpaceHandler);
   app.patch('/api/spaces/current', updateCurrentSpaceHandler);

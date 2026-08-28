@@ -15,6 +15,7 @@ export interface ServerEnv {
   livekitApiSecret: string | null;
   clerkPublishableKey: string | null;
   clerkSecretKey: string | null;
+  geminiApiKey: string | null;
 }
 
 function readOptional(name: string): string | null {
@@ -39,6 +40,7 @@ export const env: ServerEnv = {
   livekitApiSecret: readOptional('LIVEKIT_API_SECRET'),
   clerkPublishableKey: readOptional('CLERK_PUBLISHABLE_KEY') || readOptional('VITE_CLERK_PUBLISHABLE_KEY'),
   clerkSecretKey: readOptional('CLERK_SECRET_KEY'),
+  geminiApiKey: readOptional('GEMINI_API_KEY'),
 };
 
 export function getDatabaseStatus(): ServiceStatus {
@@ -63,4 +65,16 @@ export function getClerkStatus(): ServiceStatus {
 
 export function isClerkConfigured(): boolean {
   return getClerkStatus() === 'configured';
+}
+
+export function getGeminiApiKey(): string | null {
+  return env.geminiApiKey;
+}
+
+export function getGeminiStatus(): ServiceStatus {
+  return env.geminiApiKey ? 'configured' : 'unavailable';
+}
+
+export function isGeminiConfigured(): boolean {
+  return getGeminiStatus() === 'configured';
 }

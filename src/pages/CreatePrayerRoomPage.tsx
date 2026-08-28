@@ -11,6 +11,7 @@ import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { useTour } from '../hooks/useTour';
 import { TOUR_IDS } from '../tour/tourIds';
 import { createRoomTourSteps } from '../tour/createRoomTour';
+import { isPastorJourneyComplete } from '../tour/pastorJourney/storage';
 import { Save, Radio, Shield, Users, Clock, AlertCircle, CircleHelp } from 'lucide-react';
 
 interface CreatePrayerRoomPageProps {
@@ -52,7 +53,10 @@ export const CreatePrayerRoomPage: React.FC<CreatePrayerRoomPageProps> = ({
     suggestedAlternative: string;
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { startTour } = useTour(TOUR_IDS.createRoom, createRoomTourSteps, { delayMs: 700 });
+  const { startTour } = useTour(TOUR_IDS.createRoom, createRoomTourSteps, {
+    delayMs: 700,
+    enabled: isPastorJourneyComplete() && !roomId,
+  });
 
   // Form dirty state detection
   const isDirty = useMemo(() => {

@@ -40,6 +40,7 @@ import { livekitRealtimeProvider } from '../services/realtime/livekitRealtimePro
 import { useTour } from '../hooks/useTour';
 import { TOUR_IDS } from '../tour/tourIds';
 import { controlRoomTourSteps } from '../tour/controlRoomTour';
+import { isPastorJourneyComplete } from '../tour/pastorJourney/storage';
 
 interface PrayerControlRoomPageProps {
   roomId: string;
@@ -112,7 +113,10 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
   const [hostMicOn, setHostMicOn] = useState(false);
   const [hostMicBusy, setHostMicBusy] = useState(false);
   const [micOnByIdentity, setMicOnByIdentity] = useState<Record<string, boolean>>({});
-  const { startTour } = useTour(TOUR_IDS.controlRoom, controlRoomTourSteps, { delayMs: 800 });
+  const { startTour } = useTour(TOUR_IDS.controlRoom, controlRoomTourSteps, {
+    delayMs: 800,
+    enabled: isPastorJourneyComplete(),
+  });
 
   // Filter participants
   const speakers = (participants || []).filter((p) => p && p.role === 'SPEAKER');
@@ -298,6 +302,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
               <button
                 onClick={() => setShowPrePrayerModal(true)}
                 type="button"
+                data-tour="control-pre-prayer"
                 className="px-3.5 py-2 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-white dark:bg-[#C9A35A] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4" />
@@ -318,6 +323,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                 <button
                   onClick={() => setShowOpenSanctuaryModal(true)}
                   type="button"
+                  data-tour="control-open-sanctuary"
                   className="px-3.5 py-2 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-white dark:bg-[#C9A35A] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Mic className="w-4 h-4" />

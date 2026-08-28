@@ -117,7 +117,7 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D]">
             Permanent Altar Link
           </span>
-          <div className="p-3 rounded-xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-between gap-2">
+          <div className="p-3 rounded-xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-between gap-2" data-tour="room-details-copy-link">
             <div className="min-w-0">
               <p className="text-xs font-mono text-[#16251F] dark:text-[#F8F7F3] truncate">{fullUrl}</p>
               <p className="text-[11px] font-mono text-[#68736D] dark:text-[#96A39D] mt-0.5">/join/{room.slug}</p>
@@ -137,6 +137,7 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
           <button
             onClick={() => onNavigate(`/dashboard/prayer-rooms/${room.id}/control`)}
             type="button"
+            data-tour="room-details-control-room"
             className="flex-1 py-2.5 px-3 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Sliders className="w-3.5 h-3.5" />

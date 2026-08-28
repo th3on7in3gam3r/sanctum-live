@@ -124,7 +124,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold text-[#68736D] dark:text-[#96A39D] bg-black/5 dark:bg-white/5"
               >
                 <CircleHelp className="w-4 h-4" />
-                <span>Show tutorial</span>
+                <span>Pastor walkthrough</span>
               </button>
             )}
             <button

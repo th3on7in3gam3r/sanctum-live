@@ -25,6 +25,7 @@ interface DashboardSidebarProps {
   currentPath: string;
   onNavigate: (path: string) => void;
   onShowTutorial?: () => void;
+  showPastorWalkthrough?: boolean;
   className?: string;
 }
 
@@ -32,6 +33,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   currentPath,
   onNavigate,
   onShowTutorial,
+  showPastorWalkthrough = false,
   className,
 }) => {
   const { user, organization, logout } = useAuth();
@@ -143,7 +145,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer text-left"
           >
             <CircleHelp className="w-3.5 h-3.5 shrink-0" />
-            <span>Show tutorial</span>
+            <span>{showPastorWalkthrough ? 'Resume walkthrough' : 'Pastor walkthrough'}</span>
           </button>
         )}
 
