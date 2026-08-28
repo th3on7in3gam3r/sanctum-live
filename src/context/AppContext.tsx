@@ -775,7 +775,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addToast(
         muted
           ? 'Sermon mode — only you and ministers can speak.'
-          : 'Discussion PTT open — congregants press and hold to speak, one at a time.',
+          : 'Discussion PTT open — congregants tap to speak, one at a time.',
         'info'
       );
     } catch (error) {

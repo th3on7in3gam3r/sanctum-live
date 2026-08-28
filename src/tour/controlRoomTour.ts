@@ -36,7 +36,7 @@ export const controlRoomTourSteps: TourStep[] = [
     popover: {
       title: 'Sermon or Discussion PTT',
       description:
-        'Sermon mode keeps the room listen-only. Open Discussion PTT so congregants can press and hold to speak, one at a time.',
+        'Sermon mode keeps the room listen-only. Open Discussion PTT so congregants can tap to speak, one at a time.',
       side: 'top',
       align: 'end',
     },

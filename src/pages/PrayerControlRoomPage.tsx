@@ -408,7 +408,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
             <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
               {congregationMuted
                 ? 'Only you and ministers can speak. Congregants listen. Hold a name for private prayer.'
-                : 'Congregants press and hold to speak (one at a time). Your voice still uses Host microphone above.'}
+                : 'Congregants tap to speak (one at a time). Your voice still uses Host microphone above.'}
             </p>
           </div>
           <button
@@ -418,7 +418,7 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                 confirmAction({
                   title: 'Open Discussion PTT?',
                   description:
-                    'Congregants will be able to press and hold to speak, one at a time. This does not turn on your host microphone.',
+                    'Congregants will be able to tap to speak, one at a time. This does not turn on your host microphone.',
                   confirmText: 'Open Discussion PTT',
                   cancelText: 'Keep Sermon mode',
                   onConfirm: () => void setCongregationMuted(false),

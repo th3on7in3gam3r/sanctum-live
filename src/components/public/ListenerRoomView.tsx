@@ -65,7 +65,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   const [isPrayerRequestOpen, setIsPrayerRequestOpen] = useState(false);
   const [selfMuted, setSelfMuted] = useState(false);
   const [micOn, setMicOn] = useState(false);
-  const [pttHolding, setPttHolding] = useState(false);
+  const [pttActive, setPttActive] = useState(false);
   const { startTour } = useTour(TOUR_IDS.listenerRoom, listenerRoomTourSteps, { delayMs: 900 });
 
   useEffect(() => {
@@ -125,40 +125,43 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   }, [liveConnected]);
 
   useEffect(() => {
-    if (congregationMuted && !isMinister && !isInvitedSpeaker && !privateWithMe && micOn) {
+    if (!congregationMuted || isMinister || isInvitedSpeaker || privateWithMe) return;
+    if (pttActive && localParticipantId) {
+      setPttActive(false);
+      void endPtt(localParticipantId);
+    }
+    if (micOn) {
       void livekitRealtimeProvider.disableMicrophone();
       setMicOn(false);
       setSelfMuted(true);
-      setPttHolding(false);
     }
-  }, [congregationMuted, isMinister, isInvitedSpeaker, privateWithMe, micOn]);
+  }, [congregationMuted, isMinister, isInvitedSpeaker, privateWithMe, pttActive, micOn, localParticipantId, endPtt]);
 
   const prevCongregationMuted = React.useRef(congregationMuted);
   useEffect(() => {
     const wasMuted = prevCongregationMuted.current;
     prevCongregationMuted.current = congregationMuted;
     if (wasMuted && !congregationMuted && !isMinister) {
-      addToast('Discussion PTT is open. Press and hold to speak.', 'success');
+      addToast('Discussion PTT is open. Tap to speak.', 'success');
     }
     if (!wasMuted && congregationMuted && !isMinister) {
       addToast('Sermon mode — congregation microphones are locked again.', 'info');
     }
   }, [congregationMuted, isMinister, addToast]);
 
-  const handlePttDown = async () => {
+  const handleTogglePtt = async () => {
     if (!localParticipantId || !canDiscuss || privateWithMe) return;
-    setPttHolding(true);
+    if (pttActive) {
+      setPttActive(false);
+      await endPtt(localParticipantId);
+      return;
+    }
     try {
       await startPtt(localParticipantId);
+      setPttActive(true);
     } catch {
-      setPttHolding(false);
+      setPttActive(false);
     }
-  };
-
-  const handlePttUp = async () => {
-    if (!localParticipantId || !pttHolding) return;
-    setPttHolding(false);
-    await endPtt(localParticipantId);
   };
   useEffect(() => {
     return livekitRealtimeProvider.subscribe((event) => {
@@ -167,6 +170,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
       if (!event.participantId || event.participantId !== localParticipantId) return;
       setMicOn(false);
       setSelfMuted(true);
+      setPttActive(false);
     });
   }, [localParticipantId]);
 
@@ -340,9 +344,9 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
                         : 'You are a minister. Turn on your microphone to speak.'
                   : congregationMuted
                     ? `Sermon — the congregation is muted. You will hear ${liveSession?.sermonLeaderName || 'the sermon leader'} and ministers.`
-                    : pttHolding || showLiveMic
-                      ? 'You are speaking. Release to stop.'
-                      : 'Discussion PTT is open. Press and hold to speak.'}
+                    : pttActive || showLiveMic
+                      ? 'You are speaking. Tap again to stop.'
+                      : 'Discussion PTT is open. Tap to speak.'}
             </p>
             {!isMinister && !isInvitedSpeaker && (
               <p
@@ -417,24 +421,15 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
           <button
             type="button"
             data-tour="listener-mic"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              void handlePttDown();
-            }}
-            onPointerUp={() => void handlePttUp()}
-            onPointerLeave={() => {
-              if (pttHolding) void handlePttUp();
-            }}
-            onPointerCancel={() => void handlePttUp()}
-            onContextMenu={(e) => e.preventDefault()}
-            className={`w-full py-6 px-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 cursor-pointer select-none touch-none ${
-              pttHolding
+            onClick={() => void handleTogglePtt()}
+            className={`w-full py-6 px-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 cursor-pointer ${
+              pttActive
                 ? 'bg-emerald-600 text-white scale-[0.98]'
                 : 'bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814]'
             }`}
           >
             <Mic className="w-5 h-5" />
-            <span>{pttHolding ? 'Speaking… release to stop' : 'Hold to speak'}</span>
+            <span>{pttActive ? 'Speaking… tap to stop' : 'Tap to speak'}</span>
           </button>
         )}
 
@@ -467,7 +462,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
                     ? 'Turn on your microphone. The congregation is waiting to hear you.'
                     : congregationMuted
                       ? `Sermon mode — listen as ${liveSession?.sermonLeaderName || 'the sermon leader'} leads.`
-                      : 'Discussion PTT — press and hold to speak.'
+                      : 'Discussion PTT — tap to speak.'
               }
               isLive={prayerHasStarted}
             />
