@@ -384,7 +384,7 @@ export const PrayerCountdownTimer: React.FC<PrayerCountdownTimerProps> = ({
             type="text"
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
-            placeholder="e.g. Pastor Kenneth"
+            placeholder="Sermon or prayer leader"
             className="px-2.5 py-1 text-xs rounded-xl bg-[#F8F7F3]/70 dark:bg-[#101814] text-[#16251F] dark:text-[#F8F7F3] border border-[#E5E6E1] dark:border-[#26362F] focus:border-[#203C32] dark:focus:border-[#C9A35A] focus:outline-none max-w-[160px]"
           />
         </div>

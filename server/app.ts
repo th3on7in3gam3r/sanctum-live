@@ -3,8 +3,9 @@ import { existsSync } from 'node:fs';
 import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { healthHandler } from './routes/health.ts';
-import { createPrayerRoomHandler, deletePrayerRoomHandler, listPrayerRoomsHandler, updatePrayerRoomHandler } from './routes/prayerRooms.ts';
+import { publicSiteUrl, sanctumMode } from '../shared/sanctumMode.ts';
+import { databaseHealthHandler, healthHandler } from './routes/health.ts';
+import { createPrayerRoomHandler, deletePrayerRoomHandler, listHostCandidatesHandler, listPrayerRoomsHandler, updatePrayerRoomHandler } from './routes/prayerRooms.ts';
 import {
   acceptSpeakerHandler,
   createPrayerSessionHandler,
@@ -36,11 +37,17 @@ import {
 } from './routes/sessions.ts';
 import { clerkMiddleware } from '@clerk/express';
 import { isClerkConfigured } from './env.ts';
+import { allowedPublicOrigins } from './productionEnv.ts';
+import { captureServerError } from './sentry.ts';
 import { meHandler } from './routes/me.ts';
 import { createSpaceHandler, deleteCurrentSpaceHandler, updateCurrentSpaceHandler } from './routes/spaces.ts';
-import { inviteTeamMemberHandler, listTeamHandler, removeTeamMemberHandler } from './routes/team.ts';
+import { inviteTeamMemberHandler, listTeamHandler, removeTeamMemberHandler, updateGalleryPublishHandler } from './routes/team.ts';
 import { livekitWebhookHandler } from './routes/webhooks.ts';
 import { helpChatHandler } from './routes/help.ts';
+import { registerCmsPublicRoutes } from './routes/cms/public.ts';
+import { registerCmsStaffRoutes } from './routes/cms/staff.ts';
+import { registerGalleryRoutes } from './routes/cms/gallery.ts';
+import { youtubeImportCron } from './routes/cron.ts';
 
 export function createApp() {
   const app = express();
@@ -58,6 +65,7 @@ export function createApp() {
   }
 
   app.get('/api/health', healthHandler);
+  app.get('/api/health/db', databaseHealthHandler);
   app.post('/api/help/chat', helpChatHandler);
   app.get('/api/me', meHandler);
   app.post('/api/spaces', createSpaceHandler);
@@ -65,7 +73,9 @@ export function createApp() {
   app.delete('/api/spaces/current', deleteCurrentSpaceHandler);
   app.get('/api/team', listTeamHandler);
   app.post('/api/team/invite', inviteTeamMemberHandler);
+  app.patch('/api/team/:userId/gallery', updateGalleryPublishHandler);
   app.delete('/api/team/:userId', removeTeamMemberHandler);
+  app.get('/api/prayer-rooms/host-candidates', listHostCandidatesHandler);
   app.get('/api/prayer-rooms', listPrayerRoomsHandler);
   app.post('/api/prayer-rooms', createPrayerRoomHandler);
   app.patch('/api/prayer-rooms/:roomId', updatePrayerRoomHandler);
@@ -101,12 +111,62 @@ export function createApp() {
   app.post('/api/sessions/:id/ptt/end', endPttHandler);
   app.post('/api/sessions/:id/private-prayer/start', startPrivatePrayerHandler);
   app.post('/api/sessions/:id/private-prayer/end', endPrivatePrayerHandler);
+  app.post('/api/cron/youtube-import', youtubeImportCron);
+  registerCmsStaffRoutes(app);
+  registerGalleryRoutes(app);
+
+  if (process.env.DEPLOY_ENV === 'staging') {
+    app.use((_req, res, next) => {
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+      next();
+    });
+  }
+  app.get('/robots.txt', (_req, res) => {
+    const body = process.env.DEPLOY_ENV === 'staging'
+      ? 'User-agent: *\nDisallow: /\n'
+      : 'User-agent: *\nAllow: /\n';
+    res.type('text/plain').send(body);
+  });
+
+  const siteOrigins = new Set(allowedPublicOrigins());
+  app.use('/api/public', (req, res, next) => {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin.replace(/\/$/, '') : '';
+    if (origin && siteOrigins.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    }
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
+  registerCmsPublicRoutes(app);
+
+  if (sanctumMode(process.env.SANCTUM_MODE) === 'church') {
+    app.get('/', (_req, res) => {
+      res.redirect(302, publicSiteUrl(process.env.PUBLIC_SITE_URL));
+    });
+  }
 
   const here = path.dirname(fileURLToPath(import.meta.url));
   const distDir = existsSync(path.join(here, 'index.html'))
     ? here
     : path.resolve(here, '../dist');
   if (existsSync(path.join(distDir, 'index.html'))) {
+    app.use((req, res, next) => {
+      if (req.path.endsWith('.map')) {
+        res.status(404).end();
+        return;
+      }
+      next();
+    });
+    app.use((_req, res, next) => {
+      res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self)');
+      next();
+    });
     app.use(express.static(distDir));
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api')) {
@@ -116,6 +176,12 @@ export function createApp() {
       res.sendFile(path.join(distDir, 'index.html'));
     });
   }
+
+  app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    captureServerError(error);
+    if (res.headersSent) return;
+    res.status(500).json({ error: 'SERVER_ERROR', message: 'Something went wrong.', details: null });
+  });
 
   return app;
 }

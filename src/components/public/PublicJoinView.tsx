@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { SanctumLogo } from '../common/SanctumLogo';
+import { BrandLockup } from '@plcc/brand/BrandLockup';
+import { sanctumTheme } from './ChurchWordmark';
+import { churchSiteUrl } from '../../lib/appMode';
+import { joinDisplayName } from '../../../shared/huddle.ts';
 import { ParticipantCount } from '../common/ParticipantCount';
 import { PrayerSessionStatus } from '../common/PrayerSessionStatus';
 import { PrayerCountdown } from '../common/PrayerCountdown';
@@ -7,8 +10,10 @@ import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { resolveAltarLink } from '../../services/altarLinkResolver';
 import { getNextOccurrences } from '../../services/sessionScheduler';
+import { joinScheduleLabel, resolveSermonLeader, visibleOrganizationName } from '../../../shared/joinDisplay.ts';
 import { sanctumApi, ApiClientError } from '../../services/api/sanctumApi';
 import { ShieldCheck, HelpCircle, Sparkles, Moon, Sun, Clock, LayoutDashboard } from 'lucide-react';
+import { ControlRoomLink } from './ControlRoomLink';
 import type { PrayerRoom, SessionLifecycleStatus } from '../../types';
 import { useTour } from '../../hooks/useTour';
 import { TOUR_IDS } from '../../tour/tourIds';
@@ -22,7 +27,8 @@ interface PublicJoinViewProps {
 
 export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSuccess, onNavigate }) => {
   const { prayerRooms, liveSession, historySessions, dataSaverMode, setDataSaverMode, isDarkMode, toggleDarkMode, joinPrayerRoom, connectedNow } = useApp();
-  const { isAuthenticated, organization } = useAuth();
+  const { isAuthenticated, authReady, organization, user } = useAuth();
+  const memberName = user?.memberName || '';
 
   const [name, setName] = useState(() => {
     return localStorage.getItem('sanctum_last_attendee_name') || '';
@@ -32,7 +38,10 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [altarStatus, setAltarStatus] = useState<SessionLifecycleStatus | 'NOT_FOUND' | null>(null);
   useTour(TOUR_IDS.joinGate, joinGateTourSteps, { delayMs: 500 });
+  const [passcode, setPasscode] = useState('');
+  const [canControl, setCanControl] = useState(false);
   const [altarRoom, setAltarRoom] = useState<{
+    id?: string;
     name: string;
     organizationName?: string;
     organizationLogoUrl?: string;
@@ -40,6 +49,18 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
     scheduledStart?: string;
     timezone?: string;
     sermonLeaderName?: string;
+    roomSermonLeaderName?: string;
+    defaultSermonSpeaker?: string;
+    isRecurring?: boolean;
+    recurrenceRule?: string | null;
+    selectedDays?: string[];
+    oneTimeDate?: string | null;
+    speakerPermission?: string;
+    allowGuests?: boolean;
+    hasPasscode?: boolean;
+    prayerRequestsEnabled?: boolean;
+    anonymousRequestsAllowed?: boolean;
+    chatEnabled?: boolean;
   } | null>(null);
 
   const localRoom = prayerRooms.find((r) => r.slug === slug);
@@ -53,9 +74,11 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           slug,
           roomType: 'AUDIO_PRAYER',
           expectedAttendance: 0,
-          speakerPermission: 'ADMIN_APPROVAL_REQUIRED',
-          isRecurring: true,
-          recurrenceRule: 'DAILY',
+          speakerPermission: (altarRoom.speakerPermission as PrayerRoom['speakerPermission']) || 'ADMIN_APPROVAL_REQUIRED',
+          isRecurring: altarRoom.isRecurring !== false,
+          recurrenceRule: (altarRoom.recurrenceRule as PrayerRoom['recurrenceRule']) || 'DAILY',
+          selectedDays: altarRoom.selectedDays || [],
+          oneTimeDate: altarRoom.oneTimeDate || undefined,
           scheduledStart: altarRoom.scheduledStart || '05:00 AM',
           timezone: altarRoom.timezone || 'Africa/Kampala',
           recordingEnabled: false,
@@ -73,20 +96,24 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
   const canJoin = isLive || isWaiting;
   const attendeeCount = isLive || isWaiting ? connectedNow || undefined : undefined;
   const displayName = altarRoom?.name || localRoom?.name || 'Prayer Gathering';
-  const churchName = altarRoom?.organizationName || '';
+  const churchName = visibleOrganizationName(displayName, altarRoom?.organizationName);
+  const sermonLeader = resolveSermonLeader(
+    altarRoom?.sermonLeaderName,
+    altarRoom?.roomSermonLeaderName,
+    altarRoom?.defaultSermonSpeaker
+  );
   const roomLogoUrl =
     altarRoom?.logoUrl ||
     localRoom?.logoUrl ||
     altarRoom?.organizationLogoUrl ||
     organization?.logoUrl ||
     '';
-  const scheduledStart = altarRoom?.scheduledStart || localRoom?.scheduledStart || '05:00 AM';
   const timezone = altarRoom?.timezone || localRoom?.timezone || 'Africa/Kampala';
   const nextStart = useMemo(() => {
-    if (resolution?.nextScheduledDate) return resolution.nextScheduledDate;
     if (!roomForSchedule) return undefined;
     return getNextOccurrences(roomForSchedule, 1)[0];
-  }, [resolution?.nextScheduledDate, roomForSchedule]);
+  }, [roomForSchedule]);
+  const scheduleLabel = joinScheduleLabel(status, nextStart, timezone);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,7 +121,9 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
       .getAltar(slug)
       .then((result) => {
         if (cancelled) return;
+        setCanControl(result.canControl === true);
         setAltarRoom({
+          id: result.room?.id,
           name: result.room?.name || '',
           organizationName: result.room?.organizationName,
           organizationLogoUrl: result.room?.organizationLogoUrl,
@@ -102,35 +131,55 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           scheduledStart: result.room?.scheduledStart,
           timezone: result.room?.timezone,
           sermonLeaderName: typeof result.session?.sermonLeaderName === 'string' ? result.session.sermonLeaderName : undefined,
+          roomSermonLeaderName: result.room?.roomSermonLeaderName,
+          defaultSermonSpeaker: typeof result.room?.defaultSermonSpeaker === 'string' ? result.room.defaultSermonSpeaker : undefined,
+          isRecurring: result.room?.isRecurring,
+          recurrenceRule: result.room?.recurrenceRule,
+          selectedDays: result.room?.selectedDays,
+          oneTimeDate: result.room?.oneTimeDate,
+          speakerPermission: result.room?.speakerPermission,
+          allowGuests: result.room?.allowGuests,
+          hasPasscode: result.room?.hasPasscode,
+          prayerRequestsEnabled: result.room?.prayerRequestsEnabled,
+          anonymousRequestsAllowed: result.room?.anonymousRequestsAllowed,
+          chatEnabled: result.room?.chatEnabled,
         });
         const next = result.session?.status;
         setAltarStatus((next as SessionLifecycleStatus) || 'SCHEDULED');
       })
       .catch((lookupError) => {
         if (cancelled) return;
+        setCanControl(false);
         setAltarStatus(lookupError instanceof ApiClientError && lookupError.status === 404 ? 'NOT_FOUND' : 'SCHEDULED');
       });
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, authReady, isAuthenticated]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
+    const joinName = joinDisplayName({
+      signedIn: isAuthenticated,
+      memberName,
+      typedName: name,
+    });
+    if (!joinName) {
       setError('Please enter your name to join');
       return;
     }
-    if (name.trim().length < 2) {
+    if (joinName.length < 2) {
       setError('Name must be at least 2 characters');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      localStorage.setItem('sanctum_last_attendee_name', name.trim());
-      await joinPrayerRoom(slug, name.trim());
-      onJoinSuccess(name.trim());
+      if (!isAuthenticated || !memberName) {
+        localStorage.setItem('sanctum_last_attendee_name', joinName);
+      }
+      await joinPrayerRoom(slug, joinName, { passcode: passcode.trim() || undefined });
+      onJoinSuccess(joinName);
     } catch (joinError) {
       if (joinError instanceof ApiClientError && joinError.code === 'REALTIME_UNAVAILABLE') {
         setError(
@@ -151,91 +200,117 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex flex-col justify-between p-4 sm:p-6 select-none transition-colors">
-      <header className="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-4">
-        <SanctumLogo size="md" showTagline />
-        <div className="flex items-center gap-2">
-          {isAuthenticated && onNavigate && (
-            <button
-              type="button"
-              onClick={() => onNavigate('/dashboard')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] text-xs font-semibold text-[#203C32] dark:text-[#C9A35A] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Dashboard</span>
-            </button>
-          )}
+    <div data-theme={sanctumTheme(isDarkMode)} className="sanctum-screen flex min-h-screen select-none flex-col justify-between p-4 transition-colors sm:p-6">
+      <header className="mx-auto flex w-full max-w-md flex-col gap-3 pt-2 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <BrandLockup size="md" href={churchSiteUrl()} />
           <button
             onClick={toggleDarkMode}
-            aria-label="Toggle dark mode"
-            className="p-2 rounded-xl text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            aria-label="Toggle theme"
+            className="sanctum-icon cursor-pointer rounded-xl p-2"
           >
-            {isDarkMode ? <Sun className="w-5 h-5 text-[#C9A35A]" /> : <Moon className="w-5 h-5" />}
+            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
           </button>
         </div>
+        {canControl || (isAuthenticated && onNavigate) ? (
+          <div className="flex items-center justify-end gap-2">
+            {canControl && altarRoom?.id ? <ControlRoomLink roomId={altarRoom.id} /> : null}
+            {isAuthenticated && onNavigate ? (
+              <button
+                type="button"
+                onClick={() => onNavigate('/dashboard')}
+                className="sanctum-outline flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </header>
 
-      <main className="w-full max-w-md mx-auto my-auto bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 shadow-xl border border-[#E5E6E1] dark:border-[#26362F] text-center">
+      <main className="sanctum-surface mx-auto my-auto w-full max-w-md rounded-[26px] p-6 text-center shadow-[var(--shadow-sanctum)] sm:p-8">
         {roomLogoUrl ? (
           <div className="mb-4 flex justify-center">
             <img
               src={roomLogoUrl}
               alt=""
-              className="w-16 h-16 rounded-2xl object-cover border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3] dark:bg-[#101814]"
+              className="sanctum-raised h-16 w-16 rounded-2xl object-cover"
             />
           </div>
         ) : null}
         <div className="flex flex-wrap items-center justify-center gap-2.5 mb-5">
-          <PrayerSessionStatus status={status === 'NOT_FOUND' ? 'SCHEDULED' : status} size="md" />
+          <PrayerSessionStatus status={status === 'NOT_FOUND' ? 'SCHEDULED' : status} size="md" className="sanctum-chip" />
           <ParticipantCount
             count={attendeeCount}
             emptyLabel={isLive ? 'Waiting for participants' : 'Prayer has not started'}
+            className="sanctum-chip"
           />
         </div>
 
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
+        <p className="eyebrow mb-3">{canJoin ? 'Sanctuary open' : scheduleLabel ? `Starts ${scheduleLabel}` : 'Sanctuary'}</p>
+        <h1 className="font-display text-4xl font-light tracking-tight">
           {displayName}
         </h1>
 
-        <p className="text-sm font-semibold text-[#203C32] dark:text-[#C9A35A] mt-1">
-          {churchName}
-        </p>
-        {altarRoom?.sermonLeaderName && (
-          <p className="text-xs font-semibold text-[#203C32] dark:text-[#E8D8B2] mt-2">
-            Sermon leader: {altarRoom.sermonLeaderName}
+        {churchName ? (
+          <p className="mt-1 text-sm font-semibold">
+            {churchName}
           </p>
-        )}
+        ) : null}
+        {sermonLeader ? (
+          <p className="sanctum-muted mt-2 text-xs font-semibold">
+            Sermon leader: {sermonLeader}
+          </p>
+        ) : null}
 
-        <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
-          {scheduledStart} ({timezone})
-        </p>
+        {scheduleLabel ? (
+          <p className="sanctum-muted mt-0.5 text-xs">
+            {scheduleLabel}
+          </p>
+        ) : null}
 
         {!isLive && !isWaiting && nextStart && (
-          <div className="my-5 p-4 rounded-2xl bg-[#203C32]/5 dark:bg-[#C9A35A]/10 border border-[#203C32]/10 dark:border-[#C9A35A]/20 flex flex-col items-center gap-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D] flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-[#C9A35A]" />
+          <div className="sanctum-raised my-5 flex flex-col items-center gap-1.5 rounded-2xl p-4">
+            <span className="sanctum-muted flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider">
+              <Clock className="h-3.5 w-3.5" />
               Prayer Begins In
             </span>
             <PrayerCountdown
               targetDate={nextStart}
-              className="text-[#203C32] dark:text-[#E8D8B2]"
             />
           </div>
         )}
 
-        <div className="my-4 p-3.5 rounded-2xl bg-[#203C32]/5 dark:bg-[#203C32]/20 border border-[#203C32]/10 dark:border-[#203C32]/30">
-          <p className="text-xs text-[#203C32] dark:text-[#E8D8B2] font-medium leading-relaxed">
+        <div className="sanctum-raised my-4 rounded-2xl p-3.5">
+          <p className="text-xs font-medium leading-relaxed">
             {isWaiting
               ? 'The Sanctuary is Open. You will join as a listener — your microphone stays off unless a prayer leader invites you to speak.'
               : canJoin
-                ? 'Join as a listener. Raise your hand if you are invited to pray aloud. Pastors lead from the Control Room.'
+                ? (altarRoom?.speakerPermission || localRoom?.speakerPermission) === 'PRAYER_LEADERS'
+                  ? 'Join as a listener. Only prayer leaders speak in this room.'
+                  : 'Join as a listener. Raise your hand if you are invited to pray aloud. Pastors lead from the Control Room.'
                 : 'This gathering is not open yet. Your pastor opens it from Prayer Rooms → Control Room.'}
           </p>
         </div>
 
+        {altarRoom?.allowGuests === false && !isAuthenticated ? (
+          <div className="space-y-3 text-left">
+            <p className="text-xs">
+              This room does not allow guests. Sign in with your church account to join.
+            </p>
+            <button
+              type="button"
+              onClick={() => onNavigate?.('/login')}
+              className="sanctum-accent w-full cursor-pointer rounded-2xl py-3 text-sm font-bold"
+            >
+              Sign in
+            </button>
+          </div>
+        ) : (
         <form onSubmit={handleJoin} className="space-y-4 text-left">
           {error && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-[#B94A48]/30 text-[#B94A48] dark:text-red-400 text-xs font-medium">
+            <div className="sanctum-danger rounded-xl p-3 text-xs font-medium">
               {error}
             </div>
           )}
@@ -243,7 +318,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           <div data-tour="join-name">
             <label
               htmlFor="attendeeName"
-              className="block text-xs font-bold text-[#16251F] dark:text-[#F8F7F3] uppercase tracking-wider mb-2"
+              className="mb-2 block text-sm"
             >
               Your Name
             </label>
@@ -252,43 +327,61 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
               type="text"
               required
               autoFocus
-              value={name}
+              value={isAuthenticated && memberName ? memberName : name}
+              readOnly={Boolean(isAuthenticated && memberName)}
               onChange={(e) => {
                 setName(e.target.value);
                 if (error) setError('');
               }}
-              placeholder="e.g. Kenneth, Sarah, Deacon John"
-              className="w-full px-4 py-3.5 rounded-2xl border-2 border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-[#16251F] dark:text-[#F8F7F3] font-medium text-base placeholder:text-[#68736D]/60 focus:outline-none focus:border-[#203C32] dark:focus:border-[#C9A35A] transition-all shadow-inner"
+              placeholder="The name people know you by"
+              className="sanctum-input w-full rounded-full px-4 py-3.5 text-base font-medium focus:outline-none"
             />
           </div>
+
+          {altarRoom?.hasPasscode && (
+            <div>
+              <label htmlFor="room-passcode" className="mb-2 block text-xs font-bold uppercase tracking-wider">
+                Room passcode
+              </label>
+              <input
+                id="room-passcode"
+                type="password"
+                autoComplete="current-password"
+                value={passcode}
+                onChange={(event) => setPasscode(event.target.value)}
+                className="sanctum-input w-full rounded-full px-4 py-3.5 text-base font-medium focus:outline-none"
+              />
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={isSubmitting || !canJoin}
-            className="w-full py-4 px-6 rounded-2xl font-bold text-lg bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg hover:shadow-xl transition-all active:scale-98 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="sanctum-accent flex w-full cursor-pointer items-center justify-center gap-2 rounded-full px-6 py-4 text-lg font-semibold shadow-[var(--shadow-glow)] disabled:cursor-not-allowed"
           >
-            <Sparkles className="w-5 h-5 text-[#C9A35A] dark:text-[#101814]" />
-            <span>{isWaiting ? 'Enter Sanctuary' : 'Join Prayer'}</span>
+            <Sparkles className="h-5 w-5" />
+            <span>Enter the sanctuary</span>
           </button>
         </form>
+        )}
 
-        <div className="mt-6 pt-5 border-t border-[#E5E6E1] dark:border-[#26362F] space-y-2">
-          <div className="flex items-center justify-center gap-1.5 text-xs text-[#68736D] dark:text-[#96A39D]">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <span>No account required.</span>
+        <div className="mt-6 space-y-2 border-t pt-5" style={{ borderColor: 'var(--border)' }}>
+          <div className="sanctum-muted flex items-center justify-center gap-1.5 text-xs">
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            <span>{altarRoom?.allowGuests === false ? 'Church account required.' : 'No account required.'}</span>
           </div>
-          <p className="text-[11px] text-[#68736D] dark:text-[#96A39D] leading-relaxed">
+          <p className="sanctum-muted text-[11px] leading-relaxed">
             Microphone and camera stay off unless a prayer leader invites you to speak. Server-enforced media permissions activate with the realtime media engine.
           </p>
         </div>
       </main>
 
-      <footer className="w-full max-w-md mx-auto pt-6 pb-2 text-center text-xs text-[#68736D] dark:text-[#96A39D]">
+      <footer className="sanctum-muted mx-auto w-full max-w-md pb-2 pt-6 text-center text-xs">
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <button
             type="button"
             onClick={() => setShowHelpModal(true)}
-            className="inline-flex items-center gap-1 hover:text-[#203C32] dark:hover:text-[#F8F7F3] underline cursor-pointer"
+            className="inline-flex cursor-pointer items-center gap-1 underline"
           >
             <HelpCircle className="w-3.5 h-3.5" />
             Connection Help
@@ -302,7 +395,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
               aria-label="Data Saver Mode"
               value={dataSaverMode}
               onChange={(e) => setDataSaverMode(e.target.value as any)}
-              className="bg-transparent text-xs font-semibold text-[#203C32] dark:text-[#C9A35A] border-none focus:outline-none cursor-pointer"
+              className="cursor-pointer border-none bg-transparent text-xs font-semibold focus:outline-none"
             >
               <option value="AUTOMATIC">Auto</option>
               <option value="ON">On (Save Data)</option>
@@ -312,7 +405,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
 
           <span>•</span>
 
-          <a href="/privacy" className="hover:text-[#203C32] dark:hover:text-[#F8F7F3] underline">
+          <a href="/privacy" className="underline">
             Privacy
           </a>
         </div>
@@ -324,11 +417,11 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
         >
-          <div className="bg-white dark:bg-[#17221D] rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-[#E5E6E1] dark:border-[#26362F] text-left">
-            <h3 className="text-lg font-bold text-[#16251F] dark:text-[#F8F7F3] mb-2">
+          <div className="sanctum-surface w-full max-w-sm rounded-3xl p-6 text-left shadow-[var(--shadow-sanctum)]">
+            <h3 className="mb-2 text-lg font-bold">
               Joining & Connection Help
             </h3>
-            <div className="text-xs text-[#68736D] dark:text-[#96A39D] space-y-2.5 leading-relaxed">
+            <div className="sanctum-muted space-y-2.5 text-xs leading-relaxed">
               <p>
                 <strong>No Login Needed:</strong> Congregants enter a name and tap Join Prayer. You join as a listener.
               </p>
@@ -342,11 +435,11 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
                 <strong>Hearing prayer audio:</strong> If you don't hear sound once the live gathering begins, check that your phone volume or device speaker is turned up.
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-[#E5E6E1] dark:border-[#26362F] flex justify-end">
+            <div className="mt-4 flex justify-end border-t pt-3" style={{ borderColor: 'var(--border)' }}>
               <button
                 type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="px-4 py-2 rounded-xl bg-[#203C32] text-white font-medium text-xs dark:bg-[#C9A35A] dark:text-[#101814]"
+                className="sanctum-accent rounded-xl px-4 py-2 text-xs font-medium"
               >
                 Got it
               </button>

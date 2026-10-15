@@ -1,4 +1,4 @@
-export type OrganizationRole = 'OWNER' | 'ADMIN' | 'PRAYER_LEADER' | 'TECHNICAL_ADMIN';
+export type OrganizationRole = 'OWNER' | 'ADMIN' | 'PRAYER_LEADER' | 'TECHNICAL_ADMIN' | 'MEDIA';
 
 export type SessionRole = 'HOST' | 'MODERATOR' | 'SPEAKER' | 'LISTENER';
 
@@ -18,9 +18,9 @@ export type OrgPermission =
   | 'prayerRequest.manage'
   | 'team.manage';
 
-export const INVITEABLE_ORG_ROLES = ['ADMIN'] as const;
+export const INVITEABLE_ORG_ROLES = ['ADMIN', 'MEDIA'] as const;
 
-export function isInviteableOrgRole(role: string): role is 'ADMIN' {
+export function isInviteableOrgRole(role: string): role is 'ADMIN' | 'MEDIA' {
   return (INVITEABLE_ORG_ROLES as readonly string[]).includes(role);
 }
 
@@ -72,10 +72,76 @@ export const ORGANIZATION_PERMISSIONS: Record<OrganizationRole, readonly OrgPerm
     'participant.revokeSpeaker',
     'participant.mute',
   ],
+  MEDIA: [],
 };
 
-export function hasOrgPermission(role: OrganizationRole, permission: OrgPermission): boolean {
-  return ORGANIZATION_PERMISSIONS[role]?.includes(permission) ?? false;
+function permissionsForKnownRole(role: OrganizationRole): readonly OrgPermission[] {
+  switch (role) {
+    case 'OWNER':
+      return ORGANIZATION_PERMISSIONS.OWNER;
+    case 'ADMIN':
+      return ORGANIZATION_PERMISSIONS.ADMIN;
+    case 'PRAYER_LEADER':
+      return ORGANIZATION_PERMISSIONS.PRAYER_LEADER;
+    case 'TECHNICAL_ADMIN':
+      return ORGANIZATION_PERMISSIONS.TECHNICAL_ADMIN;
+    case 'MEDIA':
+      return ORGANIZATION_PERMISSIONS.MEDIA;
+    default: {
+      const unexpected: never = role;
+      void unexpected;
+      return [];
+    }
+  }
+}
+
+export function permissionsForRole(role: string | null | undefined): readonly OrgPermission[] {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case 'MEDIA':
+      return permissionsForKnownRole(role);
+    default:
+      return [];
+  }
+}
+
+export function hasOrgPermission(role: string | null | undefined, permission: OrgPermission): boolean {
+  return permissionsForRole(role).includes(permission);
+}
+
+function staffAreaForKnownRole(role: OrganizationRole, area: 'members' | 'giving' | 'sermons' | 'settings' | 'rooms' | 'sessions') {
+  switch (role) {
+    case 'MEDIA':
+      return false;
+    case 'OWNER':
+      return true;
+    case 'ADMIN':
+      return area !== 'settings';
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+      return area === 'rooms' || area === 'sessions';
+    default: {
+      const unexpected: never = role;
+      void unexpected;
+      return false;
+    }
+  }
+}
+
+export function staffAreaAllowed(role: string | null | undefined, area: 'members' | 'giving' | 'sermons' | 'settings' | 'rooms' | 'sessions') {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case 'MEDIA':
+      return staffAreaForKnownRole(role, area);
+    default:
+      return false;
+  }
 }
 
 export function canManageTeam(role: OrganizationRole): boolean {
@@ -130,8 +196,36 @@ export function isSessionSpeaker(role: SessionRole): boolean {
   return role === 'SPEAKER';
 }
 
-export function deriveSessionRoleFromOrgRole(orgRole: OrganizationRole | null): SessionRole {
-  if (orgRole === 'OWNER' || orgRole === 'ADMIN') return 'HOST';
-  if (orgRole === 'PRAYER_LEADER' || orgRole === 'TECHNICAL_ADMIN') return 'MODERATOR';
-  return 'LISTENER';
+function sessionRoleForKnownOrgRole(orgRole: OrganizationRole | null): SessionRole {
+  switch (orgRole) {
+    case 'OWNER':
+    case 'ADMIN':
+      return 'HOST';
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+      return 'MODERATOR';
+    case 'MEDIA':
+    case null:
+      return 'LISTENER';
+    default: {
+      const unexpected: never = orgRole;
+      void unexpected;
+      return 'LISTENER';
+    }
+  }
+}
+
+export function deriveSessionRoleFromOrgRole(orgRole: string | null | undefined): SessionRole {
+  switch (orgRole) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case 'MEDIA':
+    case null:
+    case undefined:
+      return sessionRoleForKnownOrgRole(orgRole ?? null);
+    default:
+      return 'LISTENER';
+  }
 }

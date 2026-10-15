@@ -3,6 +3,8 @@ import { Unauthorized } from '../../shared/errors.ts';
 import { sendError } from '../http.ts';
 import { resolveActorFromRequest, resolvePrismaUserFromClerk } from '../clerkAuth.ts';
 import { membershipRepository, organizationRepository, userRepository } from '../repositories/index.ts';
+import { getPrisma } from '../prisma.ts';
+import { memberJoinName } from '../../shared/huddle.ts';
 
 export async function meHandler(req: Request, res: Response): Promise<void> {
   try {
@@ -31,6 +33,11 @@ export async function meHandler(req: Request, res: Response): Promise<void> {
     const organization = await organizationRepository.findById(actor.organizationId);
     const user = await userRepository.findById(prismaUser.id);
     const memberships = await membershipRepository.listActiveByUser(prismaUser.id);
+    const member = await getPrisma()?.member.findFirst({
+      where: { organizationId: actor.organizationId, userId: prismaUser.id },
+      select: { firstName: true, lastName: true },
+    });
+    const memberName = memberJoinName(member);
 
     res.json({
       needsOnboarding: false,
@@ -40,6 +47,7 @@ export async function meHandler(req: Request, res: Response): Promise<void> {
         email: user?.email,
         role: actor.orgRole,
         organizationId: actor.organizationId,
+        memberName: memberName || null,
       },
       organization,
       memberships,

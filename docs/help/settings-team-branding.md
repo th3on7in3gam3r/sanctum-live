@@ -12,7 +12,7 @@
 
 ### Team (Owner only)
 - Invite **Admins** to help operate Control Rooms.
-- Admins can moderate rooms, manage PTT, raised hands, and private prayer.
+- Admins can moderate rooms, open the floor, manage raised hands, and private prayer.
 - Team list supports pagination (25 per page) and removal.
 
 ### Prayer Defaults
@@ -23,7 +23,7 @@
 
 ## Admin vs sermon leader
 
-- **Admin** = room operator in Control Room (moderation, PTT, roster).
+- **Admin** = room operator in Control Room (moderation, speaking floor, roster).
 - **Sermon leader** = the person named when opening sanctuary for that session; displayed to congregants.
 - The same person can be both, or an Admin can operate while another person gives the sermon.
 

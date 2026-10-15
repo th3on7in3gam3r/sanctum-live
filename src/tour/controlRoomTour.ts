@@ -34,9 +34,9 @@ export const controlRoomTourSteps: TourStep[] = [
   {
     element: '[data-tour="control-congregation-mute"]',
     popover: {
-      title: 'Sermon or Discussion PTT',
+      title: 'Sermon or open floor',
       description:
-        'Sermon mode keeps the room listen-only. Open Discussion PTT so congregants can tap to speak, one at a time.',
+        'Sermon mode keeps the room listen-only. Open the floor so congregants can hold to speak, one at a time.',
       side: 'top',
       align: 'end',
     },
@@ -46,7 +46,7 @@ export const controlRoomTourSteps: TourStep[] = [
     popover: {
       title: 'Congregation list',
       description:
-        'Admins and permitted room operators can moderate here. Green mic means live, red means ready for PTT, grey means locked. Press and hold a name for private prayer with that person.',
+        'Admins and permitted room operators can moderate here. Green mic means live, red means ready to speak, grey means locked. Press and hold a name for private prayer with that person.',
       side: 'top',
       align: 'start',
     },

@@ -269,7 +269,7 @@ export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
                   </div>
                   <div>
                     <span className="font-bold text-[#16251F] dark:text-[#F8F7F3]">Prayer Leaders</span>
-                    <p className="text-[11px] text-[#68736D] dark:text-[#96A39D]">Pastor Kenneth (Host)</p>
+                    <p className="text-[11px] text-[#68736D] dark:text-[#96A39D]">Prayer leader (Host)</p>
                   </div>
                 </div>
                 <span className="inline-flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
@@ -323,12 +323,12 @@ export const PrePrayerCheckModal: React.FC<PrePrayerCheckModalProps> = ({
                   <div>
                     <span className="font-bold text-[#16251F] dark:text-[#F8F7F3]">Recording</span>
                     <p className="text-[11px] text-[#68736D] dark:text-[#96A39D]">
-                      {room.recordingEnabled ? 'Enabled' : 'Disabled (Live-only gathering)'}
+                      Recording is not available yet.
                     </p>
                   </div>
                 </div>
-                <span className="text-[11px] font-semibold text-[#68736D] dark:text-[#96A39D]">
-                  {room.recordingEnabled ? 'ON' : 'OFF'}
+                <span className="text-[9px] uppercase tracking-wider font-bold text-amber-700 dark:text-amber-300">
+                  Coming Soon
                 </span>
               </div>
             </div>

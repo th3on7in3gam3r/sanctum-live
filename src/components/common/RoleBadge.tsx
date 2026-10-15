@@ -30,6 +30,12 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role, className, size = 's
           bg: 'bg-[#3D6655]/15 text-[#203C32] dark:text-[#E8D8B2] border-[#3D6655]/30',
           icon: Mic,
         };
+      case 'MEDIA':
+        return {
+          label: 'Media',
+          bg: 'bg-[#C9A35A]/15 text-[#8a6a2e] dark:text-[#E4C98F] border-[#C9A35A]/40',
+          icon: Radio,
+        };
       case 'TECHNICAL_ADMIN':
         return {
           label: 'Technical Admin',

@@ -22,6 +22,7 @@ export async function listTeamHandler(req: Request, res: Response): Promise<void
         email: row.user.email,
         role: row.role,
         status: row.status,
+        canPublishGallery: row.canPublishGallery,
       })),
     });
   } catch (error) {
@@ -32,19 +33,23 @@ export async function listTeamHandler(req: Request, res: Response): Promise<void
 export async function inviteTeamMemberHandler(req: Request, res: Response): Promise<void> {
   try {
     const actor = await resolveActorFromRequest(req);
-    requireCanManageTeam(actor);
-    if (!actor.organizationId) throw Unauthorized();
+    if (!actor.organizationId || !actor.userId) throw Unauthorized();
 
-    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const rawEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const phone = typeof req.body?.phone === 'string' ? req.body.phone.replace(/[^\d]/g, '') : '';
+    const email = rawEmail || (phone ? `media.${phone}@media.plcc.local` : '');
     const role = typeof req.body?.role === 'string' ? req.body.role.trim() : '';
     if (!email || !email.includes('@')) {
-      res.status(400).json({ error: 'INVALID_INVITE', message: 'A valid staff email is required.' });
+      res.status(400).json({ error: 'INVALID_INVITE', message: 'A staff email or phone number is required.' });
       return;
+    }
+    if (actor.orgRole !== 'OWNER' && !(actor.orgRole === 'ADMIN' && role === 'MEDIA')) {
+      throw Unauthorized('Church staff are invited by the Owner.');
     }
     if (!isInviteableOrgRole(role)) {
       res.status(400).json({
         error: 'INVALID_INVITE',
-        message: 'Invite an Admin to help run this Sanctum Space.',
+        message: 'Invite an Admin, or a Media teammate for the gallery.',
       });
       return;
     }
@@ -52,7 +57,7 @@ export async function inviteTeamMemberHandler(req: Request, res: Response): Prom
     let user = await userRepository.findByEmail(email);
     if (!user) {
       user = await userRepository.create({
-        name: email.split('@')[0],
+        name: phone && !rawEmail ? phone : email.split('@')[0],
         email,
       });
     }
@@ -95,6 +100,32 @@ export async function inviteTeamMemberHandler(req: Request, res: Response): Prom
       },
       clerkInviteSent,
     });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function updateGalleryPublishHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = await resolveActorFromRequest(req);
+    if (actor.orgRole !== 'OWNER' && actor.orgRole !== 'ADMIN') {
+      throw Unauthorized('Only an Owner or Admin can change gallery publishing.');
+    }
+    if (!actor.organizationId) throw Unauthorized();
+    const userId = String(req.params.userId || '').trim();
+    const membership = await membershipRepository.find(actor.organizationId, userId);
+    if (!membership || membership.role !== 'MEDIA') {
+      res.status(404).json({ error: 'MEMBER_NOT_FOUND', message: 'Choose a media teammate.' });
+      return;
+    }
+    const { getPrisma } = await import('../prisma.ts');
+    const client = getPrisma();
+    if (!client) throw Unauthorized('Database is not configured.');
+    const updated = await client.organizationMembership.update({
+      where: { organizationId_userId: { organizationId: actor.organizationId, userId } },
+      data: { canPublishGallery: Boolean(req.body?.canPublishGallery) },
+    });
+    res.json({ userId, canPublishGallery: updated.canPublishGallery });
   } catch (error) {
     sendError(res, error);
   }

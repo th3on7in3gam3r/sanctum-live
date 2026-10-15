@@ -46,9 +46,23 @@ export function mapServerPrayerRoom(row: Record<string, unknown>): PrayerRoom {
       : 'ADMIN_APPROVAL_REQUIRED') as PrayerRoom['speakerPermission'],
     isRecurring: Boolean(row.isRecurring),
     recurrenceRule,
+    selectedDays: Array.isArray(row.selectedDays)
+      ? row.selectedDays.filter((day): day is string => typeof day === 'string')
+      : [],
+    oneTimeDate: typeof row.oneTimeDate === 'string' && row.oneTimeDate ? row.oneTimeDate : undefined,
+    durationMinutes: Number(row.durationMinutes || 60),
     scheduledStart: String(row.scheduledStart || '05:00 AM'),
     timezone: String(row.timezone || 'Africa/Kampala'),
     recordingEnabled: Boolean(row.recordingEnabled),
+    allowGuests: row.allowGuests !== false,
+    prayerRequestsEnabled: row.prayerRequestsEnabled !== false,
+    anonymousRequestsAllowed: row.anonymousRequestsAllowed !== false,
+    chatEnabled: row.chatEnabled !== false,
+    hasPasscode: Boolean(row.hasPasscode),
+    sermonLeaderUserId: typeof row.sermonLeaderUserId === 'string' ? row.sermonLeaderUserId : undefined,
+    coHostUserIds: Array.isArray(row.coHostUserIds)
+      ? row.coHostUserIds.filter((id): id is string => typeof id === 'string')
+      : [],
     status: status === 'LIVE' ? 'LIVE' : 'SCHEDULED',
     isArchived: status === 'ARCHIVED',
     livekitRoomName: typeof row.livekitRoomName === 'string' ? row.livekitRoomName : undefined,
@@ -70,7 +84,7 @@ export function mapServerSession(
     id: String(session.id),
     prayerRoomId: String(session.prayerRoomId || room.id),
     roomName: room.name,
-    organizationName: extras?.organizationName || 'Miracle Center Kampala',
+    organizationName: extras?.organizationName?.trim() || '',
     status,
     waitingRoomOpenedAt:
       status === 'WAITING' ? extras?.waitingRoomOpenedAt || new Date().toISOString() : extras?.waitingRoomOpenedAt,
@@ -105,7 +119,7 @@ export function mapSnapshotParticipants(
       id: String(row.id),
       sessionId,
       externalIdentity: typeof row.realtimeIdentity === 'string' ? row.realtimeIdentity : undefined,
-      displayName: String(row.guestName || row.realtimeIdentity || 'Attendee'),
+      displayName: String(row.guestName || (row.user as { name?: string } | undefined)?.name || 'Attendee'),
       role: mapSessionRole(typeof row.role === 'string' ? row.role : undefined),
       joinedAt: row.joinedAt ? String(row.joinedAt) : new Date().toISOString(),
       isHandRaised: false,
@@ -122,14 +136,13 @@ export function mapSnapshotHands(
   return rows.map((row) => {
     const participantId = String(row.participantId || '');
     const nested = row.participant as Record<string, unknown> | undefined;
+    const nestedUser = nested?.user as { name?: string } | undefined;
     const fromParticipant = participants.find((participant) => participant.id === participantId);
     return {
       id: String(row.id),
       sessionId,
       participantId,
-      displayName: String(
-        nested?.guestName || nested?.realtimeIdentity || fromParticipant?.displayName || 'Attendee'
-      ),
+      displayName: String(nested?.guestName || nestedUser?.name || fromParticipant?.displayName || 'Attendee'),
       status: (typeof row.status === 'string' ? row.status : 'WAITING') as RaisedHand['status'],
       raisedAt: row.raisedAt ? String(row.raisedAt) : new Date().toISOString(),
       waitingSeconds: 0,

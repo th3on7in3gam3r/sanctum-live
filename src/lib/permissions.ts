@@ -9,7 +9,6 @@ import {
   canPublishAudio as canPublishSessionAudio,
   canStartPrayerSession,
   canViewPrivatePrayerRequests,
-  type OrganizationRole,
   type SessionRole,
 } from '../../shared/roles.ts';
 
@@ -74,6 +73,18 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapability> = {
     canViewPrivateRequests: false,
     canManageSettings: false,
   },
+  MEDIA: {
+    role: 'MEDIA',
+    label: 'Media',
+    description: 'Uploads gallery photos and videos. Cannot run prayer rooms or open church records.',
+    canSpeakAutomatically: false,
+    canInviteSpeakers: false,
+    canMuteSpeakers: false,
+    canManageRooms: false,
+    canEndSessions: false,
+    canViewPrivateRequests: false,
+    canManageSettings: false,
+  },
   SPEAKER: {
     role: 'SPEAKER',
     label: 'Invited Speaker',
@@ -100,21 +111,96 @@ export const ROLE_CAPABILITIES: Record<Role, RoleCapability> = {
   },
 };
 
-export function hasPermission(role: Role, action: keyof Omit<RoleCapability, 'role' | 'label' | 'description'>): boolean {
-  const capabilities = ROLE_CAPABILITIES[role];
-  if (!capabilities) return false;
-  return Boolean(capabilities[action]);
+type CapabilityAction = keyof Omit<RoleCapability, 'role' | 'label' | 'description'>;
+
+function permissionForKnownRole(role: Role, action: CapabilityAction): boolean {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case 'MEDIA':
+    case 'SPEAKER':
+    case 'LISTENER':
+      return Boolean(ROLE_CAPABILITIES[role][action]);
+    default: {
+      const unexpected: never = role;
+      void unexpected;
+      return false;
+    }
+  }
 }
 
-export function canModerate(role: Role): boolean {
-  return role === 'OWNER' || role === 'ADMIN' || role === 'PRAYER_LEADER' || role === 'TECHNICAL_ADMIN';
+export function hasPermission(role: string | null | undefined, action: CapabilityAction): boolean {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case 'MEDIA':
+    case 'SPEAKER':
+    case 'LISTENER':
+      return permissionForKnownRole(role, action);
+    default:
+      return false;
+  }
 }
 
-export function canPublishAudio(role: Role, holdsSpeakerFloor = false): boolean {
-  if (isOrganizationRole(role)) return false;
-  return canPublishSessionAudio(role as SessionRole, holdsSpeakerFloor);
+function knownRoleCanModerate(role: Role): boolean {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+      return true;
+    case 'MEDIA':
+    case 'SPEAKER':
+    case 'LISTENER':
+      return false;
+    default: {
+      const unexpected: never = role;
+      void unexpected;
+      return false;
+    }
+  }
 }
 
-function isOrganizationRole(role: Role): role is OrganizationRole {
-  return role === 'OWNER' || role === 'ADMIN' || role === 'PRAYER_LEADER' || role === 'TECHNICAL_ADMIN';
+export function canModerate(role: string | null | undefined): boolean {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case 'MEDIA':
+    case 'SPEAKER':
+    case 'LISTENER':
+      return knownRoleCanModerate(role);
+    default:
+      return false;
+  }
+}
+
+export function isClientMinister(role: string | null | undefined): boolean {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case 'HOST':
+    case 'MODERATOR':
+      return true;
+    case 'MEDIA':
+    case 'SPEAKER':
+    case 'LISTENER':
+    case null:
+    case undefined:
+      return false;
+    default:
+      return false;
+  }
+}
+
+export function canPublishAudio(role: string | null | undefined, holdsSpeakerFloor = false): boolean {
+  if (role !== 'SPEAKER') return false;
+  return canPublishSessionAudio(role, holdsSpeakerFloor);
 }

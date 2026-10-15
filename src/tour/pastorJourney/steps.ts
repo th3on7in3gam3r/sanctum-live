@@ -165,9 +165,9 @@ export const pastorJourneySteps: PastorJourneyStep[] = [
     route: /^\/dashboard\/prayer-rooms\/[^/]+\/control$/,
     element: '[data-tour="control-congregation-mute"]',
     popover: {
-      title: 'Sermon or Discussion PTT',
+      title: 'Sermon or open floor',
       description:
-        'Sermon mode keeps congregants muted. Open Discussion PTT when you want them to tap to speak, one at a time.',
+        'Sermon mode keeps congregants muted. Open the floor when you want them to hold to speak, one at a time.',
       side: 'top',
       align: 'end',
     },

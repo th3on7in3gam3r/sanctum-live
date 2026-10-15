@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
+import { BrandLockup } from '@plcc/brand/BrandLockup';
 import { SanctumLogo } from '../common/SanctumLogo';
+import { churchSiteUrl, isChurchMode } from '../../lib/appMode';
+import { sanctumTheme } from './ChurchWordmark';
 import {
   CheckCircle2,
   Users,
@@ -55,53 +58,53 @@ export const PostPrayerSummaryView: React.FC<PostPrayerSummaryViewProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex flex-col justify-between p-4 sm:p-6 transition-colors">
+    <div data-theme={sanctumTheme(isDarkMode)} className="sanctum-screen flex min-h-screen flex-col justify-between p-4 transition-colors sm:p-6">
       {/* Top Header */}
       <header className="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-4">
-        <SanctumLogo size="md" showTagline />
+        {isChurchMode() ? <BrandLockup size="md" href={churchSiteUrl()} /> : <SanctumLogo size="md" showTagline />}
         <button
           onClick={toggleDarkMode}
-          aria-label="Toggle dark mode"
-          className="p-2 rounded-xl text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          aria-label="Toggle theme"
+          className="sanctum-icon cursor-pointer rounded-xl p-2"
         >
-          {isDarkMode ? <Sun className="w-5 h-5 text-[#C9A35A]" /> : <Moon className="w-5 h-5" />}
+          {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
       </header>
 
       {/* Main Card */}
-      <main className="w-full max-w-md mx-auto my-auto bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 shadow-xl border border-[#E5E6E1] dark:border-[#26362F] text-center space-y-6">
+      <main className="sanctum-surface mx-auto my-auto w-full max-w-md space-y-6 rounded-3xl p-6 text-center sm:p-8">
         {/* Completion Icon */}
-        <div className="w-16 h-16 rounded-3xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+        <div className="sanctum-chip mx-auto flex h-16 w-16 items-center justify-center rounded-3xl">
           <CheckCircle2 className="w-8 h-8" />
         </div>
 
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
+          <h1 className="font-display text-4xl font-light tracking-tight">
             Prayer Complete
           </h1>
-          <p className="text-sm text-[#68736D] dark:text-[#96A39D] mt-1">
+          <p className="sanctum-muted mt-1 text-sm">
             Thank you for praying with us, <strong>{participantName}</strong>.
           </p>
         </div>
 
         {/* Stats strip */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="p-4 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] text-left">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D] flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-[#C9A35A]" />
+          <div className="sanctum-raised rounded-2xl p-4 text-left">
+            <span className="sanctum-muted flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider">
+              <Users className="h-3.5 w-3.5" />
               Gathered
             </span>
-            <p className="text-lg font-extrabold text-[#16251F] dark:text-[#F8F7F3] mt-0.5">
+            <p className="mt-0.5 text-lg font-extrabold">
               {totalGathered > 0 ? totalGathered.toLocaleString() : '—'}
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] text-left">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D] flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-[#203C32] dark:text-[#E8D8B2]" />
+          <div className="sanctum-raised rounded-2xl p-4 text-left">
+            <span className="sanctum-muted flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider">
+              <Calendar className="h-3.5 w-3.5" />
               Next Prayer
             </span>
-            <p className="text-xs font-bold text-[#203C32] dark:text-[#C9A35A] mt-1 truncate">
+            <p className="mt-1 truncate text-xs font-bold">
               Tomorrow • {room.scheduledStart}
             </p>
           </div>
@@ -110,13 +113,13 @@ export const PostPrayerSummaryView: React.FC<PostPrayerSummaryViewProps> = ({
         {/* Testimony box or CTA buttons */}
         {showTestimonyBox ? (
           testimonySubmitted ? (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium space-y-1">
+            <div className="sanctum-chip space-y-1 rounded-2xl p-4 text-xs font-medium">
               <p className="font-bold">Testimony Received</p>
               <p>May God bless you as you testify of His goodness!</p>
             </div>
           ) : (
             <form onSubmit={handleSubmitTestimony} className="text-left space-y-3">
-              <label className="block text-xs font-bold text-[#16251F] dark:text-[#F8F7F3] uppercase tracking-wider">
+              <label className="block text-xs font-bold uppercase tracking-wider">
                 Share a Testimony / Praise Report
               </label>
               <textarea
@@ -124,19 +127,19 @@ export const PostPrayerSummaryView: React.FC<PostPrayerSummaryViewProps> = ({
                 onChange={(e) => setTestimony(e.target.value)}
                 placeholder="Share how God moved during prayer..."
                 rows={3}
-                className="w-full p-3 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3] dark:bg-[#101814] text-xs text-[#16251F] dark:text-[#F8F7F3] focus:outline-none focus:border-[#203C32] dark:focus:border-[#C9A35A]"
+                className="sanctum-input w-full rounded-xl p-3 text-xs focus:outline-none"
               />
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowTestimonyBox(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-[#68736D] dark:text-[#96A39D] hover:bg-black/5"
+                  className="sanctum-muted rounded-xl px-3 py-2 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-white dark:bg-[#C9A35A] dark:text-[#101814]"
+                  className="sanctum-accent flex-1 rounded-xl py-2 text-xs font-bold"
                 >
                   Submit Testimony
                 </button>
@@ -148,9 +151,9 @@ export const PostPrayerSummaryView: React.FC<PostPrayerSummaryViewProps> = ({
             <button
               type="button"
               onClick={() => setShowTestimonyBox(true)}
-              className="w-full py-3 rounded-2xl font-bold text-xs border border-[#203C32] dark:border-[#C9A35A] text-[#203C32] dark:text-[#E8D8B2] hover:bg-[#203C32]/5 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+              className="sanctum-outline flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl py-3 text-xs font-bold"
             >
-              <Heart className="w-4 h-4 text-[#C9A35A]" />
+              <Heart className="h-4 w-4" />
               <span>Share a Testimony</span>
             </button>
 
@@ -158,9 +161,9 @@ export const PostPrayerSummaryView: React.FC<PostPrayerSummaryViewProps> = ({
               <button
                 type="button"
                 onClick={onSubmitPrayerRequest}
-                className="w-full py-3 rounded-2xl font-bold text-xs bg-[#F8F7F3] dark:bg-[#101814] hover:bg-black/5 text-[#16251F] dark:text-[#F8F7F3] border border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-center gap-2 cursor-pointer"
+                className="sanctum-raised flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl py-3 text-xs font-bold"
               >
-                <FileText className="w-4 h-4 text-[#68736D]" />
+                <FileText className="h-4 w-4" />
                 <span>Submit a Prayer Request</span>
               </button>
             )}
@@ -171,14 +174,14 @@ export const PostPrayerSummaryView: React.FC<PostPrayerSummaryViewProps> = ({
         <button
           type="button"
           onClick={onExit}
-          className="w-full py-3.5 rounded-2xl font-bold text-sm bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-md flex items-center justify-center gap-2 cursor-pointer"
+          className="sanctum-accent flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold"
         >
           <span>{isAuthenticated ? 'Back to Dashboard' : 'Exit Gathering'}</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </main>
 
-      <footer className="w-full max-w-md mx-auto text-center pt-2 text-[11px] text-[#68736D] dark:text-[#96A39D]">
+      <footer className="sanctum-muted mx-auto w-full max-w-md pt-2 text-center text-[11px]">
         May the grace of our Lord Jesus Christ be with you always.
       </footer>
     </div>

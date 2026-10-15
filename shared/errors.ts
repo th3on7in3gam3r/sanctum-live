@@ -11,7 +11,10 @@ export type SanctumErrorCode =
   | 'SESSION_NOT_JOINABLE'
   | 'INVITATION_INVALID'
   | 'SESSION_NOT_LIVE'
-  | 'SERMON_LEADER_REQUIRED';
+  | 'SERMON_LEADER_REQUIRED'
+  | 'VALIDATION_ERROR'
+  | 'CMS_NOT_FOUND'
+  | 'RATE_LIMITED';
 
 export class SanctumError extends Error {
   readonly code: SanctumErrorCode;
@@ -85,3 +88,19 @@ export const SessionNotLive = () =>
 
 export const SermonLeaderRequired = () =>
   new SanctumError('SERMON_LEADER_REQUIRED', 'Enter the sermon or prayer leader for this session.', 400);
+
+export const CmsNotFound = (message = 'Church record not found') =>
+  new SanctumError('CMS_NOT_FOUND', message, 404);
+
+export const RateLimited = (message = 'Too many requests. Try again shortly.') =>
+  new SanctumError('RATE_LIMITED', message, 429);
+
+export class ValidationError extends SanctumError {
+  readonly fieldErrors: Record<string, string>;
+
+  constructor(fieldErrors: Record<string, string>, message = 'Please review the form errors') {
+    super('VALIDATION_ERROR', message, 400, { fieldErrors });
+    this.name = 'ValidationError';
+    this.fieldErrors = fieldErrors;
+  }
+}

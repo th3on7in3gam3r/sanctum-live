@@ -29,13 +29,13 @@ Sanctum Live lets your church run live audio prayer gatherings. Pastors and Admi
 3. Run **Pre-Prayer Check** to test your microphone.
 4. Tap **Start Prayer** when ready.
 5. Turn on your **host microphone** to speak.
-6. Use **Sermon mode** (congregation muted) or **Discussion PTT** (congregants tap to speak, one at a time).
+6. Use **Sermon mode** (congregation muted) or **open the floor** (congregants hold to speak, one at a time).
 7. Monitor the **roster**, **raised hands**, and **chat**.
 8. **End Prayer Session** when finished.
 
 ## Roles
 
 - **Owner / Apostle**: Full access including team invites and billing settings.
-- **Admin**: Room operator — can moderate Control Room, PTT, raised hands, and private prayer while the named sermon leader speaks.
+- **Admin**: Room operator — can moderate Control Room, the speaking floor, raised hands, and private prayer while the named sermon leader speaks.
 - **Sermon leader**: The person named when opening sanctuary; shown to congregants.
-- **Congregant**: Joins via public link; listens, raises hand, taps to speak in Discussion PTT.
+- **Congregant**: Joins via public link; listens, raises hand, and holds to speak when the pastor opens the floor.

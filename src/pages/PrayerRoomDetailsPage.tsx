@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { BackButton } from '../components/common/BackButton';
@@ -7,6 +7,9 @@ import { PrayerSessionStatus } from '../components/common/PrayerSessionStatus';
 import { TestPrayerRoomModal } from '../components/dashboard/TestPrayerRoomModal';
 import { resolveAltarLink } from '../services/altarLinkResolver';
 import { formatNumber } from '../lib/utils';
+import { buildRoomIcs, downloadIcs } from '../lib/calendar';
+import { getNextOccurrences } from '../services/sessionScheduler';
+import QRCode from 'qrcode';
 import {
   Calendar,
   Users,
@@ -15,25 +18,45 @@ import {
   Sliders,
   ExternalLink,
   Edit3,
+  Download,
 } from 'lucide-react';
 
 interface PrayerRoomDetailsPageProps {
   roomId: string;
   onNavigate: (path: string) => void;
+  showSharePanel?: boolean;
 }
 
 export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
   roomId,
   onNavigate,
+  showSharePanel = false,
 }) => {
   const { prayerRooms, liveSession, historySessions, addToast } = useApp();
   const { organization } = useAuth();
   const [copied, setCopied] = useState(false);
   const [showTestRoomModal, setShowTestRoomModal] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState('');
 
   const room = prayerRooms.find((r) => r.id === roomId) || prayerRooms[0];
   const resolution = resolveAltarLink(room, liveSession, historySessions);
   const fullUrl = `${window.location.origin}/join/${room?.slug || ''}`;
+  const occurrences = useMemo(() => (room ? getNextOccurrences(room, 5) : []), [room]);
+
+  useEffect(() => {
+    if (!showSharePanel || !room?.slug) return;
+    let cancelled = false;
+    QRCode.toDataURL(fullUrl, { margin: 1, width: 192 })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrDataUrl('');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showSharePanel, fullUrl, room?.slug]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(fullUrl);
@@ -132,6 +155,42 @@ export const PrayerRoomDetailsPage: React.FC<PrayerRoomDetailsPageProps> = ({
             </button>
           </div>
         </div>
+
+        {showSharePanel && (
+          <div className="space-y-3 p-4 rounded-2xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/60 dark:bg-[#101814]">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#203C32] dark:text-[#C9A35A]">Share this altar</p>
+            <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
+              {qrDataUrl ? (
+                <img src={qrDataUrl} alt={`QR code for ${room.name}`} className="w-32 h-32 rounded-xl bg-white p-2" />
+              ) : null}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="px-3 py-2 rounded-xl text-xs font-bold border border-[#E5E6E1] dark:border-[#26362F] text-[#203C32] dark:text-[#C9A35A] cursor-pointer"
+                >
+                  {copied ? 'Link copied' : 'Copy link'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadIcs(`${room.slug}.ics`, buildRoomIcs({
+                      name: room.name,
+                      description: room.description,
+                      url: fullUrl,
+                      durationMinutes: room.durationMinutes || 60,
+                      occurrences,
+                    }))
+                  }
+                  className="ml-2 px-3 py-2 rounded-xl text-xs font-bold border border-[#E5E6E1] dark:border-[#26362F] text-[#16251F] dark:text-[#F8F7F3] cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download .ics
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="pt-4 border-t border-[#E5E6E1] dark:border-[#26362F] flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <button

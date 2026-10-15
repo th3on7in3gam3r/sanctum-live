@@ -10,6 +10,7 @@ import {
 } from '../../shared/errors.ts';
 import { deriveSessionRoleFromOrgRole } from '../../shared/roles.ts';
 import { assertCanTransitionSession, isJoinableSessionStatus } from '../../shared/sessionStateMachine.ts';
+import { verifyPasscode } from '../../shared/passcode.ts';
 import { normalizeSermonLeaderName } from '../../shared/sessionLeader.ts';
 import { isLiveKitConfigured } from '../env.ts';
 import { sendError } from '../http.ts';
@@ -26,6 +27,7 @@ import {
   raisedHandRepository,
   sessionRepository,
   speakerInvitationRepository,
+  userRepository,
 } from '../repositories/index.ts';
 import { createSpeakerFloorService } from '../services/createSpeakerFloorService.ts';
 import {
@@ -42,6 +44,8 @@ import {
   resolveActor,
   sessionRoleForJoin,
 } from '../authz.ts';
+import { assertHuddleOperator } from '../huddles.ts';
+import { canControlForRequest } from '../controlAccess.ts';
 import { resolveActorFromRequest } from '../clerkAuth.ts';
 
 const ROOM_DELETE_DELAY_MS = 4_000;
@@ -58,6 +62,7 @@ export async function createPrayerSessionHandler(req: Request, res: Response): P
 
     const actor = await actorFromRequest(req, room.organizationId);
     requireCanStartSession(actor);
+    await assertHuddleOperator(actor, room);
 
     const session = await sessionRepository.create({
       prayerRoomId,
@@ -86,6 +91,7 @@ export async function openPrayerSessionHandler(req: Request, res: Response): Pro
         if (!room) throw RoomNotFound(roomId);
         const actor = await actorFromRequest(req, room.organizationId);
         requireCanStartSession(actor);
+        await assertHuddleOperator(actor, room);
         session = await sessionRepository.create({ prayerRoomId: roomId, status: 'SCHEDULED' });
       }
     }
@@ -98,6 +104,7 @@ export async function openPrayerSessionHandler(req: Request, res: Response): Pro
     if (!room) throw RoomNotFound(session.prayerRoomId);
     const actor = await actorFromRequest(req, room.organizationId);
     requireCanStartSession(actor);
+    await assertHuddleOperator(actor, room);
 
     if (session.status === 'SCHEDULED') {
       assertCanTransitionSession('SCHEDULED', 'WAITING');
@@ -128,6 +135,7 @@ export async function startPrayerSessionHandler(req: Request, res: Response): Pr
 
     const actor = await actorFromRequest(req, room.organizationId);
     requireCanStartSession(actor);
+    await assertHuddleOperator(actor, room);
 
     if (session.status === 'SCHEDULED') {
       throw SessionNotJoinable(session.status);
@@ -170,6 +178,7 @@ export async function endPrayerSessionHandler(req: Request, res: Response): Prom
 
     const actor = await actorFromRequest(req, room.organizationId);
     requireCanStartSession(actor);
+    await assertHuddleOperator(actor, room);
 
     if (session.status === 'LIVE') {
       assertCanTransitionSession('LIVE', 'ENDING');
@@ -244,9 +253,38 @@ export async function getSessionSnapshotHandler(req: Request, res: Response): Pr
       connectedNow = live.length;
     }
 
+    const prisma = getPrisma();
+    const organization = room && prisma
+      ? await prisma.organization.findUnique({
+          where: { id: room.organizationId },
+          select: { name: true, defaultSermonSpeaker: true },
+        })
+      : null;
+    const roomLeader = room?.sermonLeaderUserId && prisma
+      ? await prisma.user.findUnique({
+          where: { id: room.sermonLeaderUserId },
+          select: { name: true },
+        })
+      : null;
+
+    const canControl = room ? await canControlForRequest(req, room) : false;
+
     res.json({
+      canControl,
       session,
-      room: room ? { id: room.id, name: room.name, slug: room.slug, organizationId: room.organizationId } : null,
+      room: room
+        ? {
+            id: room.id,
+            name: room.name,
+            slug: room.slug,
+            organizationId: room.organizationId,
+            organization: {
+              name: organization?.name || '',
+              defaultSermonSpeaker: organization?.defaultSermonSpeaker || '',
+            },
+            roomSermonLeaderName: roomLeader?.name || '',
+          }
+        : null,
       activeSpeaker: speaker,
       participants,
       raisedHands,
@@ -312,17 +350,32 @@ export async function getAltarBySlugHandler(req: Request, res: Response): Promis
     const room = await prayerRoomRepository.findPublicAltarBySlug(req.params.slug);
     if (!room) throw RoomNotFound(req.params.slug);
     const session = await sessionRepository.findJoinableByRoom(room.id);
+    const canControl = await canControlForRequest(req, room);
     res.json({
+      canControl,
       room: {
         id: room.id,
         name: room.name,
         slug: room.slug,
         organizationId: room.organizationId,
         organizationName: room.organization.name,
+        defaultSermonSpeaker: room.organization.defaultSermonSpeaker || undefined,
+        roomSermonLeaderName: room.hosts.find((host) => host.user?.name?.trim())?.user.name || undefined,
         organizationLogoUrl: room.organization.logoUrl || undefined,
         logoUrl: room.logoUrl || undefined,
         scheduledStart: room.scheduledStart,
         timezone: room.timezone,
+        isRecurring: room.isRecurring,
+        recurrenceRule: room.recurrenceRule,
+        selectedDays: room.selectedDays,
+        oneTimeDate: room.oneTimeDate,
+        durationMinutes: room.durationMinutes,
+        speakerPermission: room.speakerPermission,
+        allowGuests: room.allowGuests,
+        hasPasscode: Boolean(room.passcodeHash),
+        prayerRequestsEnabled: room.prayerRequestsEnabled,
+        anonymousRequestsAllowed: room.anonymousRequestsAllowed,
+        chatEnabled: room.chatEnabled,
       },
       session,
     });
@@ -339,10 +392,6 @@ export async function joinSessionHandler(req: Request, res: Response): Promise<v
     const room = await prayerRoomRepository.findById(session.prayerRoomId);
     if (!room) throw RoomNotFound(session.prayerRoomId);
 
-    if (!isLiveKitConfigured() || !session.livekitRoomName) {
-      throw RealtimeUnavailable();
-    }
-
     const asGuest = req.body?.asGuest === true;
     const guestName = typeof req.body?.guestName === 'string' ? req.body.guestName.trim() : '';
     const actor = asGuest
@@ -351,6 +400,17 @@ export async function joinSessionHandler(req: Request, res: Response): Promise<v
 
     const connectionKind =
       req.body?.connectionKind === 'control' && !asGuest && actor.userId ? 'control' : 'listener';
+
+    if (room.allowGuests === false && !actor.userId) {
+      throw Unauthorized('This room does not allow guest listeners. Sign in with your church account to join.');
+    }
+
+    if (room.passcodeHash && connectionKind !== 'control') {
+      const passcode = typeof req.body?.passcode === 'string' ? req.body.passcode : '';
+      if (!verifyPasscode(passcode, room.passcodeHash)) {
+        throw Unauthorized('The room passcode is incorrect.');
+      }
+    }
 
     const sessionRole = sessionRoleForJoin(actor.orgRole, req.body?.role);
     const realtimeIdentity = resolveJoinRealtimeIdentity(
@@ -368,11 +428,14 @@ export async function joinSessionHandler(req: Request, res: Response): Promise<v
       if (participant.leftAt) {
         participant = await participantRepository.markRejoined(participant.id);
       }
+      if (guestName && participant.guestName !== guestName) {
+        participant = await participantRepository.updateDisplayName(participant.id, guestName);
+      }
     } else {
       participant = await participantRepository.create({
         sessionId: session.id,
         userId: actor.userId,
-        guestName: actor.userId ? null : guestName,
+        guestName: guestName || null,
         realtimeIdentity,
         role: sessionRole,
         baseRole: sessionRole,
@@ -387,14 +450,20 @@ export async function joinSessionHandler(req: Request, res: Response): Promise<v
       targetId: participant.id,
     });
 
-    const displayName = guestName || (actor.userId ? participant.guestName : null) || participant.realtimeIdentity;
+    const accountName = participant.userId ? await userRepository.findNameById(participant.userId) : null;
+    const displayName = participant.guestName || accountName || 'Attendee';
+    if (!isLiveKitConfigured() || !session.livekitRoomName) {
+      throw RealtimeUnavailable();
+    }
     const token = await mintLiveKitAccessToken({
       roomName: session.livekitRoomName,
       identity: participant.realtimeIdentity,
-      name: displayName || participant.realtimeIdentity,
+      name: displayName,
       sessionRole: participant.role,
       holdsSpeakerFloor: session.activeSpeakerParticipantId === participant.id,
       congregationMuted: session.congregationMuted !== false,
+      speakerPermission: room.speakerPermission,
+      orgRole: actor.orgRole,
     });
 
     await broadcastSessionEvent(session.livekitRoomName, 'PARTICIPANT_JOINED', {
@@ -402,7 +471,9 @@ export async function joinSessionHandler(req: Request, res: Response): Promise<v
       participantId: participant.id,
     });
 
+    const canControl = await canControlForRequest(req, room);
     res.status(201).json({
+      canControl,
       participant: {
         id: participant.id,
         sessionId: participant.sessionId,
@@ -445,16 +516,21 @@ export async function raiseHandHandler(req: Request, res: Response): Promise<voi
     if (participant.sessionId !== session.id) {
       throw Unauthorized('Participant does not belong to this session');
     }
+    const room = await prayerRoomRepository.findById(session.prayerRoomId);
+    if (room?.speakerPermission === 'PRAYER_LEADERS') {
+      throw Unauthorized('Hand raising is disabled when only prayer leaders may speak.');
+    }
     const hand = await raisedHandRepository.upsertWaiting(session.id, participant.id);
     await auditRepository.write({
       sessionId: session.id,
       action: 'HAND_RAISED',
       targetId: participant.id,
     });
+    const accountName = participant.userId ? await userRepository.findNameById(participant.userId) : null;
     await broadcastSessionEvent(session.livekitRoomName, 'HAND_RAISED', {
       sessionId: session.id,
       participantId: participant.id,
-      displayName: participant.guestName || participant.realtimeIdentity,
+      displayName: participant.guestName || accountName || 'Attendee',
       raisedHandId: hand.id,
     });
     res.status(201).json({ raisedHand: hand });
@@ -1089,6 +1165,10 @@ export async function postChatHandler(req: Request, res: Response): Promise<void
   try {
     const session = await sessionRepository.requireById(req.params.id);
     if (!isJoinableSessionStatus(session.status)) throw SessionNotJoinable(session.status);
+    const room = await prayerRoomRepository.findById(session.prayerRoomId);
+    if (room && room.chatEnabled === false) {
+      throw Unauthorized('Chat is turned off for this prayer room.');
+    }
 
     const body = typeof req.body?.body === 'string' ? req.body.body.trim().slice(0, 240) : '';
     const displayName =

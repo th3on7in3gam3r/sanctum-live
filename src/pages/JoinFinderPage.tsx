@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { sanctumApi, ApiClientError } from '../services/api/sanctumApi';
 import { parseJoinInput } from '../services/joinLink';
+import { leaveToHome } from '../lib/appMode';
 import { Moon, Sun, Link2, ArrowRight, LayoutDashboard } from 'lucide-react';
 
 export type LiveAltar = {
@@ -98,7 +99,7 @@ export const JoinFinderPage: React.FC<JoinFinderPageProps> = ({ onNavigate }) =>
   return (
     <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex flex-col justify-between p-4 sm:p-6 select-none transition-colors">
       <header className="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-4">
-        <button type="button" onClick={() => onNavigate('/')} className="cursor-pointer">
+        <button type="button" onClick={() => leaveToHome(onNavigate)} className="cursor-pointer">
           <SanctumLogo size="md" showTagline />
         </button>
         <div className="flex items-center gap-2">

@@ -15,7 +15,7 @@ interface AdminHelpChatWidgetProps {
 
 const STARTER_PROMPTS = [
   'How do I create a prayer room?',
-  'How does Discussion PTT work?',
+  'How does holding to speak work?',
   'How do I invite an Admin?',
   'Congregants cannot hear me — what do I check?',
 ];

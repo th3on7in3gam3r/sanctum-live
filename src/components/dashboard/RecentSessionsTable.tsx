@@ -13,13 +13,13 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
   onViewSessionDetails,
 }) => {
   return (
-    <div className="bg-white dark:bg-[#17221D] rounded-3xl border border-[#E5E6E1] dark:border-[#26362F] shadow-xs overflow-hidden">
-      <div className="p-6 border-b border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-between">
+    <div className="bg-card rounded-3xl border border-line shadow-xs overflow-hidden">
+      <div className="p-6 border-b border-line flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-[#16251F] dark:text-[#F8F7F3]">
+          <h3 className="text-lg font-bold text-ink">
             Recent Prayer Gatherings
           </h3>
-          <p className="text-xs text-[#68736D] dark:text-[#96A39D]">
+          <p className="text-xs text-muted">
             Corporate session logs and historical metrics
           </p>
         </div>
@@ -27,14 +27,14 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
 
       {sessions.length === 0 ? (
         <div className="px-6 py-12">
-          <p className="text-sm text-center text-[#68736D] dark:text-[#96A39D]">
+          <p className="text-sm text-center text-muted">
             Completed gatherings will appear here after you end a live prayer session.
           </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-          <thead className="bg-[#F8F7F3] dark:bg-[#101814] text-xs font-bold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D] border-b border-[#E5E6E1] dark:border-[#26362F]">
+          <thead className="bg-paper text-xs font-bold uppercase tracking-wider text-muted border-b border-line">
             <tr>
               <th className="px-6 py-4">Prayer Session</th>
               <th className="px-6 py-4">Date</th>
@@ -45,7 +45,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
               <th className="px-6 py-4 text-right">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#E5E6E1] dark:divide-[#26362F]">
+          <tbody className="divide-y divide-line">
             {sessions.map((s) => {
               const dateStr = s.startedAt
                 ? new Intl.DateTimeFormat('en-US', {
@@ -66,36 +66,36 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A] flex items-center justify-center font-bold">
+                      <div className="w-8 h-8 rounded-xl bg-green/10 dark:bg-gold/15 text-green dark:text-gold flex items-center justify-center font-bold">
                         <Radio className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="font-bold text-[#16251F] dark:text-[#F8F7F3]">
+                        <div className="font-bold text-ink">
                           {s.roomName}
                         </div>
-                        <div className="text-xs text-[#68736D] dark:text-[#96A39D]">
+                        <div className="text-xs text-muted">
                           {s.activeSpeakerName ? `Led by ${s.activeSpeakerName}` : '—'}
                         </div>
                       </div>
                     </div>
                   </td>
 
-                  <td className="px-6 py-4 text-[#68736D] dark:text-[#96A39D] whitespace-nowrap">
+                  <td className="px-6 py-4 text-muted whitespace-nowrap">
                     {dateStr}
                   </td>
 
-                  <td className="px-6 py-4 font-mono text-xs font-semibold text-[#16251F] dark:text-[#F8F7F3]">
+                  <td className="px-6 py-4 font-mono text-xs font-semibold text-ink">
                     {formatTime(s.durationSeconds)}
                   </td>
 
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 font-semibold text-[#203C32] dark:text-[#E8D8B2]">
-                      <Users className="w-3.5 h-3.5 text-[#C9A35A]" />
+                    <div className="flex items-center gap-1.5 font-semibold text-green dark:text-soft">
+                      <Users className="w-3.5 h-3.5 text-gold" />
                       <span>{formatNumber(totalUnique)}</span>
                     </div>
                   </td>
 
-                  <td className="px-6 py-4 text-xs font-medium text-[#68736D] dark:text-[#96A39D]">
+                  <td className="px-6 py-4 text-xs font-medium text-muted">
                     {formatNumber(peakConcurrent)} peak
                   </td>
 
@@ -109,7 +109,7 @@ export const RecentSessionsTable: React.FC<RecentSessionsTableProps> = ({
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => onViewSessionDetails && onViewSessionDetails(s)}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-[#203C32] dark:text-[#C9A35A] hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-green dark:text-gold hover:underline cursor-pointer"
                     >
                       <span>View Summary</span>
                       <ArrowRight className="w-3 h-3" />

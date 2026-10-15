@@ -30,6 +30,67 @@ describe('parseClockTime', () => {
 });
 
 describe('getNextOccurrences', () => {
+  it('returns only the selected weekdays', () => {
+    const occurrences = getNextOccurrences(
+      room({
+        timezone: 'UTC',
+        isRecurring: true,
+        recurrenceRule: 'SELECTED_DAYS',
+        selectedDays: ['Monday', 'Wednesday'],
+        scheduledStart: '09:00 AM',
+      }),
+      4
+    );
+    expect(occurrences.length).toBeGreaterThan(0);
+    for (const occurrence of occurrences) {
+      const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' }).format(occurrence);
+      expect(['Monday', 'Wednesday']).toContain(weekday);
+    }
+  });
+
+  it('uses the single weekly day', () => {
+    const occurrences = getNextOccurrences(
+      room({
+        timezone: 'UTC',
+        isRecurring: true,
+        recurrenceRule: 'WEEKLY',
+        selectedDays: ['Friday'],
+        scheduledStart: '09:00 AM',
+      }),
+      3
+    );
+    expect(occurrences.length).toBeGreaterThan(0);
+    for (const occurrence of occurrences) {
+      const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' }).format(occurrence);
+      expect(weekday).toBe('Friday');
+    }
+  });
+
+  it('uses oneTimeDate for one-time rooms and does not roll forward', () => {
+    const future = new Date();
+    future.setUTCDate(future.getUTCDate() + 3);
+    const oneTimeDate = future.toISOString().slice(0, 10);
+    const occurrences = getNextOccurrences(
+      room({
+        isRecurring: false,
+        oneTimeDate,
+        timezone: 'UTC',
+        scheduledStart: '09:00 AM',
+        recurrenceRule: 'DAILY',
+        selectedDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      }),
+      5
+    );
+    expect(occurrences).toHaveLength(1);
+    const formatted = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(occurrences[0]);
+    expect(formatted).toBe(oneTimeDate);
+  });
+
   it('keeps a start time that just passed within the grace window', () => {
     const now = new Date();
     const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);

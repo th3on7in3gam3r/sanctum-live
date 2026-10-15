@@ -23,5 +23,5 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "exclude": ["node_modules", "dist", "prisma.compute.ts", "extension"]
+  "exclude": ["node_modules", "dist", "prisma.compute.ts", "extension", "site"]
 }

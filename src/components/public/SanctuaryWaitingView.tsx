@@ -3,6 +3,7 @@ import { Users, ShieldCheck, Moon, Sun } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PrayerRoom, PrayerSession } from '../../types';
 import { BackButton } from '../common/BackButton';
+import { sanctumTheme } from './ChurchWordmark';
 
 interface SanctuaryWaitingViewProps {
   room: PrayerRoom;
@@ -58,7 +59,7 @@ export const SanctuaryWaitingView: React.FC<SanctuaryWaitingViewProps> = ({
   const scripture = SCRIPTURES[scriptureIndex];
 
   return (
-    <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] flex flex-col justify-between p-4 sm:p-6 transition-colors">
+    <div data-theme={sanctumTheme(isDarkMode)} className="sanctum-screen flex min-h-screen flex-col justify-between p-4 transition-colors sm:p-6">
       {/* Top Header */}
       <header className="w-full max-w-md mx-auto flex items-center justify-between pt-2 pb-4">
         <BackButton
@@ -69,40 +70,36 @@ export const SanctuaryWaitingView: React.FC<SanctuaryWaitingViewProps> = ({
         />
         <button
           onClick={toggleDarkMode}
-          aria-label="Toggle dark mode"
-          className="p-2 rounded-xl text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          aria-label="Toggle theme"
+          className="sanctum-icon cursor-pointer rounded-xl p-2"
         >
-          {isDarkMode ? <Sun className="w-5 h-5 text-[#C9A35A]" /> : <Moon className="w-5 h-5" />}
+          {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
       </header>
 
       {/* Main Sanctuary Card */}
-      <main className="w-full max-w-md mx-auto my-auto bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 shadow-xl border border-[#E5E6E1] dark:border-[#26362F] text-center space-y-6 relative overflow-hidden">
-        {/* Glow ambient background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#C9A35A]/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Status Pill */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-xs font-bold uppercase tracking-wider">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+      <main className="sanctum-speaking mx-auto my-auto w-full max-w-md space-y-6 rounded-3xl p-6 text-center sm:p-8">
+        <div className="sanctum-chip relative z-10 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider">
+          <span className="sanctum-accent h-2 w-2 rounded-full" />
           <span>The Sanctuary is Open</span>
         </div>
 
         {/* Room Title */}
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
+          <h1 className="font-display relative z-10 text-4xl font-light tracking-tight">
             {room.name}
           </h1>
-          <p className="text-sm font-semibold text-[#203C32] dark:text-[#C9A35A] mt-1">
+          <p className="relative z-10 mt-1 text-sm font-semibold">
             Prayer begins shortly
           </p>
-          <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
+          <p className="sanctum-muted relative z-10 mt-0.5 text-xs">
             Scheduled for {room.scheduledStart} ({room.timezone})
           </p>
         </div>
 
         {/* Waiting badge with live counter */}
-        <div className="py-3 px-4 rounded-2xl bg-[#F8F7F3] dark:bg-[#101814] border border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-center gap-2 text-xs font-semibold text-[#16251F] dark:text-[#F8F7F3]">
-          <Users className="w-4 h-4 text-[#C9A35A]" />
+        <div className="sanctum-raised relative z-10 flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-semibold">
+          <Users className="h-4 w-4" />
           <span>
             {connectionState === 'CONNECTED' && connectedNow > 0
               ? `${connectedNow} gathered in the sanctuary`
@@ -111,23 +108,21 @@ export const SanctuaryWaitingView: React.FC<SanctuaryWaitingViewProps> = ({
         </div>
 
         {/* Welcome Attendee Greeting */}
-        <div className="text-xs text-[#68736D] dark:text-[#96A39D]">
-          Welcome, <strong className="text-[#16251F] dark:text-[#F8F7F3]">{participantName}</strong>. Please rest in quiet contemplation. You will enter the live prayer session automatically the moment leaders begin.
+        <div className="sanctum-muted relative z-10 text-xs">
+          Welcome, <strong>{participantName}</strong>. Please rest in quiet contemplation. You will enter the live prayer session automatically the moment leaders begin.
         </div>
 
-        {/* Scripture Quote Box */}
-        <div className="p-5 rounded-2xl bg-[#203C32]/5 dark:bg-[#203C32]/25 border border-[#203C32]/10 dark:border-[#203C32]/30 text-left space-y-2 min-h-[110px] flex flex-col justify-center">
-          <p className="text-xs italic text-[#203C32] dark:text-[#E8D8B2] leading-relaxed">
+        <div className="sanctum-raised relative z-10 flex min-h-[110px] flex-col justify-center space-y-2 rounded-2xl p-5 text-left">
+          <p className="text-xs italic leading-relaxed">
             "{scripture.verse}"
           </p>
-          <span className="text-[11px] font-bold text-[#C9A35A] uppercase tracking-wider">
+          <span className="sanctum-muted text-[11px] font-bold uppercase tracking-wider">
             — {scripture.reference}
           </span>
         </div>
 
-        {/* Safety & Mic guarantees */}
-        <div className="pt-2 border-t border-[#E5E6E1] dark:border-[#26362F] flex items-center justify-center gap-2 text-[11px] text-[#68736D] dark:text-[#96A39D]">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+        <div className="sanctum-muted relative z-10 flex items-center justify-center gap-2 border-t pt-2 text-[11px]" style={{ borderColor: 'var(--border)' }}>
+          <ShieldCheck className="h-4 w-4 shrink-0" />
           <span>Microphone remains configured off for listeners until a leader invites you.</span>
         </div>
       </main>
@@ -138,7 +133,7 @@ export const SanctuaryWaitingView: React.FC<SanctuaryWaitingViewProps> = ({
           <button
             type="button"
             onClick={onSessionLive}
-            className="text-[11px] font-medium text-[#68736D] hover:text-[#203C32] dark:hover:text-[#C9A35A] underline cursor-pointer"
+            className="sanctum-muted cursor-pointer text-[11px] font-medium underline"
           >
             Simulate Prayer Starting →
           </button>

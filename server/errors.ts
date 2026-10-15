@@ -9,4 +9,5 @@ export {
   SessionNotFound,
   SpeakerFloorOccupied,
   Unauthorized,
+  ValidationError,
 } from '../shared/errors.ts';

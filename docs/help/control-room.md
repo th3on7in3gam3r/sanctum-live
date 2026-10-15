@@ -13,16 +13,16 @@ The Control Room is where pastors and Admins lead live prayer gatherings.
 - Your **host microphone** carries sermon audio to the congregation.
 - Turn it on when you are ready to speak. Congregants hear you through this mic in Sermon mode.
 
-## Sermon mode vs Discussion PTT
+## Sermon mode vs an open floor
 
 - **Sermon mode** (default): Congregation microphones are locked. Only you and ministers can speak.
-- **Discussion PTT**: Open when you want congregants to participate. Each person **taps to speak** and **taps again to stop**. Only one congregant speaks at a time.
+- **Open floor**: Open when you want congregants to participate. Each person **holds to speak** and **taps again to stop**. Only one congregant speaks at a time.
 
 ## Congregation roster
 
 - Shows everyone connected with mic status icons:
   - Green = speaking live
-  - Red = ready for PTT
+  - Red = ready to speak
   - Grey = locked (Sermon mode)
 - **Raised hand** and **prayer request** icons appear on names.
 - **Press and hold a name** for private prayer — only you and that person hear each other.

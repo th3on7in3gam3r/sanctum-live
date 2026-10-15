@@ -15,6 +15,58 @@ const KEYS = {
   user: 'sanctum_user',
 } as const;
 
+/**
+ * Bump STORAGE_VERSION whenever a stored sanctum_ shape changes.
+ * A mismatch clears cached lists so an old shape cannot crash startup.
+ */
+export const STORAGE_VERSION = 3;
+const STORAGE_VERSION_KEY = 'sanctum_storage_version';
+
+/** Kept across a reset: the name they join with, and the session they are already in. */
+const PRESERVED_KEYS = new Set([
+  'sanctum_last_attendee_name',
+  'sanctum_active_attendee_session',
+]);
+
+export function migrateSanctumStorage(storage: Storage): void {
+  let current: string | null;
+  try {
+    current = storage.getItem(STORAGE_VERSION_KEY);
+  } catch {
+    return;
+  }
+  if (current === String(STORAGE_VERSION)) return;
+
+  const keys: string[] = [];
+  try {
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key) keys.push(key);
+    }
+  } catch {
+    return;
+  }
+
+  for (const key of keys) {
+    if (!key.startsWith('sanctum_') || key === STORAGE_VERSION_KEY || PRESERVED_KEYS.has(key)) continue;
+    try {
+      storage.removeItem(key);
+    } catch {
+      /* this key can stay; the rest still reset */
+    }
+  }
+
+  try {
+    storage.setItem(STORAGE_VERSION_KEY, String(STORAGE_VERSION));
+  } catch {
+    /* storage may be unavailable */
+  }
+}
+
+if (typeof localStorage !== 'undefined') {
+  migrateSanctumStorage(localStorage);
+}
+
 export const PROTOTYPE_SHELL_PERSISTENCE = 'localStorage (prototype adapter until database is connected)';
 
 function readJson<T>(key: string, fallback: T): T {
@@ -56,14 +108,14 @@ export const localPersistenceAdapter = {
   },
   loadTheme: () => {
     try {
-      return localStorage.getItem(KEYS.theme) === 'dark';
+      return localStorage.getItem(KEYS.theme) !== 'light';
     } catch {
-      return false;
+      return true;
     }
   },
   saveTheme: (isDark: boolean) => {
     try {
-      localStorage.setItem(KEYS.theme, isDark ? 'dark' : 'light');
+      localStorage.setItem(KEYS.theme, isDark ? 'dusk' : 'light');
     } catch {}
   },
 };

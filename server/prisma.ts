@@ -1,7 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import { env, isDatabaseConfigured } from './env.ts';
 
+const globalForPrisma = globalThis as typeof globalThis & { __sanctumPrisma?: PrismaClient };
+
 let prismaClient: PrismaClient | null = null;
+
+function currentPrisma(): PrismaClient | null {
+  if (env.nodeEnv === 'development' && globalForPrisma.__sanctumPrisma) {
+    return globalForPrisma.__sanctumPrisma;
+  }
+  return prismaClient;
+}
 
 /**
  * Prisma App / 1-vCPU hosts default to connection_limit=3. Concurrent dashboard
@@ -31,12 +40,23 @@ export function isPrismaPoolTimeout(error: unknown): boolean {
 
 export function getPrisma(): PrismaClient | null {
   if (!isDatabaseConfigured()) return null;
-  if (!prismaClient) {
-    prismaClient = new PrismaClient({
-      datasources: { db: { url: withConnectionPoolParams(env.databaseUrl!) } },
-    });
+  const existing = currentPrisma();
+  if (existing) return existing;
+  const client = new PrismaClient({
+    datasources: { db: { url: withConnectionPoolParams(env.databaseUrl!) } },
+  });
+  prismaClient = client;
+  if (env.nodeEnv === 'development') {
+    globalForPrisma.__sanctumPrisma = client;
   }
-  return prismaClient;
+  return client;
+}
+
+export async function disconnectPrisma(): Promise<void> {
+  const client = currentPrisma();
+  prismaClient = null;
+  globalForPrisma.__sanctumPrisma = undefined;
+  if (client) await client.$disconnect();
 }
 
 export async function pingDatabase(): Promise<'configured' | 'unavailable'> {

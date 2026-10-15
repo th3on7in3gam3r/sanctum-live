@@ -25,10 +25,10 @@
 - Confirm the congregant joined the same room slug.
 - Hand must be raised after successfully joining (not during a failed join).
 
-## Discussion PTT not working
+## Holding to speak is not working
 
-- Host must open **Discussion PTT** (toggle off Sermon mode).
-- Congregant taps **Tap to speak**, taps again to stop.
+- Host must **open the floor** (leave Sermon mode).
+- Congregant taps **Hold to speak**, then taps again to stop.
 - Only one congregant can speak at a time.
 
 ## Duplicate names in roster

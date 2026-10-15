@@ -8,6 +8,7 @@ export interface StoredJoin {
   livekitUrl: string;
   guestName: string;
   asGuest?: boolean;
+  passcode?: string;
 }
 
 export function saveJoinSession(join: StoredJoin): void {

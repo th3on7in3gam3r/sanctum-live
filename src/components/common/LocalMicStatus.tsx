@@ -95,7 +95,7 @@ export const LocalMicStatus: React.FC<LocalMicStatusProps> = ({
         live
           ? 'This browser tab is sending microphone audio right now.'
           : locked
-            ? 'The pastor has not opened discussion yet.'
+            ? 'The pastor has not opened the floor for prayer yet.'
             : connected
               ? 'Connected, but this tab is not sending mic audio.'
               : 'Not connected to prayer audio.'

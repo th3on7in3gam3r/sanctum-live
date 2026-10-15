@@ -9,6 +9,7 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Admin',
   PRAYER_LEADER: 'Prayer Leader',
   TECHNICAL_ADMIN: 'Technical Admin',
+  MEDIA: 'Media',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -19,13 +20,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 const PAGE_SIZE = 25;
 
-type TeamMember = { userId: string; name: string; email: string; role: string; status: string };
+type TeamMember = { userId: string; name: string; email: string; role: string; status: string; canPublishGallery?: boolean };
 
 export const TeamInvitePanel: React.FC = () => {
   const { user, organization } = useAuth();
   const { addToast, confirmAction } = useApp();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [inviteRole, setInviteRole] = useState<'ADMIN' | 'MEDIA'>('MEDIA');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
@@ -70,13 +73,13 @@ export const TeamInvitePanel: React.FC = () => {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed.includes('@')) {
+    if (!trimmed.includes('@') && !phone.trim()) {
       addToast('Enter a valid staff email.', 'error');
       return;
     }
     setSubmitting(true);
     try {
-      const result = await sanctumApi.inviteTeamMember({ email: trimmed, role: 'ADMIN' }, actor);
+      const result = await sanctumApi.inviteTeamMember({ email: trimmed, phone: phone.trim(), role: inviteRole }, actor);
       setEmail('');
       addToast(
         result.clerkInviteSent
@@ -132,15 +135,25 @@ export const TeamInvitePanel: React.FC = () => {
 
       <form onSubmit={handleInvite} className="space-y-3">
         <label className="block text-xs font-bold uppercase text-[#16251F] dark:text-[#F8F7F3]">
-          Invite an Admin by email
+          Invite an Admin or Media teammate
         </label>
         <div className="flex flex-col sm:flex-row gap-3">
+          <select value={inviteRole} onChange={(event) => setInviteRole(event.target.value === 'ADMIN' ? 'ADMIN' : 'MEDIA')} className="px-4 py-3 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-sm font-semibold">
+            <option value="MEDIA">Media</option>
+            <option value="ADMIN">Admin</option>
+          </select>
           <input
             type="email"
-            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@yourchurch.org"
+            placeholder="email@yourchurch.org"
+            className="flex-1 px-4 py-3 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-sm font-semibold"
+          />
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="or phone"
             className="flex-1 px-4 py-3 rounded-xl border border-[#E5E6E1] dark:border-[#26362F] bg-[#F8F7F3]/70 dark:bg-[#101814] text-sm font-semibold"
           />
           <button
@@ -178,6 +191,18 @@ export const TeamInvitePanel: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wide">
                   <span className="text-[#203C32] dark:text-[#C9A35A]">{ROLE_LABELS[member.role] || member.role}</span>
+                  {member.role === 'MEDIA' && (user?.role === 'OWNER' || user?.role === 'ADMIN') ? (
+                    <label className="flex items-center gap-1 normal-case tracking-normal text-[#16251F] dark:text-[#F8F7F3]">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(member.canPublishGallery)}
+                        onChange={(event) => {
+                          void sanctumApi.setGalleryPublisher(member.userId, event.target.checked, actor).then(() => loadMembers());
+                        }}
+                      />
+                      Can publish
+                    </label>
+                  ) : null}
                   <span
                     className={
                       member.status === 'ACTIVE'

@@ -11,11 +11,13 @@ export interface ApiHealth {
 export class ApiClientError extends Error {
   readonly code: string;
   readonly status: number;
+  readonly fieldErrors: Record<string, string> | null;
 
-  constructor(code: string, message: string, status: number) {
+  constructor(code: string, message: string, status: number, fieldErrors: Record<string, string> | null = null) {
     super(message);
     this.code = code;
     this.status = status;
+    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -45,10 +47,19 @@ async function apiFetch<T>(
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const details = body.details && typeof body.details === 'object' ? body.details : null;
+    const fieldErrors =
+      details &&
+      'fieldErrors' in details &&
+      details.fieldErrors &&
+      typeof details.fieldErrors === 'object'
+        ? (details.fieldErrors as Record<string, string>)
+        : null;
     throw new ApiClientError(
       typeof body.error === 'string' ? body.error : 'REQUEST_FAILED',
       typeof body.message === 'string' ? body.message : 'Request failed',
-      response.status
+      response.status,
+      fieldErrors
     );
   }
   return body as T;
@@ -82,6 +93,7 @@ export const sanctumApi = {
         email: string;
         role: string | null;
         organizationId: string | null;
+        memberName?: string | null;
       };
       organization: Record<string, unknown> | null;
     }>('/api/me', undefined, { withAuth: true }),
@@ -102,17 +114,27 @@ export const sanctumApi = {
       { method: 'DELETE', body: JSON.stringify(input) },
       staff(actor)
     ),
+  listHostCandidates: (actor: Actor) =>
+    apiFetch<{
+      members: Array<{ userId: string; name: string; email: string; role: string }>;
+    }>('/api/prayer-rooms/host-candidates', undefined, staff(actor)),
   listTeam: (actor: Actor) =>
     apiFetch<{
-      members: Array<{ userId: string; name: string; email: string; role: string; status: string }>;
+      members: Array<{ userId: string; name: string; email: string; role: string; status: string; canPublishGallery?: boolean }>;
     }>('/api/team', undefined, staff(actor)),
-  inviteTeamMember: (input: { email: string; role: string }, actor: Actor) =>
+  inviteTeamMember: (input: { email: string; phone?: string; role: string }, actor: Actor) =>
     apiFetch<{
       member: { userId: string; name: string; email: string; role: string; status: string };
       clerkInviteSent: boolean;
     }>(
       '/api/team/invite',
       { method: 'POST', body: JSON.stringify(input) },
+      staff(actor)
+    ),
+  setGalleryPublisher: (userId: string, canPublishGallery: boolean, actor: Actor) =>
+    apiFetch<{ userId: string; canPublishGallery: boolean }>(
+      `/api/team/${userId}/gallery`,
+      { method: 'PATCH', body: JSON.stringify({ canPublishGallery }) },
       staff(actor)
     ),
   removeTeamMember: (userId: string, actor: Actor) =>
@@ -196,6 +218,7 @@ export const sanctumApi = {
       asGuest?: boolean;
       connectionKind?: 'listener' | 'control';
       realtimeIdentity?: string;
+      passcode?: string;
     },
     actor?: Actor
   ) =>
@@ -262,7 +285,14 @@ export const sanctumApi = {
     }, staff(actor)),
   getSession: (sessionId: string) =>
     apiFetch<{
+      canControl?: boolean;
       session: Record<string, unknown>;
+      room?: {
+        id?: string;
+        name?: string;
+        roomSermonLeaderName?: string;
+        organization?: { name?: string; defaultSermonSpeaker?: string };
+      } | null;
       activeSpeaker: Record<string, unknown> | null;
       participants: Array<Record<string, unknown>>;
       raisedHands: Array<Record<string, unknown>>;
@@ -285,7 +315,7 @@ export const sanctumApi = {
           memberRealtimeIdentity: string;
         } | null;
       };
-    }>(`/api/sessions/${sessionId}`),
+    }>(`/api/sessions/${sessionId}`, undefined, { withAuth: true }),
   sendChat: (
     sessionId: string,
     input: { displayName: string; body: string; participantId?: string }
@@ -298,19 +328,33 @@ export const sanctumApi = {
     }),
   getAltar: (slug: string) =>
     apiFetch<{
+      canControl?: boolean;
       room: {
         id: string;
         name: string;
         slug: string;
         organizationId?: string;
         organizationName?: string;
+        defaultSermonSpeaker?: string;
+        roomSermonLeaderName?: string;
         organizationLogoUrl?: string;
         logoUrl?: string;
         scheduledStart?: string;
         timezone?: string;
+        isRecurring?: boolean;
+        recurrenceRule?: string | null;
+        selectedDays?: string[];
+        oneTimeDate?: string | null;
+        durationMinutes?: number;
+        speakerPermission?: string;
+        allowGuests?: boolean;
+        hasPasscode?: boolean;
+        prayerRequestsEnabled?: boolean;
+        anonymousRequestsAllowed?: boolean;
+        chatEnabled?: boolean;
       };
       session: { id: string; status: string; sermonLeaderName?: string | null } | null;
-    }>(`/api/altar/${encodeURIComponent(slug)}`),
+    }>(`/api/altar/${encodeURIComponent(slug)}`, undefined, { withAuth: true }),
   listLiveAltars: (organizationSlug?: string) => {
     const query = organizationSlug ? `?organization=${encodeURIComponent(organizationSlug)}` : '';
     return apiFetch<{

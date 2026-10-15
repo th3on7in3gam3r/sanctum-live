@@ -48,11 +48,11 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
       {/* Top Banner & Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">
             Good morning, {user?.name?.split(' ')[0] || 'Pastor'}
           </h1>
-          <p className="text-xs sm:text-sm text-[#68736D] dark:text-[#96A39D] mt-1">
-            Here's what's happening in your Sanctum Space at <strong className="text-[#203C32] dark:text-[#C9A35A]">{organization?.name || 'Sanctum Space'}</strong>.
+          <p className="text-xs sm:text-sm text-muted mt-1">
+            Here's what's happening in your Sanctum Space at <strong className="text-green dark:text-gold">{organization?.name || 'Sanctum Space'}</strong>.
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             <button
               onClick={() => setShowTestRoomModal(true)}
               type="button"
-              className="px-3.5 py-2.5 rounded-xl font-bold text-xs border border-[#203C32]/30 dark:border-[#C9A35A]/40 bg-[#203C32]/5 dark:bg-[#C9A35A]/10 text-[#203C32] dark:text-[#E8D8B2] hover:bg-[#203C32]/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl font-bold text-xs border border-green/30 dark:border-gold/40 bg-green/5 dark:bg-gold/10 text-green dark:text-soft hover:bg-green/10 transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Sliders className="w-3.5 h-3.5" />
               <span>Test Room</span>
@@ -72,7 +72,7 @@ export const DashboardOverviewPage: React.FC<DashboardOverviewPageProps> = ({
             onClick={() => onNavigate('/dashboard/prayer-rooms/new')}
             type="button"
             data-tour="dashboard-create-room"
-            className="px-4 py-2.5 rounded-xl font-bold text-xs bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-xs flex items-center gap-1.5 cursor-pointer"
+            className="ui-button gap-1.5 shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>Create Prayer Room</span>

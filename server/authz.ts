@@ -22,6 +22,7 @@ export interface ActorContext {
   userId: string | null;
   organizationId: string | null;
   orgRole: OrganizationRole | null;
+  canPublishGallery?: boolean;
 }
 
 export async function resolveActor(organizationId: string | null, userId: string | null): Promise<ActorContext> {
@@ -32,7 +33,7 @@ export async function resolveActor(organizationId: string | null, userId: string
   if (!membership || membership.status !== 'ACTIVE') {
     return { userId, organizationId, orgRole: null };
   }
-  return { userId, organizationId, orgRole: membership.role };
+  return { userId, organizationId, orgRole: membership.role, canPublishGallery: membership.canPublishGallery };
 }
 
 export function requireOrgPermission(
@@ -76,6 +77,62 @@ export function requireCanManageTeam(actor: ActorContext): OrganizationRole {
 
 export function requireCanManageOrganization(actor: ActorContext): OrganizationRole {
   return requireOrgPermission(actor, canManageOrganization, 'Not authorized to update this Sanctum Space');
+}
+
+export function requireGalleryEditor(actor: ActorContext): OrganizationRole {
+  switch (actor.orgRole) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'MEDIA':
+      return actor.orgRole;
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case null:
+      throw Unauthorized('Gallery is managed by the media team.');
+    default: {
+      const unexpected: never = actor.orgRole;
+      void unexpected;
+      throw Unauthorized('Gallery is managed by the media team.');
+    }
+  }
+}
+
+export function requireGalleryPublisher(actor: ActorContext): OrganizationRole {
+  switch (actor.orgRole) {
+    case 'OWNER':
+    case 'ADMIN':
+      return actor.orgRole;
+    case 'MEDIA':
+      if (actor.canPublishGallery) return actor.orgRole;
+      throw Unauthorized('This album is waiting for a publisher.');
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case null:
+      throw Unauthorized('This album is waiting for a publisher.');
+    default: {
+      const unexpected: never = actor.orgRole;
+      void unexpected;
+      throw Unauthorized('This album is waiting for a publisher.');
+    }
+  }
+}
+
+export function requireConsentConfirmer(actor: ActorContext): OrganizationRole {
+  switch (actor.orgRole) {
+    case 'OWNER':
+    case 'ADMIN':
+      return actor.orgRole;
+    case 'MEDIA':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case null:
+      throw Unauthorized('Only an Owner or Admin can confirm consent.');
+    default: {
+      const unexpected: never = actor.orgRole;
+      void unexpected;
+      throw Unauthorized('Only an Owner or Admin can confirm consent.');
+    }
+  }
 }
 
 export function sessionRoleForJoin(orgRole: OrganizationRole | null, requestedRole: unknown): SessionRole {

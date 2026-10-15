@@ -1,6 +1,7 @@
 import React from 'react';
 import { SanctumLogo } from '../components/common/SanctumLogo';
 import { ShieldCheck, ArrowLeft, Lock } from 'lucide-react';
+import { leaveToHome } from '../lib/appMode';
 
 interface PrivacyPageProps {
   onNavigate: (path: string) => void;
@@ -12,7 +13,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({ onNavigate }) => {
       <div className="max-w-3xl mx-auto w-full space-y-6">
         <div className="flex items-center justify-between pb-6 border-b border-[#E5E6E1] dark:border-[#26362F]">
           <button
-            onClick={() => onNavigate('/')}
+            onClick={() => leaveToHome(onNavigate)}
             type="button"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#68736D] dark:text-[#96A39D] hover:text-[#16251F] cursor-pointer"
           >

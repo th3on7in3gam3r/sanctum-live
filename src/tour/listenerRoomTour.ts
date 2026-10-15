@@ -42,9 +42,9 @@ export const listenerRoomTourSteps: TourStep[] = [
   {
     element: '[data-tour="listener-mic"]',
     popover: {
-      title: 'Tap to speak',
+      title: 'Hold to speak',
       description:
-        'When Discussion PTT is open, tap this button to talk. Tap again to stop so someone else can speak.',
+        'When the floor is open, hold to speak. Tap again to stop so someone else can speak.',
       side: 'bottom',
       align: 'center',
     },
@@ -54,7 +54,7 @@ export const listenerRoomTourSteps: TourStep[] = [
     popover: {
       title: 'Microphone stays off for now',
       description:
-        'During Sermon mode your mic stays off. When the pastor opens Discussion PTT, Tap to speak will appear.',
+        'During Sermon mode your mic stays off. When the pastor opens the floor for prayer, Hold to speak will appear.',
       side: 'bottom',
       align: 'start',
     },

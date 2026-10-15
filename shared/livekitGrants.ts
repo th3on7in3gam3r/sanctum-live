@@ -1,4 +1,4 @@
-import type { SessionRole } from '../shared/roles.ts';
+import type { OrganizationRole, SessionRole } from '../shared/roles.ts';
 
 export interface LiveKitTokenGrants {
   roomJoin: true;
@@ -15,12 +15,16 @@ export function buildLiveKitTokenGrants(options: {
   sessionRole: SessionRole;
   holdsSpeakerFloor: boolean;
   congregationMuted?: boolean;
+  speakerPermission?: string;
+  orgRole?: OrganizationRole | null;
 }): LiveKitTokenGrants {
   const roomAdmin = options.sessionRole === 'HOST' || options.sessionRole === 'MODERATOR';
   // Listeners / speakers publish via runtime grants (PTT, private prayer, or speaker floor).
   void options.holdsSpeakerFloor;
   void options.congregationMuted;
-  const canPublish = roomAdmin;
+  const leaderOrg =
+    options.orgRole === 'OWNER' || options.orgRole === 'ADMIN' || options.orgRole === 'PRAYER_LEADER';
+  const canPublish = options.speakerPermission === 'PRAYER_LEADERS' ? leaderOrg : roomAdmin;
 
   return {
     roomJoin: true,

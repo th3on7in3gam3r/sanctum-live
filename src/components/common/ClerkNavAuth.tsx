@@ -9,8 +9,7 @@ const clerkAppearance = {
   },
 } as const;
 
-const navButtonClass =
-  'px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-colors cursor-pointer';
+const navButtonClass = 'min-h-11 cursor-pointer px-2 text-sm text-ink';
 
 interface ClerkNavAuthProps {
   onNavigate: (path: string) => void;
@@ -23,7 +22,7 @@ export const ClerkNavAuth: React.FC<ClerkNavAuthProps> = ({ onNavigate }) => {
     return (
       <button
         onClick={() => onNavigate('/login')}
-        className={`${navButtonClass} border border-[#16251F] dark:border-[#E8D8B2] text-[#16251F] dark:text-[#F8F7F3] hover:bg-[#16251F] hover:text-white dark:hover:bg-[#E8D8B2] dark:hover:text-[#101814]`}
+        className={`${navButtonClass} hover:text-green dark:hover:text-gold`}
       >
         Church Login
       </button>
@@ -36,7 +35,7 @@ export const ClerkNavAuth: React.FC<ClerkNavAuthProps> = ({ onNavigate }) => {
         <SignInButton mode="modal" forceRedirectUrl="/onboarding" appearance={clerkAppearance}>
           <button
             type="button"
-            className={`${navButtonClass} border border-[#16251F] dark:border-[#E8D8B2] text-[#16251F] dark:text-[#F8F7F3] hover:bg-[#16251F] hover:text-white dark:hover:bg-[#E8D8B2] dark:hover:text-[#101814]`}
+            className={`${navButtonClass} hover:text-green dark:hover:text-gold`}
           >
             Sign in
           </button>
@@ -47,7 +46,7 @@ export const ClerkNavAuth: React.FC<ClerkNavAuthProps> = ({ onNavigate }) => {
           <button
             type="button"
             onClick={() => onNavigate('/dashboard')}
-            className={`${navButtonClass} border border-[#16251F] dark:border-[#E8D8B2] text-[#16251F] dark:text-[#F8F7F3] hover:bg-[#16251F] hover:text-white dark:hover:bg-[#E8D8B2] dark:hover:text-[#101814]`}
+            className={`${navButtonClass} hover:text-green dark:hover:text-gold`}
           >
             Sanctum Space
           </button>
@@ -55,7 +54,7 @@ export const ClerkNavAuth: React.FC<ClerkNavAuthProps> = ({ onNavigate }) => {
           <button
             type="button"
             onClick={() => onNavigate('/onboarding')}
-            className={`${navButtonClass} border border-[#16251F] dark:border-[#E8D8B2] text-[#16251F] dark:text-[#F8F7F3] hover:bg-[#16251F] hover:text-white dark:hover:bg-[#E8D8B2] dark:hover:text-[#101814]`}
+            className={`${navButtonClass} hover:text-green dark:hover:text-gold`}
           >
             Create space
           </button>

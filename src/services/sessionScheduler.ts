@@ -1,3 +1,4 @@
+import { WEEKDAYS } from '../../shared/prayerRoom.ts';
 import { PrayerRoom, PrayerSession } from '../types';
 
 function pad(value: number): string {
@@ -84,14 +85,24 @@ const GRACE_MS = 2 * 60 * 60 * 1000;
  * Uses the room timezone so a Kampala 6:30 PM start is not rolled to tomorrow
  * just because the visitor's laptop is already past 6:30 PM locally.
  */
-export function getNextOccurrences(room: PrayerRoom, count: number = 7): Date[] {
+export function getNextOccurrences(room: PrayerRoom, count: number = 7, now: Date = new Date()): Date[] {
   const occurrences: Date[] = [];
-  const now = new Date();
   const timeZone = room.timezone || 'Africa/Kampala';
   const { hours: targetHours, minutes: targetMinutes } = parseClockTime(room.scheduledStart || '05:00 AM');
 
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const selectedDays = room.selectedDays || (room.recurrenceRule === 'DAILY' ? dayNames : ['Sunday']);
+  if (!room.isRecurring) {
+    if (!room.oneTimeDate || !/^\d{4}-\d{2}-\d{2}$/.test(room.oneTimeDate)) return [];
+    const [year, month, day] = room.oneTimeDate.split('-').map(Number);
+    const candidate = zonedWallTime(timeZone, year, month, day, targetHours, targetMinutes);
+    if (candidate.getTime() + GRACE_MS > now.getTime()) return [candidate];
+    return [];
+  }
+
+  const storedDays = (Array.isArray(room.selectedDays) ? room.selectedDays : []).filter((day) =>
+    WEEKDAYS.includes(day as (typeof WEEKDAYS)[number])
+  );
+  const selectedDays =
+    storedDays.length > 0 ? storedDays : room.recurrenceRule === 'DAILY' ? [...WEEKDAYS] : ['Sunday'];
 
   let cursor = ymdInZone(now, timeZone);
   for (let i = 0; i < 30 && occurrences.length < count; i++) {
@@ -104,9 +115,7 @@ export function getNextOccurrences(room: PrayerRoom, count: number = 7): Date[] 
       targetMinutes
     );
     const weekday = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'long' }).format(candidate);
-    const isDayMatched = room.isRecurring
-      ? room.recurrenceRule === 'DAILY' || selectedDays.includes(weekday)
-      : i === 0;
+    const isDayMatched = room.recurrenceRule === 'DAILY' || selectedDays.includes(weekday);
 
     if (isDayMatched && candidate.getTime() + GRACE_MS > now.getTime()) {
       occurrences.push(candidate);
@@ -116,6 +125,15 @@ export function getNextOccurrences(room: PrayerRoom, count: number = 7): Date[] 
   }
 
   return occurrences;
+}
+
+const START_NOW_MS = 2 * 60 * 1000;
+
+/** True when the next gathering is this minute, not a future scheduled slot. */
+export function roomStartsNow(room: PrayerRoom, now: Date = new Date()): boolean {
+  const next = getNextOccurrences(room, 1, now)[0];
+  if (!next) return false;
+  return Math.abs(next.getTime() - now.getTime()) <= START_NOW_MS;
 }
 
 /**
@@ -139,17 +157,25 @@ export function formatScheduledDisplay(scheduledDateOrTime: string | Date, timez
   }
 
   const now = new Date();
-  const isToday =
-    targetDate.getDate() === now.getDate() &&
-    targetDate.getMonth() === now.getMonth() &&
-    targetDate.getFullYear() === now.getFullYear();
+  const zone = timezone || undefined;
+  const targetYmd = zone ? ymdInZone(targetDate, zone) : null;
+  const nowYmd = zone ? ymdInZone(now, zone) : null;
+  const tomorrowYmd = nowYmd ? addCalendarDays(nowYmd, 1) : null;
+  const isToday = targetYmd && nowYmd
+    ? targetYmd.year === nowYmd.year && targetYmd.month === nowYmd.month && targetYmd.day === nowYmd.day
+    : targetDate.getDate() === now.getDate() &&
+      targetDate.getMonth() === now.getMonth() &&
+      targetDate.getFullYear() === now.getFullYear();
 
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const isTomorrow =
-    targetDate.getDate() === tomorrow.getDate() &&
-    targetDate.getMonth() === tomorrow.getMonth() &&
-    targetDate.getFullYear() === tomorrow.getFullYear();
+  const isTomorrow = targetYmd && tomorrowYmd
+    ? targetYmd.year === tomorrowYmd.year &&
+      targetYmd.month === tomorrowYmd.month &&
+      targetYmd.day === tomorrowYmd.day
+    : targetDate.getDate() === tomorrow.getDate() &&
+      targetDate.getMonth() === tomorrow.getMonth() &&
+      targetDate.getFullYear() === tomorrow.getFullYear();
 
   const timeFormatted = new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
@@ -201,7 +227,7 @@ export function generateRollingSessions(rooms: PrayerRoom[], existingSessions: P
             id,
             prayerRoomId: room.id,
             roomName: room.name,
-            organizationName: 'Sanctum Sanctuary',
+            organizationName: '',
             status: idx === 0 && room.status === 'LIVE' ? 'LIVE' : 'SCHEDULED',
             scheduledStartTime: occ.toISOString(),
             durationSeconds: 0,

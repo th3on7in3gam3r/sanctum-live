@@ -2,19 +2,7 @@ import React, { useState } from 'react';
 import { SanctumLogo } from '../components/common/SanctumLogo';
 import { ClerkNavAuth } from '../components/common/ClerkNavAuth';
 import { StartPrayerRoomCta } from '../components/common/StartPrayerRoomCta';
-import { LiveBadge } from '../components/common/LiveBadge';
-import {
-  Sparkles,
-  ArrowRight,
-  Shield,
-  Sliders,
-  Users,
-  Smartphone,
-  Wifi,
-  Sun,
-  Moon,
-  Volume2,
-} from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 interface LandingPageProps {
@@ -23,371 +11,149 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
   const { isDarkMode, toggleDarkMode, addToast } = useApp();
-
-  // Interactive Live Preview State
-  const [amenCount, setAmenCount] = useState(1420);
-  const [praiseCount, setPraiseCount] = useState(890);
+  const [amenCount, setAmenCount] = useState(0);
+  const [praiseCount, setPraiseCount] = useState(0);
   const [hasRaisedHand, setHasRaisedHand] = useState(false);
-  const [previewReactionFloater, setPreviewReactionFloater] = useState<string | null>(null);
+  const [previewNote, setPreviewNote] = useState<string | null>(null);
 
   const handleAmen = () => {
     setAmenCount((prev) => prev + 1);
-    setPreviewReactionFloater('🙏');
-    setTimeout(() => setPreviewReactionFloater(null), 1200);
+    setPreviewNote('Amen');
+    setTimeout(() => setPreviewNote(null), 1200);
   };
 
   const handlePraise = () => {
     setPraiseCount((prev) => prev + 1);
-    setPreviewReactionFloater('❤️');
-    setTimeout(() => setPreviewReactionFloater(null), 1200);
+    setPreviewNote('Praise');
+    setTimeout(() => setPreviewNote(null), 1200);
   };
 
   const handleRaiseHand = () => {
     setHasRaisedHand((prev) => !prev);
     addToast(
       hasRaisedHand
-        ? 'Hand lowered in live preview'
-        : '✋ Hand raised! In a live gathering, your prayer leader receives this instantly.',
+        ? 'Hand lowered in the preview.'
+        : 'Hand raised. In a live gathering, the prayer leader sees this.',
       'info'
     );
   };
 
+  const notes = [
+    ['Join with a name', 'Members open one link. No account, no app, and the microphone stays off.'],
+    ['Leaders stay in control', 'Pastors invite a speaker, watch raised hands, and read prayer requests.'],
+    ['Built for a phone', 'The room is meant for a congregation on a slow connection, not a conference call.'],
+  ];
+
   return (
-    <div className="min-h-screen bg-[#F8F7F3] dark:bg-[#101814] text-[#16251F] dark:text-[#F8F7F3] transition-colors flex flex-col justify-between font-sans selection:bg-[#E8D8B2] selection:text-[#203C32]">
-      {/* Geometric Nav */}
-      <nav className="px-6 sm:px-12 py-6 sm:py-8 flex items-center justify-between z-10 border-b border-[#E5E6E1]/60 dark:border-[#26362F]/60">
-        <div className="flex items-center gap-3">
-          <SanctumLogo size="lg" />
-        </div>
-
-        <div className="flex items-center gap-3 sm:gap-6">
-          <button
-            onClick={() => onNavigate('/join')}
-            type="button"
-            className="hidden sm:inline-block text-sm font-medium text-[#68736D] hover:text-[#203C32] dark:hover:text-[#E8D8B2] transition-colors cursor-pointer"
-          >
-            Join Prayer
-          </button>
-
-          <button
-            onClick={toggleDarkMode}
-            aria-label="Toggle dark mode"
-            className="p-2 rounded-full text-[#68736D] dark:text-[#96A39D] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-          >
-            {isDarkMode ? <Sun className="w-4 h-4 text-[#C9A35A]" /> : <Moon className="w-4 h-4" />}
-          </button>
-
-          <ClerkNavAuth onNavigate={onNavigate} />
-        </div>
-      </nav>
-
-      {/* Main 12-Column Geometric Balance Hero */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 sm:px-12 py-10 lg:py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-        {/* Left Column: Typography & Intent */}
-        <div className="lg:col-span-6 flex flex-col gap-8">
-          <div className="flex flex-col gap-3">
-            <span className="text-[#C9A35A] font-bold text-xs sm:text-sm tracking-[0.2em] uppercase">
-              Prayer without barriers
-            </span>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] text-[#203C32] dark:text-[#F8F7F3] tracking-tight">
-              The sanctuary <br className="hidden sm:inline" />
-              for every <br className="hidden sm:inline" />
-              congregation.
-            </h1>
-            <p className="text-base sm:text-lg text-[#68736D] dark:text-[#96A39D] leading-relaxed max-w-lg mt-2">
-              Bring your church together for prayer without complicated software, confusing permissions, accidental unmuting, or technical barriers.
-            </p>
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <header className="border-b border-line">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+          <SanctumLogo size="md" />
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={() => onNavigate('/join')}
+              type="button"
+              className="hidden text-sm text-muted hover:text-ink sm:inline cursor-pointer"
+            >
+              Join prayer
+            </button>
+            <button
+              onClick={toggleDarkMode}
+              aria-label="Toggle dark mode"
+              className="cursor-pointer p-2 text-muted"
+            >
+              {isDarkMode ? <Sun className="h-4 w-4 text-gold" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <ClerkNavAuth onNavigate={onNavigate} />
           </div>
+        </div>
+      </header>
 
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <StartPrayerRoomCta onNavigate={onNavigate} />
+      <main className="mx-auto grid w-full max-w-5xl flex-1 items-start gap-12 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:py-20">
+        <div className="max-w-xl">
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-green dark:text-ink sm:text-5xl">
+            A prayer room your church can actually use.
+          </h1>
+          <p className="mt-4 text-lg leading-relaxed text-muted">
+            Share one link. People join with their name. Leaders decide who speaks.
+          </p>
+          <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            <StartPrayerRoomCta onNavigate={onNavigate} />
+            <button
+              onClick={() => onNavigate('/join')}
+              className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-line px-5 text-sm text-ink"
+            >
+              Join prayer
+            </button>
+          </div>
+        </div>
 
-              <button
-                onClick={() => onNavigate('/join')}
-                className="px-8 py-4 sm:py-5 bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] text-[#203C32] dark:text-[#F8F7F3] hover:border-[#203C32] dark:hover:border-[#C9A35A] rounded-2xl font-bold text-base sm:text-lg transition-all active:scale-95 flex items-center justify-center cursor-pointer"
-              >
-                Join Prayer
-              </button>
+        <section className="ui-card p-5 sm:p-6" aria-label="Prayer room preview">
+          <div className="flex items-baseline justify-between gap-4">
+            <div>
+              <p className="text-sm text-muted">Preview</p>
+              <h2 className="mt-1 text-xl font-semibold">Morning prayer</h2>
             </div>
+            <p className="text-sm text-muted" aria-live="polite">{previewNote}</p>
+          </div>
+          <p className="mt-4 text-sm leading-relaxed text-muted">
+            A prayer leader is speaking. Listeners stay muted until a leader invites them.
+          </p>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button type="button" onClick={handleAmen} className="ui-card cursor-pointer px-3 py-3 text-left">
+              <span className="block text-sm font-medium">Amen</span>
+              <span className="text-xs text-muted">{amenCount}</span>
+            </button>
+            <button type="button" onClick={handlePraise} className="ui-card cursor-pointer px-3 py-3 text-left">
+              <span className="block text-sm font-medium">Praise</span>
+              <span className="text-xs text-muted">{praiseCount}</span>
+            </button>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-              className="text-sm font-medium text-[#68736D] dark:text-[#96A39D] hover:text-[#203C32] dark:hover:text-[#E8D8B2] transition-colors cursor-pointer text-left"
+              onClick={handleRaiseHand}
+              className={`min-h-11 cursor-pointer rounded-lg border px-3 text-sm ${
+                hasRaisedHand ? 'border-gold bg-gold/20 text-ink' : 'border-line text-ink'
+              }`}
             >
-              See how it works
+              {hasRaisedHand ? 'Hand raised' : 'Raise hand'}
             </button>
-
-            {/* Trust badge with overlapping geometric avatar circles */}
-            <div className="flex items-center gap-4 py-2 text-xs sm:text-sm font-medium text-[#68736D] dark:text-[#96A39D]">
-              <div className="flex -space-x-2">
-                <div className="w-8 h-8 rounded-full bg-[#E8D8B2] border-2 border-[#F8F7F3] dark:border-[#101814] flex items-center justify-center text-[10px] font-bold text-[#203C32]">
-                  UG
-                </div>
-                <div className="w-8 h-8 rounded-full bg-[#3D6655] border-2 border-[#F8F7F3] dark:border-[#101814] flex items-center justify-center text-[10px] font-bold text-white">
-                  KE
-                </div>
-                <div className="w-8 h-8 rounded-full bg-[#C9A35A] border-2 border-[#F8F7F3] dark:border-[#101814] flex items-center justify-center text-[10px] font-bold text-[#16251F]">
-                  US
-                </div>
-              </div>
-              <span>Built for churches of every size.</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('/join')}
+              className="ui-button"
+            >
+              Prayer request
+            </button>
           </div>
-        </div>
-
-        {/* Right Column: Geometric Live Prayer Room Preview Card */}
-        <div className="lg:col-span-6 flex justify-center lg:justify-end">
-          <div className="w-full max-w-[500px] bg-white dark:bg-[#17221D] rounded-[40px] shadow-2xl border border-[#E5E6E1] dark:border-[#26362F] p-6 sm:p-8 flex flex-col gap-6 relative overflow-hidden transition-colors">
-            <span className="absolute top-5 left-6 z-20 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A]">
-              Product preview
-            </span>
-            {/* Background Circular Geometric Watermark */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#F8F7F3] dark:bg-[#101814] rounded-full -translate-y-1/2 translate-x-1/2 opacity-60 pointer-events-none" />
-
-            {/* Header: LIVE Status + Count + Time */}
-            <div className="flex items-center justify-between z-10 mt-6">
-              <div className="flex items-center gap-3">
-                <div className="px-3 py-1 bg-[#D7473F] text-white text-[10px] font-black rounded-md tracking-widest flex items-center gap-1.5 shadow-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  <span>LIVE</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-[#16251F] dark:text-[#F8F7F3]">
-                  <div className="w-1.5 h-1.5 bg-[#203C32] dark:bg-[#C9A35A] rounded-full animate-ping" />
-                  <span>1,847 praying together</span>
-                </div>
-              </div>
-              <div className="text-xs font-bold text-[#68736D] dark:text-[#96A39D] tabular-nums tracking-wider font-mono">
-                00:42:16
-              </div>
-            </div>
-
-            {/* Concentric Speaker Audio Circle */}
-            <div className="flex flex-col items-center gap-4 py-2 z-10 relative">
-              {previewReactionFloater && (
-                <div className="absolute top-0 text-4xl animate-bounce pointer-events-none z-30">
-                  {previewReactionFloater}
-                </div>
-              )}
-
-              <div className="relative">
-                {/* Outer Ring */}
-                <div className="w-36 sm:w-40 h-36 sm:h-40 rounded-full border border-[#E8D8B2] dark:border-[#3D6655] flex items-center justify-center animate-subtle-pulse">
-                  {/* Inner Ring with Audio Bars */}
-                  <div className="w-28 sm:w-32 h-28 sm:h-32 rounded-full bg-[#F8F7F3] dark:bg-[#101814] flex items-center justify-center border-4 border-white dark:border-[#17221D] shadow-inner">
-                    <div className="flex gap-1.5 items-end h-9">
-                      <div className="w-1.5 h-6 bg-[#C9A35A] rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                      <div className="w-1.5 h-10 bg-[#C9A35A] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                      <div className="w-1.5 h-8 bg-[#C9A35A] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
-                      <div className="w-1.5 h-12 bg-[#203C32] dark:bg-[#E8D8B2] rounded-full animate-pulse" style={{ animationDelay: '100ms' }} />
-                      <div className="w-1.5 h-7 bg-[#C9A35A] rounded-full animate-pulse" style={{ animationDelay: '250ms' }} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Floating Mic Pill */}
-                <div className="absolute -bottom-1 -right-1 w-9 h-9 bg-[#203C32] dark:bg-[#C9A35A] rounded-full border-4 border-white dark:border-[#17221D] flex items-center justify-center text-white dark:text-[#101814] text-xs shadow-md">
-                  <Volume2 className="w-4 h-4" />
-                </div>
-              </div>
-
-              <div className="text-center">
-                <h3 className="text-xl sm:text-2xl font-bold text-[#203C32] dark:text-[#F8F7F3]">
-                  Pastor Kenneth
-                </h3>
-                <p className="text-xs sm:text-sm text-[#68736D] dark:text-[#96A39D] font-medium">
-                  Morning Prayer • Miracle Center Kampala
-                </p>
-              </div>
-            </div>
-
-            {/* Reaction Grid: Amen & Praise God */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 z-10">
-              <button
-                type="button"
-                onClick={handleAmen}
-                className="h-20 bg-[#F8F7F3] dark:bg-[#101814] rounded-2xl flex flex-col items-center justify-center gap-1 border border-[#E5E6E1] dark:border-[#26362F] hover:bg-[#E8D8B2]/40 dark:hover:bg-[#203C32]/40 transition-all active:scale-95 cursor-pointer shadow-2xs"
-              >
-                <span className="text-2xl">🙏</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#203C32] dark:text-[#F8F7F3]">
-                  Amen ({amenCount})
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePraise}
-                className="h-20 bg-[#F8F7F3] dark:bg-[#101814] rounded-2xl flex flex-col items-center justify-center gap-1 border border-[#E5E6E1] dark:border-[#26362F] hover:bg-[#E8D8B2]/40 dark:hover:bg-[#203C32]/40 transition-all active:scale-95 cursor-pointer shadow-2xs"
-              >
-                <span className="text-2xl">❤️</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#203C32] dark:text-[#F8F7F3]">
-                  Praise God ({praiseCount})
-                </span>
-              </button>
-            </div>
-
-            {/* Bottom Actions: Raise Hand & Prayer Request */}
-            <div className="flex gap-3 pt-3 border-t border-[#F8F7F3] dark:border-[#26362F] z-10">
-              <button
-                type="button"
-                onClick={handleRaiseHand}
-                className={`flex-1 py-3.5 rounded-xl font-bold text-xs sm:text-sm tracking-wide border-2 transition-all cursor-pointer ${
-                  hasRaisedHand
-                    ? 'bg-[#C9A35A] text-[#101814] border-[#C9A35A]'
-                    : 'bg-white dark:bg-[#17221D] border-[#C9A35A] text-[#C9A35A] hover:bg-[#C9A35A]/10'
-                }`}
-              >
-                {hasRaisedHand ? '✋ Hand Raised' : 'Raise Hand'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onNavigate('/join')}
-                className="flex-1 py-3.5 bg-[#203C32] hover:bg-[#16251F] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] text-white dark:text-[#101814] rounded-xl font-bold text-xs sm:text-sm tracking-wide transition-colors cursor-pointer"
-              >
-                Prayer Request
-              </button>
-            </div>
-          </div>
-        </div>
+        </section>
       </main>
 
-      {/* Geometric Feature Grid */}
-      <section id="how-it-works" className="py-16 px-6 sm:px-12 max-w-7xl mx-auto w-full space-y-10 border-t border-[#E5E6E1] dark:border-[#26362F]">
-        <div className="text-center space-y-2">
-          <span className="text-[#C9A35A] font-bold text-xs tracking-[0.2em] uppercase">
-            Designed for Worship
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-[#203C32] dark:text-[#F8F7F3]">
-            Built for congregations, not conference rooms.
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] space-y-3 shadow-2xs">
-            <div className="w-10 h-10 rounded-2xl bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A] flex items-center justify-center font-bold">
-              <Sparkles className="w-5 h-5" />
+      <section id="how-it-works" className="border-t border-line">
+        <div className="mx-auto grid max-w-5xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3">
+          {notes.map(([title, body]) => (
+            <div key={title}>
+              <h2 className="text-base font-semibold">{title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
             </div>
-            <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">
-              One-Tap Zero-Login Entry
-            </h3>
-            <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
-              Elderly and non-technical members join in under 3 seconds without downloading apps or remembering passwords.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] space-y-3 shadow-2xs">
-            <div className="w-10 h-10 rounded-2xl bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A] flex items-center justify-center font-bold">
-              <Shield className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">
-              Listener Isolation
-            </h3>
-            <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
-              Attendee microphones are configured off by default. Server-enforced media permissions activate with the realtime media engine.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] space-y-3 shadow-2xs">
-            <div className="w-10 h-10 rounded-2xl bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A] flex items-center justify-center font-bold">
-              <Sliders className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">
-              Prayer Control Room™
-            </h3>
-            <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
-              Empowers pastors and intercession leaders with real-time speaker invites, queue management, and request monitoring.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] space-y-3 shadow-2xs">
-            <div className="w-10 h-10 rounded-2xl bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A] flex items-center justify-center font-bold">
-              <Users className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">
-              Scales to 50,000+ Believers
-            </h3>
-            <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
-              Engineered on a global edge architecture to support citywide and international 24/7 corporate prayer altars.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] space-y-3 shadow-2xs">
-            <div className="w-10 h-10 rounded-2xl bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A] flex items-center justify-center font-bold">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">
-              Mobile-First Thumb Experience
-            </h3>
-            <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
-              Over 90% of congregation members pray on phones. Every interaction is tactile and optimized for one-hand use.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] space-y-3 shadow-2xs">
-            <div className="w-10 h-10 rounded-2xl bg-[#203C32]/10 dark:bg-[#C9A35A]/15 text-[#203C32] dark:text-[#C9A35A] flex items-center justify-center font-bold">
-              <Wifi className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-[#16251F] dark:text-[#F8F7F3]">
-              Data Saver for Slower Connections
-            </h3>
-            <p className="text-xs text-[#68736D] dark:text-[#96A39D] leading-relaxed">
-              Reduces media bandwidth where possible to improve the prayer experience on slower connections. Realtime media optimization activates when the Sanctum media engine is connected.
-            </p>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Geometric Balanced Deep Sanctuary Green Footer Strip */}
-      <footer className="px-6 sm:px-12 py-10 bg-[#203C32] text-[#F8F7F3] mt-12">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex flex-wrap items-center gap-8 sm:gap-12 text-left">
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
-                01. Reach
-              </span>
-              <span className="font-bold text-sm text-white">Share one simple link</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
-                02. Gather
-              </span>
-              <span className="font-bold text-sm text-white">Members join as listeners</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C9A35A]">
-                03. Control
-              </span>
-              <span className="font-bold text-sm text-white">Leaders moderate speakers</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-[#E8D8B2]/80">
-            <span>Secure • Mobile First • Optimized Audio</span>
-            <div className="flex items-center gap-3">
-              <button onClick={() => onNavigate('/privacy')} className="hover:text-white cursor-pointer">
-                Privacy
-              </button>
-              <span>•</span>
-              <button onClick={() => onNavigate('/terms')} className="hover:text-white cursor-pointer">
-                Terms
-              </button>
-            </div>
+      <footer className="mt-auto border-t border-line">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>
+            From{' '}
+            <a href="https://biblefunlandstudios.com" target="_blank" rel="noopener noreferrer" className="text-ink">
+              Biblefunland Studio
+            </a>
+          </p>
+          <div className="flex gap-4">
+            <button onClick={() => onNavigate('/privacy')} className="cursor-pointer hover:text-ink">Privacy</button>
+            <button onClick={() => onNavigate('/terms')} className="cursor-pointer hover:text-ink">Terms</button>
           </div>
         </div>
-
-        <p className="mt-8 pt-6 border-t border-white/10 text-center text-xs sm:text-sm text-[#E8D8B2]/90 leading-relaxed">
-          From{' '}
-          <a
-            href="https://biblefunlandstudios.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-[#C9A35A] hover:text-white transition-colors"
-          >
-            Biblefunland Studio
-          </a>
-          {' '}— another house of prayer, this time on the web.
-        </p>
       </footer>
     </div>
   );

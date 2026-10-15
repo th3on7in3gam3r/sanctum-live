@@ -1,13 +1,15 @@
-import {
-  ConnectionState as LiveKitConnectionState,
-  Room,
-  RoomEvent,
-  Track,
-  type RemoteParticipant,
-  type RemoteTrack,
-} from 'livekit-client';
+import type { RemoteParticipant, RemoteTrack, Room } from 'livekit-client';
 import type { ConnectionQuality, ConnectionState, Role } from '../../types';
 import type { IRealtimeProvider, RealtimeEventListener, RealtimeEventPayload } from './types';
+
+type LiveKitModule = typeof import('livekit-client');
+
+let liveKitModule: Promise<LiveKitModule> | null = null;
+
+function loadLiveKit(): Promise<LiveKitModule> {
+  liveKitModule ??= import('livekit-client');
+  return liveKitModule;
+}
 
 export interface LiveKitJoinParams {
   roomSlug: string;
@@ -15,18 +17,20 @@ export interface LiveKitJoinParams {
   role: Role;
   token?: string;
   livekitUrl?: string;
+  audioOnly?: boolean;
 }
 
-function mapConnectionState(state: LiveKitConnectionState): ConnectionState {
+function mapConnectionState(kit: LiveKitModule, state: string): ConnectionState {
+  const states = kit.ConnectionState;
   switch (state) {
-    case LiveKitConnectionState.Connecting:
+    case states.Connecting:
       return 'CONNECTING';
-    case LiveKitConnectionState.Connected:
+    case states.Connected:
       return 'CONNECTED';
-    case LiveKitConnectionState.Reconnecting:
-    case LiveKitConnectionState.SignalReconnecting:
+    case states.Reconnecting:
+    case states.SignalReconnecting:
       return 'RECONNECTING';
-    case LiveKitConnectionState.Disconnected:
+    case states.Disconnected:
       return 'DISCONNECTED';
     default:
       return 'FAILED';
@@ -43,6 +47,7 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
   private listeners = new Set<RealtimeEventListener>();
   private audioElements = new Map<string, HTMLAudioElement>();
   private sessionId = '';
+  private kit: LiveKitModule | null = null;
   connectionState: ConnectionState = 'DISCONNECTED';
   audioBlocked = false;
   connectedCount = 0;
@@ -57,8 +62,10 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     }
 
     await this.leaveRoom(this.sessionId, '');
+    const kit = await loadLiveKit();
+    this.kit = kit;
     this.sessionId = params.roomSlug;
-    this.room = new Room({
+    this.room = new kit.Room({
       adaptiveStream: true,
       dynacast: true,
       publishDefaults: {
@@ -76,6 +83,13 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     });
 
     await this.room.connect(params.livekitUrl, params.token, { autoSubscribe: true });
+    if (params.audioOnly !== false) {
+      try {
+        await this.room.localParticipant.setCameraEnabled(false);
+      } catch {
+        /* Audio-only rooms do not publish a camera. */
+      }
+    }
     this.connectedCount = this.room.remoteParticipants.size + 1;
     await this.tryStartAudio();
     this.attachExistingRemoteAudio();
@@ -160,16 +174,17 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
   /** identity -> true when that person currently has an unmuted microphone. */
   getMicStates(): Record<string, boolean> {
     const states: Record<string, boolean> = {};
-    if (!this.room) return states;
+    if (!this.room || !this.kit) return states;
+    const microphone = this.kit.Track.Source.Microphone;
     const collect = (identity: string, publication: { isMuted: boolean; track?: unknown } | undefined) => {
       states[identity] = Boolean(publication && !publication.isMuted && publication.track);
     };
     collect(
       this.room.localParticipant.identity,
-      this.room.localParticipant.getTrackPublication(Track.Source.Microphone)
+      this.room.localParticipant.getTrackPublication(microphone)
     );
     this.room.remoteParticipants.forEach((participant) => {
-      collect(participant.identity, participant.getTrackPublication(Track.Source.Microphone));
+      collect(participant.identity, participant.getTrackPublication(microphone));
     });
     return states;
   }
@@ -182,7 +197,9 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     if (!this.room || this.connectionState !== 'CONNECTED') {
       return { publishing: false, muted: true, level: 0, connected: false };
     }
-    const publication = this.room.localParticipant.getTrackPublication(Track.Source.Microphone);
+    const publication = this.kit
+      ? this.room.localParticipant.getTrackPublication(this.kit.Track.Source.Microphone)
+      : undefined;
     const mediaTrack = publication?.track?.mediaStreamTrack;
     const publishing = Boolean(publication?.track);
     const muted = !publishing || Boolean(publication?.isMuted) || Boolean(mediaTrack?.muted);
@@ -306,8 +323,11 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
   }
 
   private bindRoomEvents(room: Room): void {
+    const kit = this.kit;
+    if (!kit) return;
+    const { RoomEvent, Track } = kit;
     room.on(RoomEvent.ConnectionStateChanged, (state) => {
-      this.connectionState = mapConnectionState(state);
+      this.connectionState = mapConnectionState(kit, state);
       const type =
         this.connectionState === 'DISCONNECTED' || this.connectionState === 'FAILED'
           ? 'DISCONNECTED'
@@ -377,7 +397,7 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
       this.emit({
         type: 'ACTIVE_SPEAKER_CHANGED',
         sessionId: this.sessionId,
-        displayName: speaker.name || speaker.identity,
+        displayName: speaker.name || '',
         timestamp: new Date().toISOString(),
       });
     });
@@ -399,6 +419,8 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
   }
 
   private attachParticipantAudio(participant: RemoteParticipant): void {
+    const Track = this.kit?.Track;
+    if (!Track) return;
     const mic = participant.getTrackPublication(Track.Source.Microphone);
     if (mic?.track && mic.isSubscribed && mic.track.kind === Track.Kind.Audio) {
       this.attachAudio(mic.track, participant.identity);

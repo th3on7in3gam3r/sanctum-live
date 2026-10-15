@@ -1,4 +1,4 @@
-export type Role = 'OWNER' | 'ADMIN' | 'PRAYER_LEADER' | 'TECHNICAL_ADMIN' | 'SPEAKER' | 'LISTENER';
+export type Role = 'OWNER' | 'ADMIN' | 'PRAYER_LEADER' | 'TECHNICAL_ADMIN' | 'MEDIA' | 'SPEAKER' | 'LISTENER';
 
 export type RoomType = 'AUDIO_PRAYER' | 'PRAYER_LEADER_VIDEO' | 'EVENT';
 
@@ -81,6 +81,10 @@ export interface Organization {
   accentColor?: string;
   primaryColor?: string;
   joinPageMessage?: string;
+  youtubeChannelId?: string;
+  youtubeChannelInput?: string;
+  defaultSermonSpeaker?: string;
+  speakerAliases?: string[];
   defaultRoomType: RoomType;
   defaultSpeakerPermission: SpeakerPermissionMode;
   defaultRecording: boolean;
@@ -93,6 +97,7 @@ export interface User {
   id: string;
   organizationId: string;
   name: string;
+  memberName?: string;
   email: string;
   role: Role;
   avatarUrl?: string;
@@ -114,9 +119,19 @@ export interface PrayerRoom {
   isRecurring: boolean;
   recurrenceRule?: 'DAILY' | 'WEEKLY' | 'SELECTED_DAYS';
   selectedDays?: string[];
+  /** YYYY-MM-DD wall date for a one-time gathering. */
+  oneTimeDate?: string | null;
+  durationMinutes?: number;
   scheduledStart: string; // e.g. "05:00 AM"
   timezone: string;
   recordingEnabled: boolean;
+  allowGuests?: boolean;
+  prayerRequestsEnabled?: boolean;
+  anonymousRequestsAllowed?: boolean;
+  chatEnabled?: boolean;
+  hasPasscode?: boolean;
+  sermonLeaderUserId?: string;
+  coHostUserIds?: string[];
   status: SessionLifecycleStatus | 'SCHEDULED' | 'LIVE' | 'COMPLETED';
   livekitRoomName?: string;
   permanentUrl: string;
@@ -150,7 +165,7 @@ export interface PrayerSession {
   activeSpeakerTitle?: string;
   speakerDurationSeconds?: number;
   congregationMuted?: boolean;
-  /** Exclusive congregant currently holding Discussion PTT. */
+  /** Exclusive congregant currently holding the floor. */
   pttParticipantId?: string | null;
   /** Active private host↔member sideline (only those two hear each other). */
   privatePrayer?: {

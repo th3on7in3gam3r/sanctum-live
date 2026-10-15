@@ -1,24 +1,30 @@
-import { PrismaClient } from '@prisma/client';
 import { SEED_MEMBERSHIPS, SEED_ORG_ID } from './seedMemberships.ts';
+import { getPrisma } from '../server/prisma.ts';
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
+if (!prisma) throw new Error('DATABASE_URL is not configured');
 const ORG_ID = SEED_ORG_ID;
 
 async function main() {
   await prisma.organization.upsert({
     where: { id: ORG_ID },
-    update: { name: 'Miracle Center Kampala', slug: 'miracle-center-kampala' },
+    update: {
+      name: 'Promised Land Christian Center',
+      slug: 'promised-land-christian-center',
+      primaryContactName: 'Pastor GraceLove Hiire',
+      defaultSermonSpeaker: 'Pastor GraceLove Hiire',
+    },
     create: {
       id: ORG_ID,
-      name: 'Miracle Center Kampala',
-      slug: 'miracle-center-kampala',
+      name: 'Promised Land Christian Center',
+      slug: 'promised-land-christian-center',
       country: 'Uganda',
       timezone: 'Africa/Kampala',
-      website: 'https://miraclecenter.org',
-      primaryContactName: 'Pastor Kenneth',
-      primaryContactEmail: 'kenneth@miraclecenter.org',
-      phone: '+256 772 100 200',
-      joinPageMessage: 'Welcome to Miracle Center Kampala Live Prayer. Join your church family lifting one voice.',
+      primaryContactName: 'Pastor GraceLove Hiire',
+      primaryContactEmail: 'promisedlandchc@gmail.com',
+      phone: '+256 744 836 784',
+      defaultSermonSpeaker: 'Pastor GraceLove Hiire',
+      joinPageMessage: 'Welcome to Promised Land Christian Center. Join your church family in prayer.',
     },
   });
 
@@ -42,9 +48,10 @@ async function main() {
 }
 
 main()
-  .then(() => prisma.$disconnect())
-  .catch(async (error) => {
+  .catch((error) => {
     console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
     await prisma.$disconnect();
-    process.exit(1);
   });

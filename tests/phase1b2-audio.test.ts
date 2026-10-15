@@ -218,9 +218,9 @@ describe('ensureLiveKitRoom', () => {
 });
 
 describe('membership seed roles', () => {
-  it('assigns Kenneth OWNER, Grace ADMIN, Sarah PRAYER_LEADER, Daniel TECHNICAL_ADMIN', () => {
+  it('assigns the pastor OWNER, Grace ADMIN, Sarah PRAYER_LEADER, Daniel TECHNICAL_ADMIN', () => {
     const byId = Object.fromEntries(SEED_MEMBERSHIPS.map((member) => [member.id, member.role]));
-    expect(byId.user_pastor_kenneth).toBe('OWNER');
+    expect(byId.user_pastor_gracelove).toBe('OWNER');
     expect(byId.user_admin_grace).toBe('ADMIN');
     expect(byId.user_leader_sarah).toBe('PRAYER_LEADER');
     expect(byId.user_tech_daniel).toBe('TECHNICAL_ADMIN');

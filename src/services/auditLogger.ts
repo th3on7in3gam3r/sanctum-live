@@ -28,8 +28,8 @@ export class AuditLogger {
     const newLog: AdminAction = {
       id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       action: actionType,
-      adminId: details.adminId || 'user_pastor_kenneth',
-      adminName: details.adminName || 'Pastor Kenneth',
+      adminId: details.adminId || '',
+      adminName: details.adminName || '',
       participantId: details.targetId,
       participantName: details.targetName,
       sessionId: details.sessionId,

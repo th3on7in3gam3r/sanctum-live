@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
-import { Building, Palette, Shield, Sliders, Save, AlertTriangle, Check, CreditCard, Users } from 'lucide-react';
+import { Building, Palette, Shield, Sliders, Save, AlertTriangle, Check, CreditCard, Users, Video } from 'lucide-react';
+import { cmsApi } from '../services/api/cmsApi';
 import { slugify } from '../lib/utils';
 import { useUnsavedChanges } from '../hooks/useUnsavedChanges';
 import { ComingSoonBadge } from '../components/common/ComingSoonBadge';
@@ -18,10 +19,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
   const { organization, updateOrganization, user, refreshAuth } = useAuth();
   const { addToast, confirmAction, setHasUnsavedChanges } = useApp();
   const showTeamTab = user?.role === 'OWNER';
+  const showMediaTab = user?.role === 'OWNER' || user?.role === 'ADMIN';
   const actor = { userId: user?.id, organizationId: organization.id };
 
   const [activeTab, setActiveTab] = useState<
-    'GENERAL' | 'BRANDING' | 'DEFAULTS' | 'SECURITY' | 'BILLING' | 'TEAM'
+    'GENERAL' | 'MEDIA' | 'BRANDING' | 'DEFAULTS' | 'SECURITY' | 'BILLING' | 'TEAM'
   >('GENERAL');
 
   const [name, setName] = useState(organization.name);
@@ -42,6 +44,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
   const [deletingSpace, setDeletingSpace] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
   const [savingBranding, setSavingBranding] = useState(false);
+  const [savingMedia, setSavingMedia] = useState(false);
+  const [checkingYoutube, setCheckingYoutube] = useState(false);
+  const [youtubeInput, setYoutubeInput] = useState(organization.youtubeChannelInput || '');
+  const [sermonSpeaker, setSermonSpeaker] = useState(organization.defaultSermonSpeaker || 'Pastor GraceLove Hiire');
+  const [speakerAliases, setSpeakerAliases] = useState((organization.speakerAliases || []).join('\n'));
+  const [youtubeFound, setYoutubeFound] = useState('');
 
   const [savedDefaults, setSavedDefaults] = useState({
     defaultLowBandwidth: true,
@@ -207,6 +215,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
       <div className="flex items-center gap-2 border-b border-[#E5E6E1] dark:border-[#26362F] pb-2 overflow-x-auto">
         {[
           { id: 'GENERAL', label: 'General Info', icon: Building },
+          ...(showMediaTab ? [{ id: 'MEDIA' as const, label: 'Media', icon: Video }] : []),
           { id: 'BRANDING', label: 'Branding & Join Page', icon: Palette },
           ...(showTeamTab ? [{ id: 'TEAM' as const, label: 'Team', icon: Users }] : []),
           { id: 'DEFAULTS', label: 'Prayer Defaults', icon: Sliders },
@@ -318,6 +327,96 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
       )}
 
       {/* Tab 2: Branding & Join Page */}
+      {activeTab === 'MEDIA' && showMediaTab && (
+        <form
+          className="bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 border border-[#E5E6E1] dark:border-[#26362F] space-y-6"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (savingMedia) return;
+            setSavingMedia(true);
+            setYoutubeFound('');
+            try {
+              const aliases = speakerAliases.split(/[\n,]/).map((alias) => alias.trim()).filter(Boolean);
+              const result = await cmsApi.saveYoutubeChannel(organization.id, {
+                input: youtubeInput,
+                defaultSermonSpeaker: sermonSpeaker,
+                speakerAliases: aliases,
+              });
+              setYoutubeFound(result.channelTitle ? `Found: ${result.channelTitle}` : '');
+              updateOrganization({
+                youtubeChannelInput: youtubeInput.trim() || undefined,
+                youtubeChannelId: typeof result.organization.youtubeChannelId === 'string' ? result.organization.youtubeChannelId : undefined,
+                defaultSermonSpeaker: sermonSpeaker.trim() || 'Pastor GraceLove Hiire',
+                speakerAliases: aliases,
+              });
+              addToast(result.message, 'success');
+            } catch (error) {
+              addToast(error instanceof ApiClientError ? error.message : 'Could not save the YouTube channel.', 'error');
+            } finally {
+              setSavingMedia(false);
+            }
+          }}
+        >
+          <div>
+            <h2 className="text-lg font-extrabold text-[#16251F] dark:text-[#F8F7F3]">YouTube</h2>
+            <p className="mt-1 text-xs text-[#68736D] dark:text-[#96A39D]">Imports your most recent uploads.</p>
+          </div>
+          <label className="block space-y-2">
+            <span className="text-xs font-bold text-[#16251F] dark:text-[#F8F7F3]">YouTube channel</span>
+            <input
+              value={youtubeInput}
+              onChange={(event) => setYoutubeInput(event.target.value)}
+              placeholder="@handle, channel URL, or UC…"
+              className="w-full rounded-2xl border border-[#E5E6E1] bg-transparent px-4 py-3 text-sm dark:border-[#26362F]"
+            />
+          </label>
+          {youtubeFound ? <p className="text-sm font-semibold text-[#203C32] dark:text-[#C9A35A]">{youtubeFound}</p> : null}
+          <label className="block space-y-2">
+            <span className="text-xs font-bold text-[#16251F] dark:text-[#F8F7F3]">Default sermon speaker</span>
+            <input
+              value={sermonSpeaker}
+              onChange={(event) => setSermonSpeaker(event.target.value)}
+              className="w-full rounded-2xl border border-[#E5E6E1] bg-transparent px-4 py-3 text-sm dark:border-[#26362F]"
+            />
+          </label>
+          <label className="block space-y-2">
+            <span className="text-xs font-bold text-[#16251F] dark:text-[#F8F7F3]">Speaker aliases</span>
+            <textarea
+              value={speakerAliases}
+              onChange={(event) => setSpeakerAliases(event.target.value)}
+              rows={3}
+              placeholder={'Ps Grace Love Hiire\nPst GraceLove'}
+              className="w-full rounded-2xl border border-[#E5E6E1] bg-transparent px-4 py-3 text-sm dark:border-[#26362F]"
+            />
+            <span className="text-xs text-[#68736D] dark:text-[#96A39D]">One name per line. These map to the default sermon speaker.</span>
+          </label>
+          <div className="flex flex-wrap gap-3">
+            <button type="submit" disabled={savingMedia} className="inline-flex items-center gap-2 rounded-full bg-[#203C32] px-5 py-3 text-xs font-bold text-white disabled:opacity-60 dark:bg-[#C9A35A] dark:text-[#101814]">
+              <Save className="h-3.5 w-3.5" />
+              <span>{savingMedia ? 'Checking channel…' : 'Save media'}</span>
+            </button>
+            <button
+              type="button"
+              disabled={checkingYoutube}
+              className="rounded-full border border-[#E5E6E1] px-5 py-3 text-xs font-bold disabled:opacity-60 dark:border-[#26362F]"
+              onClick={async () => {
+                setCheckingYoutube(true);
+                try {
+                  const result = await cmsApi.importYoutube(organization.id);
+                  addToast(result.created ? `Imported ${result.created} new ${result.created === 1 ? 'message' : 'messages'}.` : 'No new messages.', 'success');
+                } catch (error) {
+                  addToast(error instanceof ApiClientError ? error.message : 'Could not check YouTube.', 'error');
+                } finally {
+                  setCheckingYoutube(false);
+                }
+              }}
+            >
+              {checkingYoutube ? 'Checking…' : 'Check now'}
+            </button>
+          </div>
+        </form>
+      )}
+
       {activeTab === 'BRANDING' && (
         <form onSubmit={handleSaveBranding} className="bg-white dark:bg-[#17221D] rounded-3xl p-6 sm:p-8 border border-[#E5E6E1] dark:border-[#26362F] space-y-6">
           <div className="space-y-4">

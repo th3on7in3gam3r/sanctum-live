@@ -1,4 +1,5 @@
-import { DatabaseUnavailable, DuplicateSlug, ParticipantNotFound, RoomNotFound, SessionNotFound } from '../../shared/errors.ts';
+import { DatabaseUnavailable, DuplicateSlug, ParticipantNotFound, RoomNotFound, SessionNotFound, ValidationError } from '../../shared/errors.ts';
+import { hashPasscode } from '../../shared/passcode.ts';
 import { ensureSlugAvailable } from '../../shared/slug.ts';
 import type { OrganizationRole, SessionRole } from '../../shared/roles.ts';
 import type { SessionLifecycleState } from '../../shared/sessionStateMachine.ts';
@@ -15,9 +16,22 @@ export interface PrayerRoomRecord {
   speakerPermission: string;
   isRecurring: boolean;
   recurrenceRule: string | null;
+  selectedDays: string[];
+  oneTimeDate: string | null;
+  durationMinutes: number;
   scheduledStart: string;
   timezone: string;
   recordingEnabled: boolean;
+  passcodeHash: string | null;
+  allowGuests: boolean;
+  prayerRequestsEnabled: boolean;
+  anonymousRequestsAllowed: boolean;
+  chatEnabled: boolean;
+  hasPasscode: boolean;
+  kind: string;
+  groupId: string | null;
+  sermonLeaderUserId: string | null;
+  coHostUserIds: string[];
   status: string;
   livekitRoomName: string | null;
   permanentUrl: string;
@@ -54,6 +68,7 @@ export interface MembershipRecord {
   userId: string;
   role: OrganizationRole;
   status: string;
+  canPublishGallery: boolean;
 }
 
 function requirePrisma() {
@@ -62,39 +77,158 @@ function requirePrisma() {
   return prisma;
 }
 
+const roomInclude = { hosts: { select: { userId: true, role: true } } } as const;
+
+type RoomHostRow = { userId: string; role: string };
+
+function mapRoom(row: {
+  id: string;
+  organizationId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  roomType: string;
+  expectedAttendance: number;
+  speakerPermission: string;
+  isRecurring: boolean;
+  recurrenceRule: string | null;
+  selectedDays?: string[];
+  oneTimeDate?: string | null;
+  durationMinutes?: number;
+  scheduledStart: string;
+  timezone: string;
+  recordingEnabled: boolean;
+  passcodeHash?: string | null;
+  allowGuests?: boolean;
+  prayerRequestsEnabled?: boolean;
+  anonymousRequestsAllowed?: boolean;
+  chatEnabled?: boolean;
+  kind?: string;
+  groupId?: string | null;
+  status: string;
+  livekitRoomName: string | null;
+  permanentUrl: string;
+  createdById: string | null;
+  hosts?: RoomHostRow[];
+}): PrayerRoomRecord {
+  const hosts = row.hosts ?? [];
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    roomType: row.roomType,
+    expectedAttendance: row.expectedAttendance,
+    speakerPermission: row.speakerPermission,
+    isRecurring: row.isRecurring,
+    recurrenceRule: row.recurrenceRule,
+    selectedDays: row.selectedDays ?? [],
+    oneTimeDate: row.oneTimeDate ?? null,
+    durationMinutes: row.durationMinutes ?? 60,
+    scheduledStart: row.scheduledStart,
+    timezone: row.timezone,
+    recordingEnabled: row.recordingEnabled,
+    passcodeHash: row.passcodeHash ?? null,
+    allowGuests: row.allowGuests !== false,
+    prayerRequestsEnabled: row.prayerRequestsEnabled !== false,
+    anonymousRequestsAllowed: row.anonymousRequestsAllowed !== false,
+    chatEnabled: row.chatEnabled !== false,
+    hasPasscode: Boolean(row.passcodeHash),
+    kind: row.kind || 'CORPORATE',
+    groupId: row.groupId ?? null,
+    sermonLeaderUserId: hosts.find((host) => host.role === 'SERMON_LEADER')?.userId ?? null,
+    coHostUserIds: hosts.filter((host) => host.role === 'CO_HOST').map((host) => host.userId),
+    status: row.status,
+    livekitRoomName: row.livekitRoomName,
+    permanentUrl: row.permanentUrl,
+    createdById: row.createdById,
+  };
+}
+
+export function toPublicPrayerRoom(room: PrayerRoomRecord) {
+  const { passcodeHash: _passcodeHash, ...rest } = room;
+  return rest;
+}
+
+async function replaceRoomHosts(
+  prisma: ReturnType<typeof requirePrisma>,
+  organizationId: string,
+  roomId: string,
+  sermonLeaderUserId: string | null | undefined,
+  coHostUserIds: string[] | undefined
+) {
+  if (sermonLeaderUserId === undefined && coHostUserIds === undefined) return;
+  const leaderId = sermonLeaderUserId || null;
+  const coHosts = (coHostUserIds ?? []).filter((userId) => userId && userId !== leaderId);
+  const userIds = [...new Set([...(leaderId ? [leaderId] : []), ...coHosts])];
+  for (const userId of userIds) {
+    const membership = await prisma.organizationMembership.findUnique({
+      where: { organizationId_userId: { organizationId, userId } },
+    });
+    if (!membership || membership.status !== 'ACTIVE') {
+      throw new ValidationError(
+        leaderId === userId
+          ? { sermonLeaderUserId: 'Choose an active church member.' }
+          : { coHostUserIds: 'Co-hosts must be active church members.' }
+      );
+    }
+  }
+  await prisma.prayerRoomHost.deleteMany({ where: { roomId } });
+  const rows = [
+    ...(leaderId ? [{ roomId, userId: leaderId, role: 'SERMON_LEADER' as const }] : []),
+    ...coHosts.map((userId) => ({ roomId, userId, role: 'CO_HOST' as const })),
+  ];
+  if (rows.length) {
+    await prisma.prayerRoomHost.createMany({ data: rows });
+  }
+}
+
 export const prayerRoomRepository = {
   async findById(id: string): Promise<PrayerRoomRecord | null> {
     const prisma = requirePrisma();
-    return prisma.prayerRoom.findUnique({ where: { id } });
+    const row = await prisma.prayerRoom.findUnique({ where: { id }, include: roomInclude });
+    return row ? mapRoom(row) : null;
   },
 
   async findBySlug(slug: string): Promise<PrayerRoomRecord | null> {
     const prisma = requirePrisma();
-    return prisma.prayerRoom.findFirst({ where: { slug }, orderBy: { createdAt: 'asc' } });
+    const row = await prisma.prayerRoom.findFirst({ where: { slug }, include: roomInclude, orderBy: { createdAt: 'asc' } });
+    return row ? mapRoom(row) : null;
   },
 
   async findPublicAltarBySlug(slug: string) {
     const prisma = requirePrisma();
     return prisma.prayerRoom.findFirst({
       where: { slug },
-      include: { organization: { select: { name: true, slug: true, logoUrl: true } } },
+      include: {
+        organization: { select: { name: true, slug: true, logoUrl: true, defaultSermonSpeaker: true } },
+        hosts: {
+          where: { role: 'SERMON_LEADER' },
+          select: { user: { select: { name: true } } },
+        },
+      },
       orderBy: { createdAt: 'asc' },
     });
   },
 
   async findByOrgAndSlug(organizationId: string, slug: string): Promise<PrayerRoomRecord | null> {
     const prisma = requirePrisma();
-    return prisma.prayerRoom.findUnique({
+    const row = await prisma.prayerRoom.findUnique({
       where: { organizationId_slug: { organizationId, slug } },
+      include: roomInclude,
     });
+    return row ? mapRoom(row) : null;
   },
 
   async listByOrganization(organizationId: string): Promise<PrayerRoomRecord[]> {
     const prisma = requirePrisma();
-    return prisma.prayerRoom.findMany({
+    const rows = await prisma.prayerRoom.findMany({
       where: { organizationId },
+      include: roomInclude,
       orderBy: { createdAt: 'asc' },
     });
+    return rows.map((row) => mapRoom(row));
   },
 
   async create(input: {
@@ -108,11 +242,23 @@ export const prayerRoomRepository = {
     speakerPermission?: string;
     isRecurring?: boolean;
     recurrenceRule?: string;
+    selectedDays?: string[];
+    oneTimeDate?: string | null;
+    durationMinutes?: number;
     scheduledStart?: string;
     timezone?: string;
     recordingEnabled?: boolean;
+    passcode?: string | null;
+    allowGuests?: boolean;
+    prayerRequestsEnabled?: boolean;
+    anonymousRequestsAllowed?: boolean;
+    chatEnabled?: boolean;
+    sermonLeaderUserId?: string | null;
+    coHostUserIds?: string[];
     createdById?: string;
     appUrl: string;
+    kind?: 'CORPORATE' | 'HUDDLE';
+    groupId?: string | null;
   }): Promise<PrayerRoomRecord> {
     const prisma = requirePrisma();
     const existing = await prisma.prayerRoom.findUnique({
@@ -121,7 +267,7 @@ export const prayerRoomRepository = {
     ensureSlugAvailable(Boolean(existing), input.slug);
 
     try {
-      return await prisma.prayerRoom.create({
+      const created = await prisma.prayerRoom.create({
         data: {
           organizationId: input.organizationId,
           name: input.name,
@@ -133,13 +279,33 @@ export const prayerRoomRepository = {
           speakerPermission: (input.speakerPermission as 'ADMIN_APPROVAL_REQUIRED') ?? 'ADMIN_APPROVAL_REQUIRED',
           isRecurring: input.isRecurring ?? false,
           recurrenceRule: input.recurrenceRule,
+          selectedDays: input.selectedDays ?? [],
+          oneTimeDate: input.oneTimeDate ?? null,
+          durationMinutes: input.durationMinutes ?? 60,
           scheduledStart: input.scheduledStart ?? '05:00 AM',
           timezone: input.timezone ?? 'Africa/Kampala',
           recordingEnabled: input.recordingEnabled ?? false,
+          passcodeHash: input.passcode ? hashPasscode(input.passcode) : null,
+          allowGuests: input.allowGuests ?? true,
+          prayerRequestsEnabled: input.prayerRequestsEnabled ?? true,
+          anonymousRequestsAllowed: input.anonymousRequestsAllowed ?? true,
+          chatEnabled: input.chatEnabled ?? true,
           createdById: input.createdById,
+          kind: input.kind ?? 'CORPORATE',
+          groupId: input.groupId ?? null,
           permanentUrl: `${input.appUrl}/join/${input.slug}`,
         },
       });
+      await replaceRoomHosts(
+        prisma,
+        input.organizationId,
+        created.id,
+        input.sermonLeaderUserId,
+        input.coHostUserIds
+      );
+      const row = await prisma.prayerRoom.findUnique({ where: { id: created.id }, include: roomInclude });
+      if (!row) throw RoomNotFound(created.id);
+      return mapRoom(row);
     } catch (error) {
       const code = typeof error === 'object' && error && 'code' in error ? String((error as { code: string }).code) : '';
       if (code === 'P2002') throw DuplicateSlug(input.slug);
@@ -160,9 +326,19 @@ export const prayerRoomRepository = {
       speakerPermission?: string;
       isRecurring?: boolean;
       recurrenceRule?: string | null;
+      selectedDays?: string[];
+      oneTimeDate?: string | null;
+      durationMinutes?: number;
       scheduledStart?: string;
       timezone?: string;
       recordingEnabled?: boolean;
+      passcode?: string | null;
+      allowGuests?: boolean;
+      prayerRequestsEnabled?: boolean;
+      anonymousRequestsAllowed?: boolean;
+      chatEnabled?: boolean;
+      sermonLeaderUserId?: string | null;
+      coHostUserIds?: string[];
       appUrl?: string;
     }
   ): Promise<PrayerRoomRecord> {
@@ -184,7 +360,7 @@ export const prayerRoomRepository = {
           ? `${data.appUrl.replace(/\/$/, '')}/join/${nextSlug}`
           : undefined;
 
-      return await prisma.prayerRoom.update({
+      await prisma.prayerRoom.update({
         where: { id },
         data: {
           ...(data.name !== undefined ? { name: data.name } : {}),
@@ -199,11 +375,31 @@ export const prayerRoomRepository = {
             : {}),
           ...(data.isRecurring !== undefined ? { isRecurring: data.isRecurring } : {}),
           ...(data.recurrenceRule !== undefined ? { recurrenceRule: data.recurrenceRule } : {}),
+          ...(data.selectedDays !== undefined ? { selectedDays: data.selectedDays } : {}),
+          ...(data.oneTimeDate !== undefined ? { oneTimeDate: data.oneTimeDate } : {}),
+          ...(data.durationMinutes !== undefined ? { durationMinutes: data.durationMinutes } : {}),
           ...(data.scheduledStart !== undefined ? { scheduledStart: data.scheduledStart } : {}),
           ...(data.timezone !== undefined ? { timezone: data.timezone } : {}),
           ...(data.recordingEnabled !== undefined ? { recordingEnabled: data.recordingEnabled } : {}),
+          ...(data.passcode !== undefined
+            ? { passcodeHash: data.passcode ? hashPasscode(data.passcode) : null }
+            : {}),
+          ...(data.allowGuests !== undefined ? { allowGuests: data.allowGuests } : {}),
+          ...(data.prayerRequestsEnabled !== undefined
+            ? { prayerRequestsEnabled: data.prayerRequestsEnabled }
+            : {}),
+          ...(data.anonymousRequestsAllowed !== undefined
+            ? { anonymousRequestsAllowed: data.anonymousRequestsAllowed }
+            : {}),
+          ...(data.chatEnabled !== undefined ? { chatEnabled: data.chatEnabled } : {}),
         },
       });
+      if (data.sermonLeaderUserId !== undefined || data.coHostUserIds !== undefined) {
+        await replaceRoomHosts(prisma, organizationId, id, data.sermonLeaderUserId, data.coHostUserIds ?? []);
+      }
+      const row = await prisma.prayerRoom.findUnique({ where: { id }, include: roomInclude });
+      if (!row) throw RoomNotFound(id);
+      return mapRoom(row);
     } catch (error) {
       const code = typeof error === 'object' && error && 'code' in error ? String((error as { code: string }).code) : '';
       if (code === 'P2002') throw DuplicateSlug(data.slug || room.slug);
@@ -267,6 +463,11 @@ export const userRepository = {
   async findById(id: string): Promise<UserRecord | null> {
     const prisma = requirePrisma();
     return prisma.user.findUnique({ where: { id } });
+  },
+  async findNameById(id: string): Promise<string | null> {
+    const prisma = requirePrisma();
+    const user = await prisma.user.findUnique({ where: { id }, select: { name: true } });
+    return user?.name ?? null;
   },
   async findByEmail(email: string): Promise<UserRecord | null> {
     const prisma = requirePrisma();
@@ -586,11 +787,17 @@ export const participantRepository = {
     return prisma.sessionParticipant.update({ where: { id }, data: { leftAt: null } });
   },
 
+  async updateDisplayName(id: string, guestName: string): Promise<SessionParticipantRecord> {
+    const prisma = requirePrisma();
+    return prisma.sessionParticipant.update({ where: { id }, data: { guestName } });
+  },
+
   async listBySession(sessionId: string) {
     const prisma = requirePrisma();
     return prisma.sessionParticipant.findMany({
       where: { sessionId },
       orderBy: { joinedAt: 'asc' },
+      include: { user: { select: { name: true } } },
     });
   },
 };
@@ -644,7 +851,7 @@ export const raisedHandRepository = {
     return prisma.raisedHand.findMany({
       where: { sessionId, status: { in: ['WAITING', 'INVITED'] } },
       orderBy: { raisedAt: 'asc' },
-      include: { participant: true },
+      include: { participant: { include: { user: { select: { name: true } } } } },
     });
   },
 };

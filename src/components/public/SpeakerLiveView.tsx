@@ -19,38 +19,38 @@ export const SpeakerLiveView: React.FC<SpeakerLiveViewProps> = ({
   onToggleSelfMute,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center p-6 sm:p-10 max-w-lg mx-auto text-center rounded-3xl bg-gradient-to-b from-[#203C32]/10 via-[#C9A35A]/5 to-transparent dark:from-[#203C32]/30 dark:via-[#16251F] border-2 border-[#C9A35A]/50 shadow-2xl">
-      <div className="flex items-center gap-3 mb-4">
-        <LiveBadge size="md" />
-        <ParticipantCount count={participantCount} emptyLabel="Waiting for participants" />
+    <div className="sanctum-speaking mx-auto flex max-w-lg flex-col items-center justify-center rounded-3xl p-6 text-center sm:p-10">
+      <div className="z-10 mb-4 flex items-center gap-3">
+        <LiveBadge size="md" className="sanctum-chip" />
+        <ParticipantCount count={participantCount} emptyLabel="Waiting for participants" className="sanctum-chip" />
       </div>
 
-      <div className="relative my-6">
-        <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#203C32] to-[#16251F] text-[#C9A35A] flex items-center justify-center shadow-xl border-4 border-[#C9A35A] animate-pulse">
-          {selfMuted ? <MicOff className="w-14 h-14" /> : <Mic className="w-14 h-14" />}
+      <div className="relative z-10 my-6">
+        <div className="sanctum-accent flex h-28 w-28 items-center justify-center rounded-full sm:h-32 sm:w-32">
+          {selfMuted ? <MicOff className="h-14 w-14" /> : <Mic className="h-14 w-14" />}
         </div>
-        <div className="absolute -bottom-2 -right-2 p-2 rounded-full bg-emerald-600 text-white shadow-md">
-          <Volume2 className="w-4 h-4" />
+        <div className="sanctum-chip absolute -bottom-2 -right-2 rounded-full p-2">
+          <Volume2 className="h-4 w-4" />
         </div>
       </div>
 
-      <h2 className="text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
+      <h2 className="font-display z-10 text-4xl font-light tracking-tight">
         You Are Praying Live
       </h2>
-      <p className="mt-2 text-base text-[#203C32] dark:text-[#E8D8B2] font-medium">
+      <p className="z-10 mt-2 text-base font-medium">
         {participantName}, you are leading the congregation in prayer.
       </p>
 
-      <p className="mt-1 text-xs text-[#68736D] dark:text-[#96A39D] max-w-sm">
+      <p className="sanctum-muted z-10 mt-1 max-w-sm text-xs">
         Speak clearly into your device. The entire congregation is lifting their voices with you.
       </p>
 
-      <div className="mt-8 w-full space-y-3">
+      <div className="z-10 mt-8 w-full space-y-3">
         {onToggleSelfMute ? (
           <button
             onClick={onToggleSelfMute}
             type="button"
-            className="w-full py-3 px-6 rounded-2xl font-semibold text-sm border border-[#E5E6E1] dark:border-[#26362F] text-[#16251F] dark:text-[#F8F7F3] cursor-pointer"
+            className="sanctum-outline w-full cursor-pointer rounded-2xl px-6 py-3 text-sm font-semibold"
           >
             {selfMuted ? 'Unmute microphone' : 'Mute microphone'}
           </button>
@@ -58,12 +58,12 @@ export const SpeakerLiveView: React.FC<SpeakerLiveViewProps> = ({
         <button
           onClick={onFinishPrayer}
           type="button"
-          className="w-full py-4 px-6 rounded-2xl font-bold text-base bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+          className="sanctum-accent flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-bold"
         >
-          <CheckCircle className="w-5 h-5" />
+          <CheckCircle className="h-5 w-5" />
           Finish Prayer
         </button>
-        <span className="block text-[11px] text-[#68736D] dark:text-[#96A39D] mt-2">
+        <span className="sanctum-muted mt-2 block text-[11px]">
           Finish Prayer returns you to listener. Mute does not end your speaking turn.
         </span>
       </div>

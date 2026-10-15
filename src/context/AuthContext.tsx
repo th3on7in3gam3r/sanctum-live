@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { useAuth as useClerkAuth } from '@clerk/react';
 import { Organization, User, Role } from '../types';
 import { SEED_ORGANIZATION } from '../data/seedData';
+import { setCmsAccessTokenGetter } from '../services/api/cmsApi';
 import { ApiClientError, sanctumApi, setApiAccessTokenGetter } from '../services/api/sanctumApi';
 
 interface AuthContextType {
@@ -26,7 +27,7 @@ function mapOrganization(row: Record<string, unknown> | null): Organization {
   return {
     ...SEED_ORGANIZATION,
     id: String(row.id || SEED_ORGANIZATION.id),
-    name: String(row.name || SEED_ORGANIZATION.name),
+    name: typeof row.name === 'string' ? row.name : '',
     slug: String(row.slug || SEED_ORGANIZATION.slug),
     logoUrl: typeof row.logoUrl === 'string' ? row.logoUrl : undefined,
     country: String(row.country || SEED_ORGANIZATION.country),
@@ -35,7 +36,26 @@ function mapOrganization(row: Record<string, unknown> | null): Organization {
     joinPageMessage:
       typeof row.joinPageMessage === 'string' ? row.joinPageMessage : SEED_ORGANIZATION.joinPageMessage,
     accentColor: typeof row.accentColor === 'string' ? row.accentColor : SEED_ORGANIZATION.accentColor,
+    youtubeChannelId: typeof row.youtubeChannelId === 'string' ? row.youtubeChannelId : undefined,
+    youtubeChannelInput: typeof row.youtubeChannelInput === 'string' ? row.youtubeChannelInput : undefined,
+    defaultSermonSpeaker: typeof row.defaultSermonSpeaker === 'string' ? row.defaultSermonSpeaker : 'Pastor GraceLove Hiire',
+    speakerAliases: Array.isArray(row.speakerAliases) ? row.speakerAliases.filter((alias): alias is string => typeof alias === 'string') : [],
   };
+}
+
+function asKnownRole(role: unknown): Role {
+  switch (role) {
+    case 'OWNER':
+    case 'ADMIN':
+    case 'PRAYER_LEADER':
+    case 'TECHNICAL_ADMIN':
+    case 'MEDIA':
+    case 'SPEAKER':
+    case 'LISTENER':
+      return role;
+    default:
+      return 'LISTENER';
+  }
 }
 
 const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -48,7 +68,11 @@ const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     setApiAccessTokenGetter(() => getToken());
-    return () => setApiAccessTokenGetter(null);
+    setCmsAccessTokenGetter(() => getToken());
+    return () => {
+      setApiAccessTokenGetter(null);
+      setCmsAccessTokenGetter(null);
+    };
   }, [getToken]);
 
   const applyMe = useCallback((me: Awaited<ReturnType<typeof sanctumApi.fetchMe>>) => {
@@ -64,8 +88,9 @@ const ClerkSyncedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: me.user.id,
       organizationId: me.user.organizationId,
       name: me.user.name,
+      memberName: me.user.memberName || undefined,
       email: me.user.email,
-      role: me.user.role as Role,
+      role: asKnownRole(me.user.role),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

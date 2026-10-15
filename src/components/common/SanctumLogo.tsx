@@ -31,29 +31,29 @@ export const SanctumLogo: React.FC<SanctumLogoProps> = ({
       {/* Geometric Arch & Sanctuary Sound Mark */}
       <div
         className={cn(
-          'relative flex items-center justify-center border-2 border-[#C9A35A] rounded-t-full bg-gradient-to-b from-[#203C32]/10 to-transparent dark:from-[#C9A35A]/10 shadow-xs transition-transform hover:scale-105',
+          'relative flex items-center justify-center rounded-t-full border border-gold',
           iconSizes[size]
         )}
       >
         <div className="flex items-end gap-0.5 pb-1">
-          <div className="w-1 h-2 bg-[#C9A35A] rounded-full opacity-70"></div>
-          <div className="w-1 h-4 bg-[#C9A35A] rounded-full"></div>
-          <div className="w-1 h-3 bg-[#203C32] dark:bg-[#E8D8B2] rounded-full"></div>
-          <div className="w-1 h-2 bg-[#C9A35A] rounded-full opacity-70"></div>
+          <div className="h-2 w-0.5 rounded-full bg-gold"></div>
+          <div className="h-3.5 w-0.5 rounded-full bg-gold"></div>
+          <div className="h-2.5 w-0.5 rounded-full bg-green dark:bg-soft"></div>
+          <div className="h-2 w-0.5 rounded-full bg-gold"></div>
         </div>
       </div>
 
       <div className="flex flex-col">
-        <div className="flex items-center gap-1.5 leading-none">
-          <span className={cn('font-extrabold tracking-tight text-[#203C32] dark:text-[#F8F7F3]', textSizes[size])}>
+        <div className="flex items-baseline gap-1.5 leading-none">
+          <span className={cn('font-semibold tracking-tight text-green dark:text-ink', textSizes[size])}>
             Sanctum
           </span>
-          <span className={cn('font-light tracking-wide text-[#C9A35A]', textSizes[size])}>
-            Live<span className="text-[0.6em] align-top font-bold">™</span>
+          <span className={cn('font-normal text-gold', textSizes[size])}>
+            Live
           </span>
         </div>
         {showTagline && (
-          <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#C9A35A] mt-1">
+          <span className="mt-1 text-xs text-muted">
             Prayer without barriers
           </span>
         )}

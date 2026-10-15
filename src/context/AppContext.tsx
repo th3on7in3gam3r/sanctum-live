@@ -29,6 +29,7 @@ import {
   mapSnapshotHands,
   mapSnapshotParticipants,
 } from '../services/domain/sessionSnapshot';
+import { resolveSermonLeader } from '../../shared/joinDisplay.ts';
 
 export type Toast = ToastItem;
 
@@ -62,8 +63,10 @@ export interface AppContextType {
   closeConfirmModal: () => void;
 
   // Prayer Room operations
-  createPrayerRoom: (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>) => Promise<PrayerRoom>;
-  updatePrayerRoom: (id: string, updates: Partial<PrayerRoom>) => Promise<PrayerRoom>;
+  createPrayerRoom: (
+    data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'> & { passcode?: string | null }
+  ) => Promise<PrayerRoom>;
+  updatePrayerRoom: (id: string, updates: Partial<PrayerRoom> & { passcode?: string | null }) => Promise<PrayerRoom>;
   deletePrayerRoom: (id: string) => Promise<void>;
   setCongregationMuted: (muted: boolean) => Promise<void>;
   startPtt: (participantId: string) => Promise<void>;
@@ -93,7 +96,7 @@ export interface AppContextType {
   assignRole: (participantId: string, newRole: Role, adminId?: string) => Promise<void>;
 
   // Public / Attendee actions
-  joinPrayerRoom: (roomSlug: string, name: string) => Promise<{ participantId: string; role: Role }>;
+  joinPrayerRoom: (roomSlug: string, name: string, options?: { passcode?: string }) => Promise<{ participantId: string; role: Role }>;
   raiseHandAttendee: (participantId: string, name: string) => Promise<boolean>;
   lowerHandAttendee: (participantId: string) => Promise<void>;
   sendReactionAttendee: (emoji: 'AMEN' | 'PRAISE_GOD') => void;
@@ -123,6 +126,16 @@ export interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+function storedList<T>(load: () => unknown): T[] {
+  try {
+    const value = load();
+    return Array.isArray(value) ? value : [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+}
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, organization } = useAuth();
@@ -162,26 +175,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const [prayerRooms, setPrayerRooms] = useState<PrayerRoom[]>(() => {
-    const parsed = localPersistenceAdapter.loadRooms([]);
-    return dedupePrayerRooms(parsed.filter((room) => !isDemoRoomId(room.id)));
+    const parsed = storedList<PrayerRoom>(() => localPersistenceAdapter.loadRooms([]));
+    return dedupePrayerRooms(parsed.filter((room) => room && !isDemoRoomId(room.id)));
   });
 
   const [historySessions, setHistorySessions] = useState<PrayerSession[]>(() => {
-    return localPersistenceAdapter
-      .loadHistory([])
-      .filter((session) => !isDemoHistoryId(session.id) && !isDemoRoomId(session.prayerRoomId));
+    return storedList<PrayerSession>(() => localPersistenceAdapter.loadHistory([])).filter(
+      (session) => session && !isDemoHistoryId(session.id) && !isDemoRoomId(session.prayerRoomId)
+    );
   });
 
   const [liveSession, setLiveSession] = useState<PrayerSession | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [raisedHands, setRaisedHands] = useState<RaisedHand[]>([]);
   const [prayerRequests, setPrayerRequests] = useState<PrayerRequest[]>(() => {
-    return localPersistenceAdapter.loadRequests([]).filter((request) => !isDemoRequestId(request.id));
+    return storedList<PrayerRequest>(() => localPersistenceAdapter.loadRequests([])).filter(
+      (request) => request && !isDemoRequestId(request.id)
+    );
   });
 
   // Rolling scheduled sessions
   const [scheduledSessions, setScheduledSessions] = useState<PrayerSession[]>(() => {
-    return generateRollingSessions(prayerRooms, historySessions);
+    try {
+      return generateRollingSessions(prayerRooms, historySessions);
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
   });
 
   const [dataSaverMode, setDataSaverModeState] = useState<DataSaverMode>(() => {
@@ -347,10 +367,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!isServerSessionId(sessionId)) return;
       try {
         const snapshot = await sanctumApi.getSession(sessionId);
-        const room =
+        const snapshotRoom = snapshot.room;
+        const listed =
           roomHint ||
-          prayerRooms.find((item) => item.id === String(snapshot.session.prayerRoomId)) ||
-          prayerRooms[0];
+          prayerRooms.find((item) => item.id === String(snapshot.session.prayerRoomId));
+        const room =
+          listed ||
+          (snapshotRoom?.name
+            ? ({
+                id: String(snapshotRoom.id || snapshot.session.prayerRoomId),
+                name: String(snapshotRoom.name),
+              } as PrayerRoom)
+            : undefined);
         if (!room) return;
         const quality = connectionStateToQuality(livekitRealtimeProvider.connectionState);
         const mappedParticipants = mapSnapshotParticipants(snapshot.participants, sessionId, quality);
@@ -365,15 +393,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setParticipants(mappedParticipants);
         setRaisedHands(hands);
         setConnectedNow(snapshot.connectedNow);
+        const sermonLeaderName = resolveSermonLeader(
+          typeof snapshot.session.sermonLeaderName === 'string' ? snapshot.session.sermonLeaderName : '',
+          snapshot.room?.roomSermonLeaderName,
+          snapshot.room?.organization?.defaultSermonSpeaker
+        );
         setLiveSession((prev) =>
-          mapServerSession(snapshot.session, room, {
-            organizationName: prev?.organizationName,
+          mapServerSession(
+            { ...snapshot.session, sermonLeaderName },
+            room,
+            {
+            organizationName: snapshot.room?.organization?.name || '',
             durationSeconds: prev?.id === sessionId ? prev.durationSeconds : 0,
             speakerDurationSeconds: prev?.id === sessionId ? prev.speakerDurationSeconds : 0,
             totalParticipants: snapshot.connectedNow,
             totalUniqueParticipants: snapshot.connectedNow,
             listenersWaitingCount: snapshot.connectedNow,
-            activeSpeakerName: speaker?.guestName || speaker?.realtimeIdentity,
+            activeSpeakerName: speaker?.guestName || '',
             activeSpeakerTitle: speaker ? 'Current speaker' : 'Waiting for the next prayer leader.',
             pttParticipantId: snapshot.liveState?.pttParticipantId ?? null,
             privatePrayer: snapshot.liveState?.privatePrayer ?? null,
@@ -416,6 +452,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       roomSlug: string;
       connectionKind?: 'listener' | 'control';
       realtimeIdentity?: string;
+      passcode?: string;
     }) => {
       const join = await sessionApiAdapter.join(
         params.sessionId,
@@ -425,6 +462,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           asGuest: params.asGuest,
           connectionKind: params.connectionKind || 'listener',
           realtimeIdentity: params.realtimeIdentity,
+          passcode: params.passcode,
         }
       );
       if (!join.ok || !join.token || !join.livekitUrl || !join.participant) {
@@ -436,6 +474,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: 'LISTENER',
         token: join.token,
         livekitUrl: join.livekitUrl,
+        audioOnly: dataSaverMode !== 'OFF',
       });
       saveJoinSession({
         sessionId: params.sessionId,
@@ -445,6 +484,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         livekitUrl: join.livekitUrl,
         guestName: params.guestName,
         asGuest: params.asGuest,
+        passcode: params.passcode,
       });
       connectedRoomRef.current = params.sessionId;
       setLocalParticipantId(join.participant.id);
@@ -455,7 +495,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await applySnapshot(params.sessionId);
       return join.participant;
     },
-    [actor.userId, actor.organizationId, applySnapshot]
+    [actor.userId, actor.organizationId, applySnapshot, dataSaverMode]
   );
 
   useEffect(() => {
@@ -623,7 +663,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Prayer Room CRUD
   // Org-scoped slug uniqueness is enforced here until the Prisma unique index is live.
-  const createPrayerRoom = async (data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'>): Promise<PrayerRoom> => {
+  const createPrayerRoom = async (
+    data: Omit<PrayerRoom, 'id' | 'createdAt' | 'updatedAt'> & { passcode?: string | null }
+  ): Promise<PrayerRoom> => {
     if (isMutatingRef.current) {
       throw new Error('Prayer room creation already in progress.');
     }
@@ -645,16 +687,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           speakerPermission: data.speakerPermission,
           isRecurring: data.isRecurring,
           recurrenceRule: data.recurrenceRule,
+          selectedDays: data.selectedDays,
+          oneTimeDate: data.oneTimeDate,
+          durationMinutes: data.durationMinutes,
           scheduledStart: data.scheduledStart,
           timezone: data.timezone,
           recordingEnabled: data.recordingEnabled,
+          passcode: 'passcode' in data ? data.passcode : undefined,
+          allowGuests: data.allowGuests,
+          prayerRequestsEnabled: data.prayerRequestsEnabled,
+          anonymousRequestsAllowed: data.anonymousRequestsAllowed,
+          chatEnabled: data.chatEnabled,
+          sermonLeaderUserId: data.sermonLeaderUserId,
+          coHostUserIds: data.coHostUserIds,
         },
         actor
       );
       const roomRow = created.room as Record<string, unknown>;
+      const { passcode: _passcode, ...roomData } = data;
       const newRoom: PrayerRoom = {
         ...mapServerPrayerRoom(roomRow),
-        ...data,
+        ...roomData,
+        oneTimeDate: roomData.oneTimeDate || undefined,
+        hasPasscode: Boolean(roomRow.hasPasscode) || Boolean(_passcode),
         id: String(roomRow.id),
         logoUrl:
           typeof roomRow.logoUrl === 'string' && roomRow.logoUrl.trim()
@@ -681,14 +736,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : error instanceof Error
             ? error.message
             : 'Could not create the prayer room on the server.';
+      const wrapped = new Error(message) as Error & { fieldErrors?: Record<string, string> | null };
+      if (error instanceof ApiClientError) wrapped.fieldErrors = error.fieldErrors;
       addToast(message, 'error');
-      throw new Error(message);
+      throw wrapped;
     } finally {
       isMutatingRef.current = false;
     }
   };
 
-  const updatePrayerRoom = async (id: string, updates: Partial<PrayerRoom>): Promise<PrayerRoom> => {
+  const updatePrayerRoom = async (
+    id: string,
+    updates: Partial<PrayerRoom> & { passcode?: string | null }
+  ): Promise<PrayerRoom> => {
     const current = prayerRooms.find((r) => r.id === id);
     if (!current) {
       throw new Error('Prayer room not found.');
@@ -713,9 +773,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           speakerPermission: updates.speakerPermission,
           isRecurring: updates.isRecurring,
           recurrenceRule: updates.recurrenceRule,
+          selectedDays: updates.selectedDays,
+          oneTimeDate: updates.oneTimeDate,
+          durationMinutes: updates.durationMinutes,
           scheduledStart: updates.scheduledStart,
           timezone: updates.timezone,
           recordingEnabled: updates.recordingEnabled,
+          passcode: 'passcode' in updates ? updates.passcode : undefined,
+          allowGuests: updates.allowGuests,
+          prayerRequestsEnabled: updates.prayerRequestsEnabled,
+          anonymousRequestsAllowed: updates.anonymousRequestsAllowed,
+          chatEnabled: updates.chatEnabled,
+          sermonLeaderUserId: updates.sermonLeaderUserId,
+          coHostUserIds: updates.coHostUserIds,
         },
         actor
       );
@@ -731,8 +801,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : error instanceof Error
             ? error.message
             : 'Could not update the prayer room.';
+      const wrapped = new Error(message) as Error & { fieldErrors?: Record<string, string> | null };
+      if (error instanceof ApiClientError) wrapped.fieldErrors = error.fieldErrors;
       addToast(message, 'error');
-      throw new Error(message);
+      throw wrapped;
     }
   };
 
@@ -775,7 +847,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addToast(
         muted
           ? 'Sermon mode — only you and ministers can speak.'
-          : 'Discussion PTT open — congregants tap to speak, one at a time.',
+          : 'The floor is open — congregants hold to speak, one at a time.',
         'info'
       );
     } catch (error) {
@@ -1057,7 +1129,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Moderation: Invite to speak
-  const inviteToPray = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
+  const inviteToPray = async (participantId: string, adminId: string = actor.userId || '') => {
     const participant = participants.find((p) => p.id === participantId);
     const hand = raisedHands.find((h) => h.participantId === participantId);
     const name = participant?.displayName || hand?.displayName || 'Attendee';
@@ -1099,7 +1171,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const muteSpeaker = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
+  const muteSpeaker = async (participantId: string, adminId: string = actor.userId || '') => {
     const target = participants.find((p) => p.id === participantId);
     const apiResult = await sessionApiAdapter.muteParticipant(liveSession?.id, participantId, {
       userId: adminId || actor.userId,
@@ -1115,7 +1187,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast(`Muted ${target?.displayName || 'speaker'}`, 'warning');
   };
 
-  const unmuteParticipant = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
+  const unmuteParticipant = async (participantId: string, adminId: string = actor.userId || '') => {
     const target = participants.find((p) => p.id === participantId);
     const apiResult = await sessionApiAdapter.unmuteParticipant(liveSession?.id, participantId, {
       userId: adminId || actor.userId,
@@ -1134,7 +1206,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const endSpeaker = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
+  const endSpeaker = async (participantId: string, adminId: string = actor.userId || '') => {
     const target = participants.find((p) => p.id === participantId);
     const stored = loadJoinSession();
     const guestPath = stored?.asGuest === true && stored.participantId === participantId;
@@ -1156,7 +1228,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast(`Concluded prayer turn for ${target?.displayName || 'speaker'}`, 'info');
   };
 
-  const removeParticipant = async (participantId: string, adminId: string = actor.userId || 'user_pastor_kenneth') => {
+  const removeParticipant = async (participantId: string, adminId: string = actor.userId || '') => {
     const target = participants.find((p) => p.id === participantId);
     const apiResult = await sessionApiAdapter.removeParticipant(liveSession?.id, participantId, {
       userId: adminId || actor.userId,
@@ -1172,7 +1244,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast(`Removed ${target?.displayName || 'participant'} from room`, 'info');
   };
 
-  const updateParticipantRole = async (participantId: string, newRole: Role, adminId: string = 'user_pastor_kenneth') => {
+  const updateParticipantRole = async (participantId: string, newRole: Role, adminId: string = '') => {
     const target = participants.find((p) => p.id === participantId);
     addToast(`Role changes are applied in the Control Room preview until the server session is connected.`, 'warning');
 
@@ -1193,7 +1265,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Public attendee join
-  const joinPrayerRoom = async (roomSlug: string, name: string) => {
+  const joinPrayerRoom = async (roomSlug: string, name: string, options?: { passcode?: string }) => {
     setPrayerComplete(false);
 
     let altar;
@@ -1238,10 +1310,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: altar.session!.id,
           status: altar.session!.status,
           prayerRoomId: room.id,
-          sermonLeaderName: altar.session!.sermonLeaderName,
+          sermonLeaderName: resolveSermonLeader(
+            altar.session!.sermonLeaderName,
+            altar.room.roomSermonLeaderName,
+            altar.room.defaultSermonSpeaker
+          ),
         },
         room,
-        prev || undefined
+        { organizationName: altar.room.organizationName || '' }
       )
     );
 
@@ -1255,6 +1331,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       asGuest: !asStaff,
       roomSlug,
       connectionKind: 'listener',
+      passcode: options?.passcode,
     });
 
     addToast({
@@ -1319,6 +1396,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           roomSlug: stored.sessionId,
           connectionKind: stored.realtimeIdentity?.endsWith('_control') ? 'control' : 'listener',
           realtimeIdentity: stored.realtimeIdentity,
+          passcode: stored.passcode,
         });
       } else if (actor.userId && stored.asGuest) {
         await connectLiveKit({
@@ -1328,6 +1406,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           roomSlug: stored.sessionId,
           connectionKind: 'listener',
           realtimeIdentity: stored.realtimeIdentity,
+          passcode: stored.passcode,
         });
       } else {
         await connectLiveKit({
@@ -1337,6 +1416,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           roomSlug: stored.sessionId,
           connectionKind: 'listener',
           realtimeIdentity: stored.realtimeIdentity,
+          passcode: stored.passcode,
         });
       }
       if (!opts?.silent) addToast('Reconnected to prayer', 'success');
@@ -1418,10 +1498,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     participantName: string;
     roomName?: string;
   }) => {
+    const room = prayerRooms.find((item) => item.id === liveSession?.prayerRoomId);
+    if (room && room.prayerRequestsEnabled === false) {
+      addToast('Prayer requests are turned off for this room.', 'warning');
+      return;
+    }
+    const name = data.participantName.trim();
+    if (room && room.anonymousRequestsAllowed === false && (!name || name.toLowerCase() === 'anonymous')) {
+      addToast('This room requires your name on prayer requests.', 'warning');
+      return;
+    }
     const newReq: PrayerRequest = {
       id: `req_${Date.now()}`,
       sessionId: liveSession?.id || 'session_live',
-      participantName: data.participantName,
+      participantName: name || 'Anonymous',
       request: data.request,
       isPrivate: data.isPrivate,
       status: 'PENDING',

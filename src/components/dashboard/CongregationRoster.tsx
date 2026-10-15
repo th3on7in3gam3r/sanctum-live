@@ -86,7 +86,7 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
           </h3>
           <p className="text-xs text-[#68736D] dark:text-[#96A39D] mt-0.5">
             {discussionOpen
-              ? 'Discussion PTT is open. Press and hold a name for private prayer with that person.'
+              ? 'The floor is open. Press and hold a name for private prayer with that person.'
               : 'Sermon mode. Press and hold a name for a private prayer sideline.'}
           </p>
         </div>
@@ -99,7 +99,7 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
             }`}
           >
             {discussionOpen ? <Mic className="w-3 h-3" /> : <MicOff className="w-3 h-3" />}
-            {discussionOpen ? 'Discussion PTT' : 'Sermon'}
+            {discussionOpen ? 'Floor open' : 'Sermon'}
           </span>
           <span
             className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
@@ -183,7 +183,7 @@ export const CongregationRoster: React.FC<CongregationRosterProps> = ({
                       <span className="text-[10px] font-bold text-[#C9A35A]">Private</span>
                     )}
                     {person.id === pttParticipantId && !inPrivate && (
-                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">PTT</span>
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300">Speaking</span>
                     )}
                   </div>
                 </div>

@@ -54,9 +54,9 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
   };
 
   return (
-    <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-white via-white to-[#F8F7F3] dark:from-[#17221D] dark:via-[#17221D] dark:to-[#101814] border-2 border-[#203C32]/20 dark:border-[#C9A35A]/30 shadow-md relative overflow-hidden">
+    <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-white via-white to-paper dark:from-card dark:via-card dark:to-paper border-2 border-green/20 dark:border-gold/30 shadow-md relative overflow-hidden">
       {/* Gold ambient accent */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-[#C9A35A]/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gold/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
         {/* Left Section: Session Info */}
@@ -71,18 +71,18 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
           </div>
 
           <div>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">
               {room.name}
             </h3>
-            <p className="text-sm text-[#68736D] dark:text-[#96A39D] mt-1 flex items-center gap-2 flex-wrap">
+            <p className="text-sm text-muted mt-1 flex items-center gap-2 flex-wrap">
               <span>{room.isRecurring ? `Recurring (${room.recurrenceRule || 'Daily'})` : 'One-time'}</span>
               <span>•</span>
-              <span className="font-semibold text-[#203C32] dark:text-[#E8D8B2]">
+              <span className="font-semibold text-green dark:text-soft">
                 Scheduled for {room.scheduledStart} ({room.timezone})
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
-                <Users className="w-3.5 h-3.5 text-[#C9A35A]" />
+                <Users className="w-3.5 h-3.5 text-gold" />
                 Expected: {room.expectedAttendance.toLocaleString()}
               </span>
             </p>
@@ -90,14 +90,14 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
 
           {/* Permanent Link display & Copy */}
           <div className="flex items-center gap-2 pt-1 max-w-lg">
-            <div className="flex-1 px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-[#E5E6E1] dark:border-[#26362F] text-xs font-mono text-[#68736D] dark:text-[#96A39D] truncate">
+            <div className="flex-1 px-3.5 py-2 rounded-xl bg-black/5 dark:bg-white/5 border border-line text-xs font-mono text-muted truncate">
               {fullUrl}
             </div>
             <button
               onClick={handleCopyLink}
               type="button"
               data-tour="dashboard-copy-link"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#203C32]/10 dark:bg-[#C9A35A]/20 text-[#203C32] dark:text-[#E8D8B2] hover:bg-[#203C32]/15 transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-green/10 dark:bg-gold/20 text-green dark:text-soft hover:bg-green/15 transition-colors cursor-pointer shrink-0"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied' : 'Copy Link'}</span>
@@ -113,7 +113,7 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
               onClick={() => onOpenControlRoom(room.id)}
               type="button"
               data-tour="dashboard-control-room"
-              className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-[#D7473F] hover:bg-[#C23C35] text-white shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-live hover:brightness-95 text-white shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sliders className="w-4 h-4" />
               <span>{isLive ? 'Live Control Room™' : 'Open Control Room'}</span>
@@ -124,7 +124,7 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
                 <button
                   onClick={onOpenPrePrayerCheck}
                   type="button"
-                  className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-[#203C32] hover:bg-[#16251F] text-[#F8F7F3] dark:bg-[#C9A35A] dark:hover:bg-[#D6B36E] dark:text-[#101814] shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                  className="px-6 py-3.5 rounded-2xl font-bold text-sm bg-green text-paper hover:brightness-95 dark:bg-gold shadow-md transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   <span>Pre-Prayer Check™</span>
@@ -149,7 +149,7 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
               <button
                 onClick={onOpenTestRoom}
                 type="button"
-                className="px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-[#203C32]/30 dark:border-[#C9A35A]/40 bg-[#203C32]/5 dark:bg-[#C9A35A]/10 text-[#203C32] dark:text-[#E8D8B2] hover:bg-[#203C32]/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                className="px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-green/30 dark:border-gold/40 bg-green/5 dark:bg-gold/10 text-green dark:text-soft hover:bg-green/10 transition-colors flex items-center justify-center gap-1 cursor-pointer"
               >
                 <Sliders className="w-3.5 h-3.5" />
                 <span>Test Room</span>
@@ -159,16 +159,16 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
             <button
               onClick={() => onOpenPublicJoin(room.slug)}
               type="button"
-              className="flex-1 px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-[#E5E6E1] dark:border-[#26362F] bg-white dark:bg-[#17221D] hover:bg-gray-50 dark:hover:bg-white/5 text-[#16251F] dark:text-[#F8F7F3] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="flex-1 px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-line bg-card hover:bg-gray-50 dark:hover:bg-white/5 text-ink transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-[#C9A35A]" />
+              <ExternalLink className="w-3.5 h-3.5 text-gold" />
               <span>Join View</span>
             </button>
 
             <button
               onClick={() => onEditRoom(room.id)}
               type="button"
-              className="px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-[#E5E6E1] dark:border-[#26362F] hover:bg-gray-50 dark:hover:bg-white/5 text-[#68736D] dark:text-[#96A39D] transition-colors cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl font-semibold text-xs border border-line hover:bg-gray-50 dark:hover:bg-white/5 text-muted transition-colors cursor-pointer"
             >
               Edit
             </button>

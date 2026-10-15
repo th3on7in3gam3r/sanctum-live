@@ -21,16 +21,16 @@ export const OverviewMetrics: React.FC<OverviewMetricsProps> = ({
       value: totalRooms,
       subtext: 'Active gathering altars',
       icon: Radio,
-      color: 'text-[#203C32] dark:text-[#E8D8B2]',
-      bg: 'bg-[#203C32]/10 dark:bg-[#203C32]/30',
+      color: 'text-green dark:text-soft',
+      bg: 'bg-green/10 dark:bg-green/30',
     },
     {
       label: 'People Reached',
       value: formatNumber(peopleReached),
       subtext: 'Congregants praying together',
       icon: Users,
-      color: 'text-[#C9A35A]',
-      bg: 'bg-[#C9A35A]/15',
+      color: 'text-gold',
+      bg: 'bg-gold/15',
     },
     {
       label: 'Prayer Requests',
@@ -45,8 +45,8 @@ export const OverviewMetrics: React.FC<OverviewMetricsProps> = ({
       value: `${totalPrayerHours}h`,
       subtext: 'Total duration of completed prayer sessions.',
       icon: Clock,
-      color: 'text-[#3D6655] dark:text-[#E8D8B2]',
-      bg: 'bg-[#3D6655]/10 dark:bg-[#3D6655]/25',
+      color: 'text-secondary dark:text-soft',
+      bg: 'bg-secondary/10 dark:bg-secondary/25',
     },
   ];
 
@@ -57,16 +57,16 @@ export const OverviewMetrics: React.FC<OverviewMetricsProps> = ({
         return (
           <div
             key={i}
-            className="p-5 rounded-2xl bg-white dark:bg-[#17221D] border border-[#E5E6E1] dark:border-[#26362F] shadow-xs flex items-center justify-between"
+            className="ui-card flex items-center justify-between p-5 shadow-xs"
           >
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-[#68736D] dark:text-[#96A39D]">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
                 {m.label}
               </p>
-              <h3 className="text-2xl font-extrabold text-[#16251F] dark:text-[#F8F7F3] mt-1">
+              <h3 className="text-2xl font-extrabold text-ink mt-1">
                 {m.value}
               </h3>
-              <p className="text-[11px] text-[#68736D] dark:text-[#96A39D] mt-0.5">
+              <p className="text-[11px] text-muted mt-0.5">
                 {m.subtext}
               </p>
             </div>
