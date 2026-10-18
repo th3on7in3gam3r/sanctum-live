@@ -5,6 +5,13 @@ import path from 'node:path';
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, '..'),
   transpilePackages: ['@plcc/brand'],
+  webpack: (config) => {
+    config.resolve.modules = [
+      path.join(__dirname, 'node_modules'),
+      ...(config.resolve.modules ?? ['node_modules']),
+    ];
+    return config;
+  },
   env: {
     NEXT_PUBLIC_SENTRY_RELEASE: process.env.VERCEL_GIT_COMMIT_SHA || process.env.SENTRY_RELEASE || '',
     NEXT_PUBLIC_DEPLOY_ENV: process.env.DEPLOY_ENV || '',
