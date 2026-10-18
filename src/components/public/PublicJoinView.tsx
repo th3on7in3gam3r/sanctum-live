@@ -37,7 +37,9 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [altarStatus, setAltarStatus] = useState<SessionLifecycleStatus | 'NOT_FOUND' | null>(null);
-  useTour(TOUR_IDS.joinGate, joinGateTourSteps, { delayMs: 500 });
+  // The name field carries its own hint, so the one-step join tour no longer opens on its own
+  // (it covered the join button on a first visit).
+  useTour(TOUR_IDS.joinGate, joinGateTourSteps, { delayMs: 500, enabled: false });
   const [passcode, setPasscode] = useState('');
   const [canControl, setCanControl] = useState(false);
   const [altarRoom, setAltarRoom] = useState<{
@@ -191,7 +193,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         setError(
           canJoin
             ? 'Could not join this prayer gathering. Check the link and try again.'
-            : 'This gathering is not open yet. Ask your pastor to open it from the Control Room.'
+            : 'This gathering is not open yet. Please come back when it starts.'
         );
       }
     } finally {
@@ -241,11 +243,13 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
         ) : null}
         <div className="flex flex-wrap items-center justify-center gap-2.5 mb-5">
           <PrayerSessionStatus status={status === 'NOT_FOUND' ? 'SCHEDULED' : status} size="md" className="sanctum-chip" />
-          <ParticipantCount
-            count={attendeeCount}
-            emptyLabel={isLive ? 'Waiting for participants' : 'Prayer has not started'}
-            className="sanctum-chip"
-          />
+          {isLive || isWaiting ? (
+            <ParticipantCount
+              count={attendeeCount}
+              emptyLabel="Waiting for participants"
+              className="sanctum-chip"
+            />
+          ) : null}
         </div>
 
         <p className="eyebrow mb-3">{canJoin ? 'Sanctuary open' : scheduleLabel ? `Starts ${scheduleLabel}` : 'Sanctuary'}</p>
@@ -289,8 +293,10 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
               : canJoin
                 ? (altarRoom?.speakerPermission || localRoom?.speakerPermission) === 'PRAYER_LEADERS'
                   ? 'Join as a listener. Only prayer leaders speak in this room.'
-                  : 'Join as a listener. Raise your hand if you are invited to pray aloud. Pastors lead from the Control Room.'
-                : 'This gathering is not open yet. Your pastor opens it from Prayer Rooms → Control Room.'}
+                  : 'Join as a listener. Raise your hand if you would like to pray aloud.'
+                : scheduleLabel
+                  ? `This gathering is not open yet. It starts ${scheduleLabel}. Keep this page and come back then.`
+                  : 'This gathering is not open yet. Keep this page and come back when it starts.'}
           </p>
         </div>
 
@@ -318,9 +324,9 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
           <div data-tour="join-name">
             <label
               htmlFor="attendeeName"
-              className="mb-2 block text-sm"
+              className="mb-2 block text-sm font-semibold"
             >
-              Your Name
+              Your name
             </label>
             <input
               id="attendeeName"
@@ -334,8 +340,12 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
                 if (error) setError('');
               }}
               placeholder="The name people know you by"
+              aria-describedby="attendeeNameHint"
               className="sanctum-input w-full rounded-full px-4 py-3.5 text-base font-medium focus:outline-none"
             />
+            <p id="attendeeNameHint" className="sanctum-muted mt-2 text-xs">
+              Type the name people know you by, then tap Enter the sanctuary. No account needed.
+            </p>
           </div>
 
           {altarRoom?.hasPasscode && (
@@ -371,7 +381,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
             <span>{altarRoom?.allowGuests === false ? 'Church account required.' : 'No account required.'}</span>
           </div>
           <p className="sanctum-muted text-[11px] leading-relaxed">
-            Microphone and camera stay off unless a prayer leader invites you to speak. Server-enforced media permissions activate with the realtime media engine.
+            Your microphone stays off unless a prayer leader invites you to speak.
           </p>
         </div>
       </main>
@@ -423,7 +433,7 @@ export const PublicJoinView: React.FC<PublicJoinViewProps> = ({ slug, onJoinSucc
             </h3>
             <div className="sanctum-muted space-y-2.5 text-xs leading-relaxed">
               <p>
-                <strong>No Login Needed:</strong> Congregants enter a name and tap Join Prayer. You join as a listener.
+                <strong>No Login Needed:</strong> Congregants enter a name and tap Enter the sanctuary. You join as a listener.
               </p>
               <p>
                 <strong>Microphone:</strong> Your mic stays off. If a prayer leader invites you to speak, Accept and the browser will ask for microphone permission.

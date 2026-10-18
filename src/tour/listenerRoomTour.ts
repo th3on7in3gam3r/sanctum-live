@@ -6,7 +6,7 @@ export const listenerRoomTourSteps: TourStep[] = [
     popover: {
       title: 'You are in the prayer gathering',
       description:
-        'No account needed. Listen along, send Amen, raise your hand, or type in chat. Your pastor leads from their Control Room.',
+        'No account needed. Listen along, send Amen, raise your hand, or type in chat.',
       side: 'bottom',
       align: 'start',
     },
@@ -77,7 +77,7 @@ export const joinGateTourSteps: TourStep[] = [
     popover: {
       title: 'Type your name, then join',
       description:
-        'Enter the name people know you by, then tap Join Prayer. You do not need an account.',
+        'Enter the name people know you by, then tap Enter the sanctuary. You do not need an account.',
       side: 'bottom',
       align: 'center',
     },

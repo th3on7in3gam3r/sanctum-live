@@ -1,28 +1,26 @@
 import { JsonLd } from '@/components/JsonLd';
-import { ComingUp } from '@/components/home/ComingUp';
-import Image from 'next/image';
-import Link from 'next/link';
 import { Gather } from '@/components/home/Gather';
 import { Hero } from '@/components/home/Hero';
-import { LatestMessage } from '@/components/home/LatestMessage';
+import { MessageAndEvents } from '@/components/home/MessageAndEvents';
 import { PastorWelcome } from '@/components/home/PastorWelcome';
+import { PhotoStrip, type StripPhoto } from '@/components/home/PhotoStrip';
 import { WordMarquee } from '@/components/home/WordMarquee';
 import { PlanVisit } from '@/components/home/PlanVisit';
 import { SanctumBand } from '@/components/home/SanctumBand';
 import { Scripture } from '@/components/home/Scripture';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
-import { getLive, listAnnouncements, listEvents, listPublicAlbums, listServiceTimes, listSermons } from '@/lib/api';
+import { getLive, listAnnouncements, listEvents, listLeaders, listPublicAlbums, listServiceTimes, listSermons } from '@/lib/api';
 import { prayerJoinUrl, siteEnv } from '@/lib/env';
 import { parseHome } from '@/lib/home';
 import { churchJsonLd } from '@/lib/jsonld';
-import { cardsFromHome, homeStrip, toCard } from '@/lib/schedule';
+import { scheduleFromHome, scheduleFromServiceTimes } from '@/lib/schedule';
 
 export async function generateMetadata() {
   return cmsMetadata('home', 'A Pentecostal church in Kampala.');
 }
 
 export default async function HomePage() {
-  const [page, announcements, events, sermons, live, gallery, serviceTimes] = await Promise.all([
+  const [page, announcements, events, sermons, live, gallery, serviceTimes, leaders] = await Promise.all([
     loadCmsPage('home'),
     listAnnouncements(),
     listEvents(),
@@ -30,44 +28,46 @@ export default async function HomePage() {
     getLive(),
     listPublicAlbums(),
     listServiceTimes(),
+    listLeaders(),
   ]);
   const home = parseHome(page);
-  const strip = serviceTimes.length ? homeStrip(serviceTimes) : cardsFromHome(home.times, ['Sunday', 'Wednesday Upper Room', 'Friday Intercessors']).map((item) => item.name);
-  const featured = serviceTimes.length
-    ? serviceTimes.filter((time) => time.showOnHome).map(toCard)
-    : cardsFromHome(home.times, strip);
+  const schedule = serviceTimes.length ? scheduleFromServiceTimes(serviceTimes) : scheduleFromHome(home.times);
+  const week = schedule.filter((item) => item.featured);
   const prayerUrl = prayerJoinUrl();
   const liveRoom = live?.rooms?.find((room) => room.status === 'LIVE');
-  const bandUrl = liveRoom ? `${siteEnv().sanctumAppUrl}/join/${liveRoom.slug}` : prayerUrl;
-  const latest = sermons[0];
+  const liveUrl = liveRoom ? `${siteEnv().sanctumAppUrl}/join/${liveRoom.slug}` : prayerUrl;
+  const latest = sermons[0] ?? null;
+  const pastor = leaders.find((leader) => leader.photoUrl);
+
+  // Real photos only, in order: the home page photo set in the dashboard, then recent gallery moments.
+  const photos: StripPhoto[] = [
+    ...(page.heroImageUrl ? [{ key: 'home-hero', url: page.heroImageUrl, alt: 'Promised Land Christian Center', href: '/gallery' }] : []),
+    ...gallery.moments.map((photo) => ({
+      key: photo.id,
+      url: photo.url,
+      alt: photo.alt,
+      href: photo.album?.slug ? `/gallery/${photo.album.slug}` : '/gallery',
+    })),
+  ];
 
   return (
     <>
       <JsonLd data={churchJsonLd(siteEnv().siteUrl, serviceTimes)} />
-      <Hero lead={home.lead} times={featured} strip={strip} hero={home.hero} prayerUrl={prayerUrl} />
+      <Hero lead={home.lead} week={week} live={live} liveUrl={liveUrl} messageHref={latest ? `/sermons/${latest.id}` : null} />
       <WordMarquee />
       {announcements[0] ? (
-        <p className="bg-sand px-4 py-4 text-center text-ink sm:px-6">{announcements[0].title}</p>
+        <p className="bg-sand px-4 py-4 text-center text-ink sm:px-6">
+          <strong className="mr-2 font-semibold text-gold-ink">Announcement</strong>
+          {announcements[0].title}
+        </p>
       ) : null}
-      <PastorWelcome text={home.welcome} photo={page.heroImageUrl} />
+      <PhotoStrip photos={photos} />
+      <PastorWelcome text={home.welcome} photo={pastor?.photoUrl} photoAlt={pastor?.name} />
       {home.scripture ? <Scripture scripture={home.scripture} /> : null}
-      {featured.length ? <Gather times={featured} /> : null}
-      <SanctumBand live={live} prayerUrl={bandUrl} />
-      {latest ? <LatestMessage sermon={latest} /> : null}
-      <ComingUp events={events.slice(0, 4)} />
-      {gallery.moments.length ? (
-        <section className="mx-auto max-w-6xl px-4 py-10">
-          <h2 className="font-display text-3xl">Recent moments</h2>
-          <div className="mt-4 flex gap-3 overflow-x-auto">
-            {gallery.moments.map((photo) => (
-              <Link key={photo.id} href={photo.album?.slug ? `/gallery/${photo.album.slug}` : '/gallery'} className="relative h-36 w-36 shrink-0 overflow-hidden rounded-2xl">
-                <Image src={photo.url} alt={photo.alt} fill sizes="144px" className="object-cover" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-      <PlanVisit points={home.visit} photo={page.heroImageUrl} />
+      {schedule.length ? <Gather items={schedule} liveUrl={liveUrl} /> : null}
+      <SanctumBand live={live} prayerUrl={liveUrl} />
+      <MessageAndEvents sermon={latest} events={events.slice(0, 3)} />
+      <PlanVisit points={home.visit} />
     </>
   );
 }
