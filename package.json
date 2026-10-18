@@ -8,7 +8,7 @@
     "check:brand": "node scripts/check-brand.mjs",
     "dev": "concurrently -k \"npm run server\" \"vite --port=3000 --host=0.0.0.0\"",
     "server": "tsx server/index.ts",
-    "build": "prisma generate && vite build && esbuild server/index.ts --bundle --platform=node --format=esm --sourcemap --outfile=dist/server.mjs --external:@prisma/client --external:@sentry/node && mkdir -p dist/node_modules && rm -rf dist/node_modules/@prisma dist/node_modules/.prisma && cp -R node_modules/@prisma dist/node_modules/ && cp -R node_modules/.prisma dist/node_modules/ && node scripts/upload-server-sourcemap.mjs",
+    "build": "prisma generate && vite build && esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=dist/server.mjs --external:@prisma/client --external:@sentry/node && mkdir -p dist/node_modules && rm -rf dist/node_modules/@prisma dist/node_modules/.prisma && cp -R node_modules/@prisma dist/node_modules/ && cp -R node_modules/.prisma dist/node_modules/ && node scripts/upload-server-sourcemap.mjs",
     "postbuild": "node scripts/check-built-copy.mjs dist",
     "smoke": "tsx scripts/smoke.ts",
     "start": "node dist/server.mjs",
