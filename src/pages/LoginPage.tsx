@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { Show, SignIn, UserButton } from '@clerk/react';
 import { Sun, Moon } from 'lucide-react';
-import { CHURCH_PUBLIC_NAME, churchSiteUrl, isChurchMode, leaveToHome } from '../lib/appMode';
+import { churchSiteUrl, isChurchMode, leaveToHome } from '../lib/appMode';
 
 interface LoginPageProps {
   onNavigate: (path: string) => void;
@@ -20,41 +20,42 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
   const theme = sanctumTheme(isDarkMode);
 
   return (
-    <div data-staff data-staff-theme={theme} className="min-h-screen flex flex-col justify-between p-4 sm:p-6 transition-colors">
-      <header className="max-w-md w-full mx-auto flex items-center justify-between pt-2 pb-6">
-        {church ? (
-          <StaffBrand size="md" />
-        ) : (
-          <button type="button" onClick={() => leaveToHome(onNavigate)} className="cursor-pointer">
-            <SanctumLogo size="md" showTagline />
-          </button>
+    <div data-staff data-staff-theme={theme} className="staff-sign-in relative flex min-h-screen flex-col items-center justify-center px-4 py-16 transition-colors">
+      <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6">
+        {clerkConfigured && (
+          <Show when="signed-in">
+            <UserButton afterSignOutUrl={church ? site : '/'} />
+          </Show>
         )}
-        <div className="flex items-center gap-2">
-          {clerkConfigured && (
-            <Show when="signed-in">
-              <UserButton afterSignOutUrl={church ? site : '/'} />
-            </Show>
-          )}
-          <button
-            type="button"
-            onClick={toggleDarkMode}
-            className="p-2 rounded-full text-ink cursor-pointer"
-            aria-label={isDarkMode ? 'Switch to light' : 'Switch to dusk'}
-          >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
-        </div>
-      </header>
+        <button
+          type="button"
+          onClick={toggleDarkMode}
+          className="cursor-pointer rounded-full border p-2 text-ink"
+          style={{ borderColor: 'var(--border-color)' }}
+          aria-label={isDarkMode ? 'Switch to light' : 'Switch to dusk'}
+        >
+          {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
+      </div>
 
-      <main className="ui-card mx-auto my-auto w-full max-w-md p-6 sm:p-8">
-        <div className="mb-6">
-          <h1 className="font-display text-[28px] leading-tight text-ink">
-            {church ? `${CHURCH_PUBLIC_NAME} — Staff sign in` : 'Church admin sign in'}
-          </h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
+      <main className="ui-card w-full max-w-[26.5rem] rounded-[26px] px-6 py-8 shadow-[0_24px_70px_rgba(8,16,12,0.28)] sm:px-8 sm:py-10">
+        <div className="mb-6 flex justify-center">
+          {church ? (
+            <StaffBrand size="md" />
+          ) : (
+            <button type="button" onClick={() => leaveToHome(onNavigate)} className="cursor-pointer">
+              <SanctumLogo size="md" showTagline />
+            </button>
+          )}
+        </div>
+
+        <div className="mb-6 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">Staff</p>
+          <h1 className="mt-2 font-display text-[2rem] leading-none text-ink">Sign in</h1>
+          <p className="mx-auto mt-3 max-w-[18rem] text-sm leading-relaxed text-muted">
             {church
-              ? 'Sign in to run prayer, the gallery, and the church dashboard.'
-              : 'Create a Sanctum Space or join one you were invited to. Congregants join with a prayer link and their name — no account.'}
+              ? 'Prayer, the gallery, and the church dashboard.'
+              : 'Create a Sanctum Space or join one you were invited to. Congregants join with a prayer link and their name. No account on the join page.'}
           </p>
         </div>
 
@@ -94,11 +95,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                 variables: {
                   colorPrimary: '#C9A35A',
                   colorPrimaryForeground: '#16251F',
-                  colorBackground: isDarkMode ? '#1A3328' : '#FFFCF6',
+                  colorBackground: 'transparent',
                   colorForeground: isDarkMode ? '#F6F1E6' : '#16251F',
                   colorInput: isDarkMode ? '#10241C' : '#F5F1E8',
                   colorInputForeground: isDarkMode ? '#F6F1E6' : '#16251F',
                   borderRadius: '999px',
+                },
+                elements: {
+                  rootBox: 'staff-clerk-root',
+                  cardBox: 'staff-clerk-card-box',
+                  card: 'staff-clerk-card',
+                  badge: 'staff-clerk-badge',
                 },
               }}
             />
@@ -106,7 +113,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
         )}
       </main>
 
-      <footer className="max-w-md w-full mx-auto text-center text-xs text-muted pt-4 space-y-2">
+      <footer className="mt-6 w-full max-w-[26.5rem] space-y-2 text-center text-xs text-muted">
         {church ? (
           <a href={site} className="font-semibold text-ink hover:underline">Back to the website</a>
         ) : (

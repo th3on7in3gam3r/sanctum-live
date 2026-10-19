@@ -273,6 +273,70 @@
   color: #7a2422;
 }
 
+.staff-sign-in .staff-clerk-root,
+.staff-sign-in .staff-clerk-card-box,
+.staff-sign-in .staff-clerk-card,
+.staff-sign-in .cl-rootBox,
+.staff-sign-in .cl-cardBox,
+.staff-sign-in .cl-card {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.staff-sign-in .staff-clerk-card,
+.staff-sign-in .cl-card {
+  padding: 0;
+  gap: 1.25rem;
+}
+
+.staff-sign-in .staff-clerk-badge,
+.staff-sign-in .cl-badge,
+.staff-sign-in [class*="cl-badge"] {
+  display: none;
+}
+
+.staff-sign-in .cl-footer,
+.staff-sign-in .cl-footerPages {
+  background: transparent;
+  box-shadow: none;
+}
+
+.staff-sign-in .cl-footerItem,
+.staff-sign-in [data-clerk-dev-mode-overlay] {
+  display: none;
+}
+
+.staff-sign-in .cl-socialButtonsBlockButton,
+.staff-sign-in .cl-formButtonPrimary,
+.staff-sign-in .cl-formFieldInput {
+  min-height: 2.75rem;
+}
+
+.staff-sign-in .cl-socialButtonsBlockButton {
+  border: 1px solid color-mix(in srgb, var(--primary-dark) 42%, var(--border-color));
+  background: color-mix(in srgb, var(--primary-dark) 8%, transparent);
+  box-shadow: none;
+  color: var(--primary-dark);
+}
+
+.staff-sign-in .cl-socialButtonsBlockButton :where(span, p) {
+  color: var(--primary-dark);
+}
+
+.staff-sign-in .cl-formFieldInput {
+  border: 1px solid var(--border-color);
+}
+
+.staff-sign-in .cl-dividerLine {
+  background: var(--border-color);
+}
+
 [data-staff] [class*="cl-header"] {
   display: none;
 }
