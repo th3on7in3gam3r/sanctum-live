@@ -318,11 +318,27 @@
   min-height: 2.75rem;
 }
 
+.staff-sign-in .cl-socialButtonsRoot {
+  margin-top: 1.75rem;
+}
+
 .staff-sign-in .cl-socialButtonsBlockButton {
+  position: relative;
   border: 1px solid color-mix(in srgb, var(--primary-dark) 42%, var(--border-color));
   background: color-mix(in srgb, var(--primary-dark) 8%, transparent);
   box-shadow: none;
   color: var(--primary-dark);
+}
+
+.staff-sign-in .staff-last-used,
+.staff-sign-in .cl-lastAuthenticationStrategyBadge {
+  position: absolute;
+  top: auto !important;
+  right: 1.15rem !important;
+  bottom: calc(100% + 0.8rem) !important;
+  left: auto !important;
+  margin: 0 !important;
+  transform: none !important;
 }
 
 .staff-sign-in .cl-socialButtonsBlockButton :where(span, p) {

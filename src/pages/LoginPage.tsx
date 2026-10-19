@@ -106,6 +106,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
                   cardBox: 'staff-clerk-card-box',
                   card: 'staff-clerk-card',
                   badge: 'staff-clerk-badge',
+                  lastAuthenticationStrategyBadge: 'staff-last-used',
                 },
               }}
             />
