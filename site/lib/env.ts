@@ -26,7 +26,9 @@ export function siteEnv(): SiteEnv {
 
 /** PLCC ONE: one sign-in for PLCC Chat, Vault, Connect and Tithe. */
 export function plccOneUrl() {
-  return trimSlash(process.env.PLCC_ONE_URL || 'https://plcc-opal.vercel.app');
+  // Always the sign-in page: the bare address redirects to this website.
+  const base = trimSlash(process.env.PLCC_ONE_URL || 'https://plcc-opal.vercel.app');
+  return base.includes('#') ? base : `${base}/#/login`;
 }
 
 export function prayerJoinUrl() {
