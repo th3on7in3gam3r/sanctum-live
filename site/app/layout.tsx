@@ -4,7 +4,7 @@ import { BRAND } from '@plcc/brand/brand';
 import { SiteChrome } from '@/components/SiteChrome';
 import { getLive } from '@/lib/api';
 import { listServiceTimes } from '@/lib/api';
-import { prayerJoinUrl, siteEnv } from '@/lib/env';
+import { plccOneUrl, prayerJoinUrl, siteEnv } from '@/lib/env';
 import { homeStrip } from '@/lib/schedule';
 import { staffSignInLink } from '@/lib/nav';
 import './globals.css';
@@ -40,7 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${fraunces.variable} ${manrope.variable}`}>
       <body>
-        <SiteChrome prayerUrl={prayerUrl} liveNow={Boolean(liveRoom)} staffLoginUrl={staffSignInLink(siteEnv().sanctumAppUrl).href} serviceStrip={homeStrip(serviceTimes)}>{children}</SiteChrome>
+        <SiteChrome prayerUrl={prayerUrl} oneUrl={plccOneUrl()} liveNow={Boolean(liveRoom)} staffLoginUrl={staffSignInLink(siteEnv().sanctumAppUrl).href} serviceStrip={homeStrip(serviceTimes)}>{children}</SiteChrome>
       </body>
     </html>
   );

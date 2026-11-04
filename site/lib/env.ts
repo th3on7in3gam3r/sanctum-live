@@ -24,6 +24,11 @@ export function siteEnv(): SiteEnv {
   };
 }
 
+/** PLCC ONE: one sign-in for PLCC Chat, Vault, Connect and Tithe. */
+export function plccOneUrl() {
+  return trimSlash(process.env.PLCC_ONE_URL || 'https://plcc-vault.vercel.app');
+}
+
 export function prayerJoinUrl() {
   const env = siteEnv();
   return `${env.sanctumAppUrl}/join/${env.prayerRoomSlug}`;

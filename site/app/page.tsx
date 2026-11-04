@@ -10,7 +10,7 @@ import { SanctumBand } from '@/components/home/SanctumBand';
 import { Scripture } from '@/components/home/Scripture';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { getLive, listAnnouncements, listEvents, listLeaders, listPublicAlbums, listServiceTimes, listSermons } from '@/lib/api';
-import { prayerJoinUrl, siteEnv } from '@/lib/env';
+import { plccOneUrl, prayerJoinUrl, siteEnv } from '@/lib/env';
 import { parseHome } from '@/lib/home';
 import { churchJsonLd } from '@/lib/jsonld';
 import { scheduleFromHome, scheduleFromServiceTimes } from '@/lib/schedule';
@@ -53,7 +53,7 @@ export default async function HomePage() {
   return (
     <>
       <JsonLd data={churchJsonLd(siteEnv().siteUrl, serviceTimes)} />
-      <Hero lead={home.lead} week={week} live={live} liveUrl={liveUrl} messageHref={latest ? `/sermons/${latest.id}` : null} />
+      <Hero lead={home.lead} week={week} live={live} liveUrl={liveUrl} oneUrl={plccOneUrl()} messageHref={latest ? `/sermons/${latest.id}` : null} />
       <WordMarquee />
       {announcements[0] ? (
         <p className="bg-sand px-4 py-4 text-center text-ink sm:px-6">
@@ -65,7 +65,7 @@ export default async function HomePage() {
       <PastorWelcome text={home.welcome} photo={pastor?.photoUrl} photoAlt={pastor?.name} />
       {home.scripture ? <Scripture scripture={home.scripture} /> : null}
       {schedule.length ? <Gather items={schedule} liveUrl={liveUrl} /> : null}
-      <SanctumBand live={live} prayerUrl={liveUrl} />
+      <SanctumBand live={live} oneUrl={plccOneUrl()} />
       <MessageAndEvents sermon={latest} events={events.slice(0, 3)} />
       <PlanVisit points={home.visit} />
     </>

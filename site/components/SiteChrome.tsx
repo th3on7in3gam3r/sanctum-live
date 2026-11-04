@@ -43,11 +43,11 @@ function NavAnchor({
   );
 }
 
-export function SiteChrome({ children, prayerUrl, staffLoginUrl, serviceStrip = [], liveNow = false }: { children: React.ReactNode; prayerUrl: string; staffLoginUrl: string; serviceStrip?: string[]; liveNow?: boolean }) {
+export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, serviceStrip = [], liveNow = false }: { children: React.ReactNode; prayerUrl: string; oneUrl?: string; staffLoginUrl: string; serviceStrip?: string[]; liveNow?: boolean }) {
   const path = usePathname();
   const home = path === '/';
   const [open, setOpen] = useState(false);
-  const footer = footerNav(prayerUrl);
+  const footer = footerNav(prayerUrl, oneUrl);
   const livePrayer = footer.gather.find((link) => link.label === 'Live prayer');
   const give = footer.gather.find((link) => link.label === 'Give');
   const sticky = footer.gather.filter((link) => link.label !== 'Events' && link.label !== 'Huddles');

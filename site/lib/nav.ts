@@ -19,11 +19,12 @@ export function staffSignInLink(sanctumAppUrl: string): NavLink {
   return { label: 'Staff sign in', href: `${base}/login` };
 }
 
-export function footerNav(prayerUrl: string) {
+export function footerNav(prayerUrl: string, oneUrl?: string) {
   return {
     gather: [
       { label: 'Visit', href: '/visit' },
       { label: 'Live prayer', href: prayerUrl },
+      ...(oneUrl ? [{ label: 'PLCC ONE', href: oneUrl }] : []),
       { label: 'Huddles', href: '/huddles' },
       { label: 'Give', href: '/give' },
       { label: 'Events', href: '/events' },

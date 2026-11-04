@@ -12,7 +12,7 @@ export function directionsUrl() {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(church.mapsQuery)}`;
 }
 
-function LivePanel({ live, liveUrl }: { live: PublicLive | null; liveUrl: string }) {
+function LivePanel({ live, oneUrl }: { live: PublicLive | null; oneUrl: string }) {
   const liveRoom = live?.rooms?.find((room) => room.status === 'LIVE');
   const onAir = live?.status === 'LIVE' || Boolean(liveRoom);
   const name = liveRoom?.name || live?.name || 'Prayer room';
@@ -26,7 +26,7 @@ function LivePanel({ live, liveUrl }: { live: PublicLive | null; liveUrl: string
       </p>
       <p className="font-display mt-2 text-[28px] leading-tight text-cream">{name}</p>
       {!onAir && when ? <p className="mt-1 text-[15px] text-muted-dark">{when}</p> : null}
-      <a href={liveUrl} className="site-button mt-4 bg-gold text-ink">Join the prayer room</a>
+      <a href={oneUrl} className="site-button mt-4 bg-gold text-ink">Step into the Promised Land</a>
     </div>
   );
 }
@@ -36,12 +36,14 @@ export function Hero({
   week,
   live,
   liveUrl,
+  oneUrl,
   messageHref,
 }: {
   lead: string;
   week: ScheduleItem[];
   live: PublicLive | null;
   liveUrl: string;
+  oneUrl: string;
   messageHref: string | null;
 }) {
   return (
@@ -75,7 +77,7 @@ export function Hero({
             <p className="text-xs font-semibold tracking-[0.22em] text-gold">TONIGHT &amp; THIS WEEK</p>
             <p className="text-[13px] text-muted-dark">East Africa Time</p>
           </div>
-          <LivePanel live={live} liveUrl={liveUrl} />
+          <LivePanel live={live} oneUrl={oneUrl} />
           {week.length ? (
             <ul className="mt-2 divide-y divide-on-dark/10">
               {week.map((item) => (
