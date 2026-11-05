@@ -8,6 +8,7 @@ import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { getPage, listLeaders } from '@/lib/api';
 import { church } from '@/lib/church';
 import { prayerJoinUrl } from '@/lib/env';
+import { leaderBio, leaderPhotoUrl } from '@/lib/leaders';
 import { firstParagraph, headingPairs } from '@/lib/pages';
 
 export async function generateMetadata() {
@@ -24,6 +25,7 @@ export default async function AboutPage() {
   const beliefCells = headingPairs(beliefs).slice(0, 4);
   const featured = leaders[0];
   const rest = leaders.slice(1);
+  const featuredBio = featured ? leaderBio(featured) : null;
 
   return (
     <>
@@ -33,7 +35,7 @@ export default async function AboutPage() {
         title="Changing hearts."
         accent="Transforming lives."
         lede={firstParagraph(about)}
-        photo={about.heroImageUrl}
+        photo={about.heroImageUrl || '/warm-welcome.jpg'}
       />
       <section className="bg-cream px-4 py-20 text-ink sm:px-6">
         <div className="mx-auto grid max-w-6xl gap-10 min-[900px]:grid-cols-3">
@@ -45,11 +47,15 @@ export default async function AboutPage() {
           <SectionHeader eyebrow="Leadership" title="Shepherds who" accent="walk with you." />
           {featured ? (
             <div className="mt-12 grid items-center gap-10 min-[900px]:grid-cols-2">
-              <PhotoTile src={featured.photoUrl} sizes="(min-width: 900px) 40vw, 100vw" className="min-h-[460px] rounded-[22px]" />
+              <PhotoTile
+                src={leaderPhotoUrl(featured)}
+                sizes="(min-width: 900px) 40vw, 100vw"
+                className="min-h-[460px] rounded-[22px]"
+              />
               <div>
                 <p className="eyebrow">{featured.role}</p>
                 <h3 className="font-display mt-3 text-[52px] font-light leading-none">{featured.name}</h3>
-                {featured.bio ? <p className="mt-5 text-lg leading-relaxed">{featured.bio}</p> : null}
+                {featuredBio ? <p className="mt-5 text-lg leading-relaxed">{featuredBio}</p> : null}
                 <div className="mt-6 flex flex-wrap gap-3">
                   <a href={church.youtube} className="site-button bg-forest-900 text-on-dark">{church.youtubeLabel}</a>
                   <a href={church.tiktok} className="site-button border border-ink text-ink">{church.tiktokLabel}</a>
@@ -59,13 +65,21 @@ export default async function AboutPage() {
           ) : null}
           {rest.length ? (
             <ul className="mt-14 grid gap-6 min-[900px]:grid-cols-3">
-              {rest.map((leader) => (
-                <li key={leader.id}>
-                  <PhotoTile src={leader.photoUrl} sizes="(min-width: 900px) 30vw, 100vw" className="aspect-[4/5] rounded-[22px]" />
-                  <p className="font-display mt-4 text-3xl">{leader.name}</p>
-                  <p className="text-gold-ink">{leader.role}</p>
-                </li>
-              ))}
+              {rest.map((leader) => {
+                const bio = leaderBio(leader);
+                return (
+                  <li key={leader.id}>
+                    <PhotoTile
+                      src={leaderPhotoUrl(leader)}
+                      sizes="(min-width: 900px) 30vw, 100vw"
+                      className="aspect-[4/5] rounded-[22px]"
+                    />
+                    <p className="font-display mt-4 text-3xl">{leader.name}</p>
+                    <p className="text-gold-ink">{leader.role}</p>
+                    {bio ? <p className="mt-3 leading-relaxed text-ink/80">{bio}</p> : null}
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
         </div>

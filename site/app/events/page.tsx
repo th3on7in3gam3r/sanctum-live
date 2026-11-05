@@ -112,7 +112,11 @@ export default async function EventsPage() {
               ))}
             </ul>
           </div>
-          <Link href="/huddles" className="flex min-h-48 flex-col justify-end rounded-[22px] bg-forest-950 p-6 text-on-dark">
+          <Link
+            href="/huddles"
+            className="relative flex min-h-[420px] flex-col justify-end overflow-hidden rounded-[22px] bg-forest-950 p-6 text-on-dark"
+            style={{ backgroundImage: "linear-gradient(180deg, transparent 35%, rgba(13,26,20,0.92) 78%), url('/live-huddles.jpg')", backgroundSize: 'cover', backgroundPosition: 'center top' }}
+          >
             <p className="eyebrow">Midweek</p>
             <p className="font-display mt-2 text-4xl">Live huddles</p>
           </Link>

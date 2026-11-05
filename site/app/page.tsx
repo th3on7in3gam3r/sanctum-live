@@ -1,5 +1,4 @@
 import { JsonLd } from '@/components/JsonLd';
-import { GiveBand } from '@/components/home/GiveBand';
 import { Hero } from '@/components/home/Hero';
 import { MessageAndEvents } from '@/components/home/MessageAndEvents';
 import { OneBand } from '@/components/home/OneBand';
@@ -70,7 +69,6 @@ export default async function HomePage() {
       <PhotoStrip photos={photos} />
       <MessageAndEvents sermon={latest} events={events.slice(0, 3)} />
       <PlanVisit points={home.visit} image={home.hero} />
-      <GiveBand />
     </>
   );
 }

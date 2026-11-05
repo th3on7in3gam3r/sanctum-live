@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { listEvents, listSermons } from '@/lib/api';
 import { siteEnv } from '@/lib/env';
 
-const paths = ['', '/about', '/leadership', '/ministries', '/huddles', '/beliefs', '/events', '/gallery', '/sermons', '/visit', '/contact', '/prayer', '/give'];
+const paths = ['', '/about', '/leadership', '/ministries', '/huddles', '/beliefs', '/events', '/gallery', '/sermons', '/visit', '/contact', '/prayer'];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteEnv().siteUrl;

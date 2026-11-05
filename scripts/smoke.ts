@@ -16,7 +16,6 @@ const publicRoutes = [
   '/visit',
   '/contact',
   '/prayer',
-  '/give',
 ];
 
 const failures: string[] = [];

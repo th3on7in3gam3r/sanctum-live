@@ -26,7 +26,7 @@ export function footerNav(prayerUrl: string, oneUrl?: string) {
       { label: 'Live prayer', href: prayerUrl },
       ...(oneUrl ? [{ label: 'PLCC ONE', href: oneUrl }] : []),
       { label: 'Huddles', href: '/huddles' },
-      { label: 'Give', href: '/give' },
+      { label: 'Give', href: 'https://plcc-tithe.vercel.app/' },
       { label: 'Events', href: '/events' },
     ],
     explore: [
