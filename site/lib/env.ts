@@ -18,7 +18,7 @@ export function siteEnv(): SiteEnv {
     apiUrl: trimSlash(process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001'),
     orgSlug: process.env.ORG_SLUG || 'promised-land-christian-center',
     revalidateSecret,
-    sanctumAppUrl: trimSlash(process.env.SANCTUM_APP_URL || 'http://127.0.0.1:3000'),
+    sanctumAppUrl: trimSlash(process.env.SANCTUM_APP_URL || 'https://plcc-sanctum.onrender.com'),
     prayerRoomSlug: process.env.PRAYER_ROOM_SLUG || 'promised-land-christian-center',
     siteUrl: trimSlash(process.env.SITE_URL || 'http://127.0.0.1:3002'),
   };

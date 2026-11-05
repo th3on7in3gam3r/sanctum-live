@@ -1,8 +1,10 @@
+import type React from 'react';
 import { Reveal } from '@/components/home/Reveal';
 
-const TILES = [
+const TILES: { title: string; body: string; icon: React.ReactNode; prayer?: boolean }[] = [
   {
     title: 'Live prayer',
+    prayer: true,
     body: 'Join Morning Glory, Midnight Watch and the Friday intercessors by voice, from anywhere.',
     icon: (
       <>
@@ -37,7 +39,7 @@ const TILES = [
 ];
 
 /** Invites members into PLCC ONE (live prayer, chat, connect, giving under one sign-in). */
-export function OneBand({ oneUrl }: { oneUrl: string }) {
+export function OneBand({ oneUrl, prayerUrl }: { oneUrl: string; prayerUrl: string }) {
   return (
     <section id="plcc-one" className="bg-forest-950 px-4 py-24 text-cream sm:px-6">
       <Reveal className="mx-auto flex max-w-6xl flex-col gap-12">
@@ -61,12 +63,20 @@ export function OneBand({ oneUrl }: { oneUrl: string }) {
         </div>
         <ul className="grid gap-5 min-[600px]:grid-cols-2 min-[1000px]:grid-cols-4">
           {TILES.map((tile) => (
-            <li key={tile.title} className="flex flex-col gap-3.5 rounded-[22px] border border-gold/30 bg-forest-900 p-7">
+            <li key={tile.title}>
+              <a
+                href={tile.prayer ? prayerUrl : oneUrl}
+                className="flex h-full flex-col gap-3.5 rounded-[22px] border border-gold/30 bg-forest-900 p-7 transition hover:-translate-y-0.5 hover:border-gold/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+              >
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-gold-light" aria-hidden="true">
                 {tile.icon}
               </svg>
               <span className="font-display text-[24px]">{tile.title}</span>
               <span className="text-[15px] leading-relaxed text-muted-dark">{tile.body}</span>
+              <span className="mt-auto pt-2 text-[14px] font-extrabold text-gold-light">
+                {tile.prayer ? 'Join live prayer →' : `Open ${tile.title} →`}
+              </span>
+              </a>
             </li>
           ))}
         </ul>

@@ -11,7 +11,7 @@ import { WeeklyRhythm, pickRhythm } from '@/components/home/WeeklyRhythm';
 import { WordMarquee } from '@/components/home/WordMarquee';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { getLive, listAnnouncements, listEvents, listLeaders, listPublicAlbums, listServiceTimes, listSermons } from '@/lib/api';
-import { plccOneUrl, siteEnv } from '@/lib/env';
+import { plccOneUrl, prayerJoinUrl, siteEnv } from '@/lib/env';
 import { parseHome } from '@/lib/home';
 import { churchJsonLd } from '@/lib/jsonld';
 import { scheduleFromHome, scheduleFromServiceTimes } from '@/lib/schedule';
@@ -65,7 +65,7 @@ export default async function HomePage() {
       <PastorWelcome text={home.welcome} photo={pastor?.photoUrl} photoAlt={pastor?.name} />
       {home.scripture ? <Scripture scripture={home.scripture} /> : null}
       <Story />
-      <OneBand oneUrl={oneUrl} />
+      <OneBand oneUrl={oneUrl} prayerUrl={prayerJoinUrl()} />
       <PhotoStrip photos={photos} />
       <MessageAndEvents sermon={latest} events={events.slice(0, 3)} />
       <PlanVisit points={home.visit} image={home.hero} />
