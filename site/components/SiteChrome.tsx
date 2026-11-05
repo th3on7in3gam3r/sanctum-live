@@ -7,6 +7,7 @@ import { BrandLockup } from '@plcc/brand/BrandLockup';
 import { BRAND } from '@plcc/brand/brand';
 import { church } from '@/lib/church';
 import { footerNav, MAIN_NAV, type NavLink } from '@/lib/nav';
+import { SocialIcons } from '@/components/SocialIcons';
 
 function LiveDot({ pulse = false }: { pulse?: boolean }) {
   return <span className={`inline-block h-2 w-2 rounded-full bg-live ${pulse ? 'live-pulse' : ''}`} aria-hidden="true" />;
@@ -69,7 +70,11 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
                 </NavAnchor>
               );
             })}
-            {livePrayer ? (
+            {oneUrl ? (
+              <NavAnchor link={{ label: 'Sign in', href: oneUrl }} className="site-button border border-sand/40 px-4 text-on-dark">
+                {liveNow ? <LiveDot pulse /> : null} {liveNow ? 'Live now' : 'Sign in'}
+              </NavAnchor>
+            ) : livePrayer ? (
               <NavAnchor link={livePrayer} className="site-button border border-sand/40 px-4 text-on-dark">
                 <LiveDot pulse={liveNow} /> {liveNow ? 'Live now' : livePrayer.label}
               </NavAnchor>
@@ -103,6 +108,7 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
                 </NavAnchor>
               );
             })}
+            {oneUrl ? <NavAnchor link={{ label: 'Sign in to PLCC ONE', href: oneUrl }} onClick={() => setOpen(false)}>Sign in to PLCC ONE</NavAnchor> : null}
             {livePrayer ? <NavAnchor link={livePrayer} onClick={() => setOpen(false)}>{livePrayer.label}</NavAnchor> : null}
             {give ? <NavAnchor link={give} onClick={() => setOpen(false)}>{give.label}</NavAnchor> : null}
           </nav>
@@ -122,6 +128,7 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
               ))}
             </p>
             <a href={`mailto:${church.email}`} className="mt-2 inline-block hover:text-gold-light">{church.email}</a>
+            <SocialIcons className="mt-5" />
           </div>
           <FooterColumn title="Gather" links={footer.gather} />
           <FooterColumn title="Explore" links={footer.explore} />

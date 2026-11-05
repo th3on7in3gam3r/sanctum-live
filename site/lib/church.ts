@@ -19,5 +19,8 @@ export const church = {
   youtubeLabel: '@PLCCGRACELOVE',
   tiktok: 'https://www.tiktok.com/@gracelovehiire',
   tiktokLabel: '@gracelovehiire',
+  /** Add the church's page links here to show their icons. */
+  facebook: '',
+  instagram: '',
   pastor: 'Pastor GraceLove Hiire, Senior Pastor',
 };

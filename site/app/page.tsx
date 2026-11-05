@@ -1,16 +1,17 @@
 import { JsonLd } from '@/components/JsonLd';
-import { Gather } from '@/components/home/Gather';
+import { GiveBand } from '@/components/home/GiveBand';
 import { Hero } from '@/components/home/Hero';
 import { MessageAndEvents } from '@/components/home/MessageAndEvents';
+import { OneBand } from '@/components/home/OneBand';
 import { PastorWelcome } from '@/components/home/PastorWelcome';
 import { PhotoStrip, type StripPhoto } from '@/components/home/PhotoStrip';
-import { WordMarquee } from '@/components/home/WordMarquee';
 import { PlanVisit } from '@/components/home/PlanVisit';
-import { SanctumBand } from '@/components/home/SanctumBand';
 import { Scripture } from '@/components/home/Scripture';
+import { Story } from '@/components/home/Story';
+import { WeeklyRhythm, pickRhythm } from '@/components/home/WeeklyRhythm';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { getLive, listAnnouncements, listEvents, listLeaders, listPublicAlbums, listServiceTimes, listSermons } from '@/lib/api';
-import { plccOneUrl, prayerJoinUrl, siteEnv } from '@/lib/env';
+import { plccOneUrl, siteEnv } from '@/lib/env';
 import { parseHome } from '@/lib/home';
 import { churchJsonLd } from '@/lib/jsonld';
 import { scheduleFromHome, scheduleFromServiceTimes } from '@/lib/schedule';
@@ -33,9 +34,8 @@ export default async function HomePage() {
   const home = parseHome(page);
   const schedule = serviceTimes.length ? scheduleFromServiceTimes(serviceTimes) : scheduleFromHome(home.times);
   const week = schedule.filter((item) => item.featured);
-  const prayerUrl = prayerJoinUrl();
-  const liveRoom = live?.rooms?.find((room) => room.status === 'LIVE');
-  const liveUrl = liveRoom ? `${siteEnv().sanctumAppUrl}/join/${liveRoom.slug}` : prayerUrl;
+  const nextService = week.find((item) => item.day === 'SUN') ?? week[0] ?? null;
+  const oneUrl = plccOneUrl();
   const latest = sermons[0] ?? null;
   const pastor = leaders.find((leader) => leader.photoUrl);
 
@@ -53,21 +53,22 @@ export default async function HomePage() {
   return (
     <>
       <JsonLd data={churchJsonLd(siteEnv().siteUrl, serviceTimes)} />
-      <Hero lead={home.lead} week={week} live={live} liveUrl={liveUrl} oneUrl={plccOneUrl()} messageHref={latest ? `/sermons/${latest.id}` : null} />
-      <WordMarquee />
+      <Hero lead={home.lead} next={nextService} live={live} oneUrl={oneUrl} image={home.hero} />
+      <WeeklyRhythm items={pickRhythm(schedule)} />
       {announcements[0] ? (
         <p className="bg-sand px-4 py-4 text-center text-ink sm:px-6">
           <strong className="mr-2 font-semibold text-gold-ink">Announcement</strong>
           {announcements[0].title}
         </p>
       ) : null}
-      <PhotoStrip photos={photos} />
       <PastorWelcome text={home.welcome} photo={pastor?.photoUrl} photoAlt={pastor?.name} />
       {home.scripture ? <Scripture scripture={home.scripture} /> : null}
-      {schedule.length ? <Gather items={schedule} liveUrl={liveUrl} /> : null}
-      <SanctumBand live={live} oneUrl={plccOneUrl()} />
+      <Story />
+      <OneBand oneUrl={oneUrl} />
+      <PhotoStrip photos={photos} />
       <MessageAndEvents sermon={latest} events={events.slice(0, 3)} />
-      <PlanVisit points={home.visit} />
+      <PlanVisit points={home.visit} image={home.hero} />
+      <GiveBand />
     </>
   );
 }
