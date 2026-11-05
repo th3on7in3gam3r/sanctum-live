@@ -9,6 +9,7 @@ import { PlanVisit } from '@/components/home/PlanVisit';
 import { Scripture } from '@/components/home/Scripture';
 import { Story } from '@/components/home/Story';
 import { WeeklyRhythm, pickRhythm } from '@/components/home/WeeklyRhythm';
+import { WordMarquee } from '@/components/home/WordMarquee';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { getLive, listAnnouncements, listEvents, listLeaders, listPublicAlbums, listServiceTimes, listSermons } from '@/lib/api';
 import { plccOneUrl, siteEnv } from '@/lib/env';
@@ -54,6 +55,7 @@ export default async function HomePage() {
     <>
       <JsonLd data={churchJsonLd(siteEnv().siteUrl, serviceTimes)} />
       <Hero lead={home.lead} next={nextService} live={live} oneUrl={oneUrl} image={home.hero} />
+      <WordMarquee />
       <WeeklyRhythm items={pickRhythm(schedule)} />
       {announcements[0] ? (
         <p className="bg-sand px-4 py-4 text-center text-ink sm:px-6">
