@@ -7,7 +7,7 @@ import { BrandLockup } from '@plcc/brand/BrandLockup';
 import { BRAND } from '@plcc/brand/brand';
 import { church } from '@/lib/church';
 import { footerNav, MAIN_NAV, type NavLink } from '@/lib/nav';
-import { SocialIcons } from '@/components/SocialIcons';
+import { SocialList } from '@/components/SocialIcons';
 
 function LiveDot({ pulse = false }: { pulse?: boolean }) {
   return <span className={`inline-block h-2 w-2 rounded-full bg-live ${pulse ? 'live-pulse' : ''}`} aria-hidden="true" />;
@@ -128,11 +128,13 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
               ))}
             </p>
             <a href={`mailto:${church.email}`} className="mt-2 inline-block hover:text-gold-light">{church.email}</a>
-            <SocialIcons className="mt-5" />
           </div>
           <FooterColumn title="Gather" links={footer.gather} />
           <FooterColumn title="Explore" links={footer.explore} />
-          <FooterColumn title="Follow" links={footer.follow} />
+          <div>
+            <p className="eyebrow">Follow</p>
+            <SocialList className="mt-4" />
+          </div>
         </div>
         <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-2 border-t border-white/10 pt-6 text-sm text-muted-dark min-[900px]:flex-row min-[900px]:justify-between">
           <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
