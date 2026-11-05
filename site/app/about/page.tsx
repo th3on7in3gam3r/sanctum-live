@@ -1,6 +1,4 @@
-import Link from 'next/link';
 import { CtaBand } from '@/components/page/CtaBand';
-import { NumberedItem } from '@/components/page/NumberedItem';
 import { PageHero } from '@/components/page/PageHero';
 import { PhotoTile } from '@/components/page/PhotoTile';
 import { SectionHeader } from '@/components/page/SectionHeader';
@@ -22,10 +20,10 @@ export default async function AboutPage() {
     listLeaders(),
   ]);
   const story = headingPairs(about, ['Mission', 'Vision', 'Story']);
+  const mission = story.find((item) => item.title === 'Mission');
+  const vision = story.find((item) => item.title === 'Vision');
+  const origin = story.find((item) => item.title === 'Story');
   const beliefCells = headingPairs(beliefs).slice(0, 4);
-  const featured = leaders[0];
-  const rest = leaders.slice(1);
-  const featuredBio = featured ? leaderBio(featured) : null;
 
   return (
     <>
@@ -37,46 +35,77 @@ export default async function AboutPage() {
         lede={firstParagraph(about)}
         photo={about.heroImageUrl || '/warm-welcome.jpg'}
       />
+
       <section className="bg-cream px-4 py-20 text-ink sm:px-6">
-        <div className="mx-auto grid max-w-6xl gap-10 min-[900px]:grid-cols-3">
-          {story.map((item, index) => <NumberedItem key={item.title} index={index + 1} title={item.title} text={item.text} />)}
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-xl">
+            <p className="eyebrow">Who we are</p>
+            <h2 className="font-display mt-3 text-[clamp(40px,5vw,56px)] font-light leading-none tracking-[-0.02em]">
+              Mission &amp; vision
+            </h2>
+            <p className="mt-4 text-lg leading-relaxed text-ink/70">
+              Why we gather, and where we believe God is leading this house.
+            </p>
+          </div>
+
+          <div className="mt-12 grid border-t border-ink/15 min-[900px]:grid-cols-2">
+            {mission ? (
+              <article className="border-b border-ink/15 py-8 min-[900px]:border-r min-[900px]:pr-10">
+                <p className="font-display text-lg tabular-nums tracking-wide text-gold">01</p>
+                <h3 className="font-display mt-4 text-3xl font-light tracking-[-0.02em]">{mission.title}</h3>
+                <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink/80">{mission.text}</p>
+              </article>
+            ) : null}
+            {vision ? (
+              <article className="border-b border-ink/15 py-8 min-[900px]:pl-10">
+                <p className="font-display text-lg tabular-nums tracking-wide text-gold">02</p>
+                <h3 className="font-display mt-4 text-3xl font-light tracking-[-0.02em]">{vision.title}</h3>
+                <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink/80">{vision.text}</p>
+              </article>
+            ) : null}
+          </div>
+
+          {origin ? (
+            <article className="mt-16 grid gap-8 border-t border-ink/15 pt-12 min-[900px]:grid-cols-[0.9fr_1.4fr] min-[900px]:gap-14">
+              <div>
+                <p className="font-display text-lg tabular-nums tracking-wide text-gold">03</p>
+                <h3 className="font-display mt-4 text-[clamp(36px,4vw,48px)] font-light leading-none tracking-[-0.02em]">
+                  Our story
+                </h3>
+                <p className="mt-4 text-ink/60">From a bedroom prayer altar to a growing church family.</p>
+              </div>
+              <p className="text-[17px] leading-[1.75] text-ink/85">{origin.text}</p>
+            </article>
+          ) : null}
         </div>
       </section>
+
       <section className="bg-sand px-4 py-20 text-ink sm:px-6">
         <div className="mx-auto max-w-6xl">
           <SectionHeader eyebrow="Leadership" title="Shepherds who" accent="walk with you." />
-          {featured ? (
-            <div className="mt-12 grid items-center gap-10 min-[900px]:grid-cols-2">
-              <PhotoTile
-                src={leaderPhotoUrl(featured)}
-                sizes="(min-width: 900px) 40vw, 100vw"
-                className="min-h-[460px] rounded-[22px]"
-              />
-              <div>
-                <p className="eyebrow">{featured.role}</p>
-                <h3 className="font-display mt-3 text-[52px] font-light leading-none">{featured.name}</h3>
-                {featuredBio ? <p className="mt-5 text-lg leading-relaxed">{featuredBio}</p> : null}
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <a href={church.youtube} className="site-button bg-forest-900 text-on-dark">{church.youtubeLabel}</a>
-                  <a href={church.tiktok} className="site-button border border-ink text-ink">{church.tiktokLabel}</a>
-                </div>
-              </div>
-            </div>
-          ) : null}
-          {rest.length ? (
-            <ul className="mt-14 grid gap-6 min-[900px]:grid-cols-3">
-              {rest.map((leader) => {
+          {leaders.length ? (
+            <ul className="mt-12 grid gap-10 min-[900px]:grid-cols-2 min-[900px]:gap-12">
+              {leaders.map((leader, index) => {
                 const bio = leaderBio(leader);
                 return (
-                  <li key={leader.id}>
+                  <li key={leader.id} className={index > 0 ? 'min-[900px]:border-l min-[900px]:border-ink/10 min-[900px]:pl-12' : ''}>
                     <PhotoTile
                       src={leaderPhotoUrl(leader)}
-                      sizes="(min-width: 900px) 30vw, 100vw"
+                      alt={leader.name}
+                      sizes="(min-width: 900px) 40vw, 100vw"
                       className="aspect-[4/5] rounded-[22px]"
                     />
-                    <p className="font-display mt-4 text-3xl">{leader.name}</p>
-                    <p className="text-gold-ink">{leader.role}</p>
-                    {bio ? <p className="mt-3 leading-relaxed text-ink/80">{bio}</p> : null}
+                    <p className="eyebrow mt-6">{leader.role}</p>
+                    <h3 className="font-display mt-2 text-[clamp(32px,3.5vw,44px)] font-light leading-none tracking-[-0.02em]">
+                      {leader.name}
+                    </h3>
+                    {bio ? <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink/80">{bio}</p> : null}
+                    {index === 0 ? (
+                      <div className="mt-6 flex flex-wrap gap-3">
+                        <a href={church.youtube} className="site-button bg-forest-900 text-on-dark">{church.youtubeLabel}</a>
+                        <a href={church.tiktok} className="site-button border border-ink text-ink">{church.tiktokLabel}</a>
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}
@@ -84,19 +113,27 @@ export default async function AboutPage() {
           ) : null}
         </div>
       </section>
+
       <section className="bg-forest-900 px-4 py-20 text-on-dark sm:px-6">
         <div className="mx-auto max-w-6xl">
           <SectionHeader title="Rooted in the Word." href="/beliefs" linkLabel="Full statement of faith →" dark />
-          <ul className="mt-10 grid min-[900px]:grid-cols-4">
-            {beliefCells.map((cell) => (
-              <li key={cell.title} className="border-t border-white/15 py-6 min-[900px]:border-l min-[900px]:px-5 min-[900px]:first:border-l-0">
-                <p className="font-display text-2xl">{cell.title}</p>
-                <p className="mt-2 text-sand">{cell.text}</p>
+          <ul className="mt-12 grid border-t border-white/15 min-[900px]:grid-cols-2">
+            {beliefCells.map((cell, index) => (
+              <li
+                key={cell.title}
+                className={`border-b border-white/15 py-7 min-[900px]:px-8 ${index % 2 === 0 ? 'min-[900px]:border-r min-[900px]:pl-0' : ''}`}
+              >
+                <p className="font-display text-lg tabular-nums tracking-wide text-gold">
+                  {String(index + 1).padStart(2, '0')}
+                </p>
+                <p className="font-display mt-3 text-2xl font-light tracking-[-0.02em]">{cell.title}</p>
+                <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-sand">{cell.text}</p>
               </li>
             ))}
           </ul>
         </div>
       </section>
+
       <CtaBand
         title="Come and see for yourself."
         primary={{ href: '/visit', label: 'Plan your visit' }}
