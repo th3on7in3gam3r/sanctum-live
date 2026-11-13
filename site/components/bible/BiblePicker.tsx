@@ -23,7 +23,9 @@ export function BiblePicker({
   bookId,
   chapter,
   usedDefaults,
+  labels = { language: 'Language', translation: 'Translation', book: 'Book', chapter: 'Chapter' },
 }: {
+  labels?: { language: string; translation: string; book: string; chapter: string };
   languages: { code: string; label: string }[];
   translations: PickerTranslation[];
   books: PickerBook[];
@@ -58,7 +60,7 @@ export function BiblePicker({
   return (
     <div className="grid gap-3 sm:grid-cols-2 min-[900px]:grid-cols-[1fr_1.4fr_1.3fr_0.7fr]">
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-gold-text">Language</span>
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-gold-text">{labels.language}</span>
         <select
           className={selectClass}
           value={language}
@@ -75,7 +77,7 @@ export function BiblePicker({
         </select>
       </label>
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-gold-text">Translation</span>
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-gold-text">{labels.translation}</span>
         <select
           className={selectClass}
           value={translationId}
@@ -89,7 +91,7 @@ export function BiblePicker({
         </select>
       </label>
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-gold-text">Book</span>
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-gold-text">{labels.book}</span>
         <select
           className={selectClass}
           value={bookId}
@@ -103,7 +105,7 @@ export function BiblePicker({
         </select>
       </label>
       <label className="block">
-        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-gold-text">Chapter</span>
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-[0.16em] text-gold-text">{labels.chapter}</span>
         <select
           className={selectClass}
           value={chapter}

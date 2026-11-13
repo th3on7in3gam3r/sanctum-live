@@ -1,3 +1,4 @@
+import type { Dict } from '@/lib/i18n';
 import Link from 'next/link';
 import { church } from '@/lib/church';
 import { formatKampala } from '@/lib/format';
@@ -27,20 +28,20 @@ function Arrow() {
 }
 
 /** The card beside the headline: the next main service, live prayer status, and the way into PLCC ONE. */
-function ThisWeekCard({ next, live, oneUrl }: { next: ScheduleItem | null; live: PublicLive | null; oneUrl: string }) {
+function ThisWeekCard({ next, live, oneUrl, t }: { next: ScheduleItem | null; live: PublicLive | null; oneUrl: string; t: Dict }) {
   const liveRoom = live?.rooms?.find((room) => room.status === 'LIVE');
   const onAir = live?.status === 'LIVE' || Boolean(liveRoom);
-  const prayerName = liveRoom?.name || live?.name || 'Prayer room';
+  const prayerName = liveRoom?.name || live?.name || t.hero.prayerRoom;
   const when = live?.startsAt ? formatKampala(live.startsAt, { weekday: 'long', hour: 'numeric', minute: '2-digit' }) : null;
 
   return (
     <aside
-      aria-label="This week"
+      aria-label={t.hero.thisWeek}
       className="w-full max-w-[420px] rounded-[24px] border border-gold/45 bg-forest-950/80 p-6 backdrop-blur-sm sm:p-7"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-extrabold tracking-[0.2em] text-gold">{next?.day ? `THIS ${next.day === 'SUN' ? 'SUNDAY' : 'WEEK'}` : 'THIS WEEK'}</p>
-        <p className="text-[13px] text-muted-dark">East Africa Time</p>
+        <p className="text-xs font-extrabold tracking-[0.2em] text-gold">{next?.day === 'SUN' ? t.hero.thisSunday : t.hero.thisWeek}</p>
+        <p className="text-[13px] text-muted-dark">{t.hero.eat}</p>
       </div>
       {next ? (
         <div className="mt-4">
@@ -52,16 +53,16 @@ function ThisWeekCard({ next, live, oneUrl }: { next: ScheduleItem | null; live:
       <p className="flex items-center gap-3 text-[15px] text-sand">
         <LiveDot on={onAir} />
         {onAir ? (
-          <span><strong className="text-cream">{prayerName}</strong> is live now</span>
+          <span><strong className="text-cream">{prayerName}</strong> {t.hero.isLive}</span>
         ) : (
-          <span><strong className="text-cream">Next prayer:</strong> {when ? `${prayerName}, ${when}` : prayerName}</span>
+          <span><strong className="text-cream">{t.hero.nextPrayer}</strong> {when ? `${prayerName}, ${when}` : prayerName}</span>
         )}
       </p>
       <a href={oneUrl} className="site-button mt-5 w-full bg-gold-light font-extrabold text-ink">
-        {onAir ? 'Join live prayer in PLCC ONE' : 'Step into the Promised Land'}
+        {onAir ? t.hero.joinLive : t.hero.stepIn}
       </a>
       <a href={directionsUrl()} className="mt-4 inline-block text-sm font-bold text-gold-light underline-offset-4 hover:underline">
-        {church.address} · Get directions
+        {church.address} · {t.hero.directions}
       </a>
     </aside>
   );
@@ -73,7 +74,11 @@ export function Hero({
   live,
   oneUrl,
   image,
+  t,
+  translated,
 }: {
+  t: Dict;
+  translated: boolean;
   lead: string;
   next: ScheduleItem | null;
   live: PublicLive | null;
@@ -99,22 +104,23 @@ export function Hero({
       />
       <div className="relative mx-auto flex max-w-6xl flex-col gap-12 px-4 pb-20 pt-32 sm:px-6 min-[900px]:flex-row min-[900px]:items-end min-[900px]:pb-24 min-[900px]:pt-44">
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-extrabold tracking-[0.22em] text-gold-light [text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">A PENTECOSTAL FAMILY IN KIRA-KITUKUTWE, WAKISO</p>
+          <p className="text-[13px] font-extrabold tracking-[0.22em] text-gold-light [text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">{t.hero.eyebrow}</p>
           <h1 className="font-display mt-6 max-w-2xl text-[clamp(48px,6.4vw,92px)] font-light leading-[0.98] tracking-[-0.03em] text-cream [text-shadow:0_2px_30px_rgba(0,0,0,0.45)]">
-            Come home to the <em className="italic text-gold-light">land of promise.</em>
+            {t.hero.titleA} <em className="italic text-gold-light">{t.hero.titleB}</em>
           </h1>
           <p className="mt-6 max-w-[520px] text-[19px] leading-relaxed text-sand [text-shadow:0_1px_14px_rgba(0,0,0,0.55)]">
-            {lead || 'Changing hearts. Transforming lives.'}{' '}
-            Worship with us on Sunday, or pray with the church from wherever you are.
+            {/* The church's own lead line (Canaan) is English; other languages use the translated tagline. */}
+            {translated ? t.hero.lead : lead || t.hero.lead}{' '}
+            {t.hero.leadTail}
           </p>
           <div className="mt-9 flex flex-wrap gap-3.5">
-            <Link href="/visit" className="site-button min-h-[52px] bg-gold px-7 text-[16px] font-extrabold text-ink">Plan your visit</Link>
+            <Link href="/visit" className="site-button min-h-[52px] bg-gold px-7 text-[16px] font-extrabold text-ink">{t.hero.planVisit}</Link>
             <a href={oneUrl} className="site-button min-h-[52px] border border-sand/55 bg-forest-950/35 px-7 text-[16px] font-bold text-cream">
-              Step into the Promised Land <Arrow />
+              {t.hero.stepIn} <Arrow />
             </a>
           </div>
         </div>
-        <ThisWeekCard next={next} live={live} oneUrl={oneUrl} />
+        <ThisWeekCard next={next} live={live} oneUrl={oneUrl} t={t} />
       </div>
     </section>
   );

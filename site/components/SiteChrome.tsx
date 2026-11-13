@@ -8,6 +8,8 @@ import { BRAND } from '@plcc/brand/brand';
 import { church } from '@/lib/church';
 import { footerNav, MAIN_NAV, type NavLink } from '@/lib/nav';
 import { SocialList } from '@/components/SocialIcons';
+import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
+import { label, type Dict, type Locale } from '@/lib/i18n';
 
 function LiveDot({ pulse = false }: { pulse?: boolean }) {
   return <span className={`inline-block h-2 w-2 rounded-full bg-live ${pulse ? 'live-pulse' : ''}`} aria-hidden="true" />;
@@ -44,7 +46,7 @@ function NavAnchor({
   );
 }
 
-export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, serviceStrip = [], liveNow = false }: { children: React.ReactNode; prayerUrl: string; oneUrl?: string; staffLoginUrl: string; serviceStrip?: string[]; liveNow?: boolean }) {
+export function SiteChrome({ children, locale, t, prayerUrl, oneUrl, staffLoginUrl, serviceStrip = [], liveNow = false }: { children: React.ReactNode; locale: Locale; t: Dict; prayerUrl: string; oneUrl?: string; staffLoginUrl: string; serviceStrip?: string[]; liveNow?: boolean }) {
   const path = usePathname();
   const home = path === '/';
   const [open, setOpen] = useState(false);
@@ -56,7 +58,7 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
   return (
     <div className={home ? 'bg-forest-900 text-on-dark' : 'bg-cream text-ink'}>
       <a href="#content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-cream focus:px-3 focus:py-2 focus:text-ink">
-        Skip to content
+        {t.skip}
       </a>
       <header className={`z-40 ${home ? 'absolute inset-x-0 top-0' : 'bg-forest-900 text-on-dark'}`}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-5 sm:px-6">
@@ -66,22 +68,25 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
               const current = isCurrent(path, link.href);
               return (
                 <NavAnchor key={link.href} link={link} current={current} className={current ? 'text-gold-light' : 'hover:text-gold-light'}>
-                  {link.label}
+                  {label(t, link.label)}
                 </NavAnchor>
               );
             })}
             {oneUrl ? (
               <NavAnchor link={{ label: 'Sign in', href: oneUrl }} className="site-button border border-sand/40 px-4 text-on-dark">
-                {liveNow ? <LiveDot pulse /> : null} {liveNow ? 'Live now' : 'Sign in'}
+                {liveNow ? <LiveDot pulse /> : null} {liveNow ? t.liveNow : t.signIn}
               </NavAnchor>
             ) : livePrayer ? (
               <NavAnchor link={livePrayer} className="site-button border border-sand/40 px-4 text-on-dark">
-                <LiveDot pulse={liveNow} /> {liveNow ? 'Live now' : livePrayer.label}
+                <LiveDot pulse={liveNow} /> {liveNow ? t.liveNow : label(t, livePrayer.label)}
               </NavAnchor>
             ) : null}
             {give ? (
-              <NavAnchor link={give} className="site-button bg-gold px-4 text-ink">{give.label}</NavAnchor>
+              <NavAnchor link={give} className="site-button bg-gold px-4 text-ink">{label(t, give.label)}</NavAnchor>
             ) : null}
+            <span className="hidden min-[1100px]:block">
+              <LanguageSwitcher locale={locale} label={t.language} />
+            </span>
           </nav>
           <button
             type="button"
@@ -89,7 +94,7 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
             aria-expanded={open}
             onClick={() => setOpen(true)}
           >
-            Menu
+            {t.menu}
           </button>
         </div>
       </header>
@@ -97,21 +102,22 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
         <div className="fixed inset-0 z-50 flex flex-col bg-forest-950 px-6 py-8 text-on-dark min-[900px]:hidden">
           <div className="flex items-center justify-between">
             <BrandLockup size="sm" href="/" />
-            <button type="button" className="site-button border border-sand/40 px-4" onClick={() => setOpen(false)}>Close</button>
+            <button type="button" className="site-button border border-sand/40 px-4" onClick={() => setOpen(false)}>{t.close}</button>
           </div>
           <nav className="mt-10 flex flex-col gap-5 text-3xl font-display" aria-label="Mobile">
             {MAIN_NAV.map((link) => {
               const current = isCurrent(path, link.href);
               return (
                 <NavAnchor key={link.href} link={link} current={current} onClick={() => setOpen(false)} className={current ? 'text-gold-light' : undefined}>
-                  {link.label}
+                  {label(t, link.label)}
                 </NavAnchor>
               );
             })}
-            {oneUrl ? <NavAnchor link={{ label: 'Sign in to PLCC ONE', href: oneUrl }} onClick={() => setOpen(false)}>Sign in to PLCC ONE</NavAnchor> : null}
-            {livePrayer ? <NavAnchor link={livePrayer} onClick={() => setOpen(false)}>{livePrayer.label}</NavAnchor> : null}
-            {give ? <NavAnchor link={give} onClick={() => setOpen(false)}>{give.label}</NavAnchor> : null}
+            {oneUrl ? <NavAnchor link={{ label: 'Sign in to PLCC ONE', href: oneUrl }} onClick={() => setOpen(false)}>{t.signInOne}</NavAnchor> : null}
+            {livePrayer ? <NavAnchor link={livePrayer} onClick={() => setOpen(false)}>{label(t, livePrayer.label)}</NavAnchor> : null}
+            {give ? <NavAnchor link={give} onClick={() => setOpen(false)}>{label(t, give.label)}</NavAnchor> : null}
           </nav>
+          <LanguageSwitcher locale={locale} label={t.language} variant="list" className="mt-auto pt-10" />
         </div>
       ) : null}
       <main id="content">{children}</main>
@@ -129,19 +135,20 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
             </p>
             <a href={`mailto:${church.email}`} className="mt-2 inline-block hover:text-gold-light">{church.email}</a>
           </div>
-          <FooterColumn title="Gather" links={footer.gather} />
-          <FooterColumn title="Explore" links={footer.explore} />
+          <FooterColumn title={t.footer.gather} links={footer.gather} t={t} />
+          <FooterColumn title={t.footer.explore} links={footer.explore} t={t} />
           <div>
-            <p className="eyebrow">Follow</p>
+            <p className="eyebrow">{t.footer.follow}</p>
             <SocialList className="mt-4" />
+            <LanguageSwitcher locale={locale} label={t.language} variant="list" className="mt-8" />
           </div>
         </div>
         <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-2 border-t border-white/10 pt-6 text-sm text-muted-dark min-[900px]:flex-row min-[900px]:justify-between">
           <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <span>© {new Date().getFullYear()} {church.name}</span>
-            <a href={staffLoginUrl} className="text-xs text-on-dark/40 hover:text-on-dark/70">Staff sign in</a>
+            <a href={staffLoginUrl} className="text-xs text-on-dark/40 hover:text-on-dark/70">{t.footer.staffSignIn}</a>
           </p>
-          <p>Times shown in East Africa Time.</p>
+          <p>{t.footer.times}</p>
         </div>
       </footer>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-white/10 bg-forest-950 text-on-dark min-[900px]:hidden" aria-label="Quick actions">
@@ -153,7 +160,7 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
               ? 'min-h-14 bg-gold text-center text-sm font-semibold leading-[3.5rem] text-ink'
               : 'min-h-14 text-center text-sm font-semibold leading-[3.5rem]'}
           >
-            {link.label === 'Live prayer' ? <LiveDot pulse={liveNow} /> : null} {link.label === 'Live prayer' && liveNow ? 'Live now' : link.label}
+            {link.label === 'Live prayer' ? <LiveDot pulse={liveNow} /> : null} {link.label === 'Live prayer' && liveNow ? t.liveNow : label(t, link.label)}
           </NavAnchor>
         ))}
       </nav>
@@ -161,14 +168,14 @@ export function SiteChrome({ children, prayerUrl, oneUrl, staffLoginUrl, service
   );
 }
 
-function FooterColumn({ title, links }: { title: string; links: NavLink[] }) {
+function FooterColumn({ title, links, t }: { title: string; links: NavLink[]; t: Dict }) {
   return (
     <div>
       <p className="eyebrow">{title}</p>
       <ul className="mt-4 space-y-2 text-sand">
         {links.map((link) => (
           <li key={link.label}>
-            <NavAnchor link={link} className="hover:text-gold-light">{link.label}</NavAnchor>
+            <NavAnchor link={link} className="hover:text-gold-light">{label(t, link.label)}</NavAnchor>
           </li>
         ))}
       </ul>

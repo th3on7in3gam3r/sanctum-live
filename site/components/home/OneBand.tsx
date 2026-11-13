@@ -1,11 +1,12 @@
+import { fill, label, type Dict } from '@/lib/i18n';
 import type React from 'react';
 import { Reveal } from '@/components/home/Reveal';
 
-const TILES: { title: string; body: string; icon: React.ReactNode; prayer?: boolean }[] = [
+const TILES: { title: string; body: keyof Pick<Dict['one'], 'prayerBody' | 'chatBody' | 'connectBody' | 'titheBody'>; icon: React.ReactNode; prayer?: boolean }[] = [
   {
     title: 'Live prayer',
     prayer: true,
-    body: 'Join Morning Glory, Midnight Watch and the Friday intercessors by voice, from anywhere.',
+    body: 'prayerBody',
     icon: (
       <>
         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
@@ -16,12 +17,12 @@ const TILES: { title: string; body: string; icon: React.ReactNode; prayer?: bool
   },
   {
     title: 'PLCC Chat',
-    body: 'Ministry groups, announcements and prayer requests, in one safe place for the church.',
+    body: 'chatBody',
     icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
   },
   {
     title: 'PLCC Connect',
-    body: 'Your profile, family, events and sermon notes. Celebrate birthdays with the church family.',
+    body: 'connectBody',
     icon: (
       <>
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -33,28 +34,28 @@ const TILES: { title: string; body: string; icon: React.ReactNode; prayer?: bool
   },
   {
     title: 'PLCC Tithe',
-    body: 'Give your tithe and offerings securely, and see your giving history any time.',
+    body: 'titheBody',
     icon: <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z" />,
   },
 ];
 
 /** Invites members into PLCC ONE (live prayer, chat, connect, giving under one sign-in). */
-export function OneBand({ oneUrl, prayerUrl }: { oneUrl: string; prayerUrl: string }) {
+export function OneBand({ oneUrl, prayerUrl, t }: { oneUrl: string; prayerUrl: string; t: Dict }) {
   return (
     <section id="plcc-one" className="bg-forest-950 px-4 py-24 text-cream sm:px-6">
       <Reveal className="mx-auto flex max-w-6xl flex-col gap-12">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="min-w-0 max-w-2xl">
-            <p className="text-[13px] font-extrabold tracking-[0.22em] text-gold">PLCC ONE · ONE SIGN-IN FOR YOUR CHURCH LIFE</p>
+            <p className="text-[13px] font-extrabold tracking-[0.22em] text-gold">{t.one.eyebrow}</p>
             <h2 className="font-display mt-5 text-[clamp(38px,4.4vw,62px)] font-light leading-[1.05] tracking-[-0.02em]">
-              Your church family, <em className="italic text-gold-light">in your pocket.</em>
+              {t.one.titleA} <em className="italic text-gold-light">{t.one.titleB}</em>
             </h2>
             <p className="mt-5 max-w-[560px] text-lg leading-relaxed text-muted-dark">
-              Pray together live, keep up with the family, and give, all from your phone. No app to install.
+              {t.one.body}
             </p>
           </div>
           <a href={oneUrl} className="site-button min-h-[54px] bg-gold px-8 text-[16px] font-extrabold text-ink">
-            Step into the Promised Land
+            {t.hero.stepIn}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M5 12h14" />
               <path d="M13 6l6 6-6 6" />
@@ -71,10 +72,10 @@ export function OneBand({ oneUrl, prayerUrl }: { oneUrl: string; prayerUrl: stri
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-gold-light" aria-hidden="true">
                 {tile.icon}
               </svg>
-              <span className="font-display text-[24px]">{tile.title}</span>
-              <span className="text-[15px] leading-relaxed text-muted-dark">{tile.body}</span>
+              <span className="font-display text-[24px]">{tile.prayer ? label(t, 'Live prayer') : tile.title}</span>
+              <span className="text-[15px] leading-relaxed text-muted-dark">{t.one[tile.body]}</span>
               <span className="mt-auto pt-2 text-[14px] font-extrabold text-gold-light">
-                {tile.prayer ? 'Join live prayer →' : `Open ${tile.title} →`}
+                {tile.prayer ? t.one.joinLive : fill(t.one.open, { app: tile.title })}
               </span>
               </a>
             </li>

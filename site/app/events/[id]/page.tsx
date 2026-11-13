@@ -7,6 +7,7 @@ import { PublicForm } from '@/components/PublicForm';
 import Link from 'next/link';
 import { getEvent, listPublicAlbums } from '@/lib/api';
 import { submitRsvp } from '@/lib/actions';
+import { getDictionary } from '@/lib/locale';
 import { siteEnv } from '@/lib/env';
 import { eventJsonLd, eventWhen } from '@/lib/jsonld';
 
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function EventDetailPage({ params }: Params) {
   const { id } = await params;
-  const event = await getEvent(id);
+  const [event, { t }] = await Promise.all([getEvent(id), getDictionary()]);
   if (!event) notFound();
   const albums = await listPublicAlbums(`?eventId=${event.id}`);
 
@@ -47,20 +48,21 @@ export default async function EventDetailPage({ params }: Params) {
               </div>
             </div>
           ) : null}
-          <a href={`/events/${event.id}/calendar`} className="site-button border border-ink text-ink">Add to calendar</a>
+          <a href={`/events/${event.id}/calendar`} className="site-button border border-ink text-ink">{t.rsvp.calendar}</a>
         </div>
         {event.rsvpEnabled ? (
           <section id="rsvp" className="space-y-3">
-            <h2 className="font-display text-4xl font-normal">I'm coming</h2>
+            <h2 className="font-display text-4xl font-normal">{t.rsvp.heading}</h2>
             <PublicForm
               action={submitRsvp}
               formId="rsvp"
-              submitLabel="Save my place"
+              t={t}
+              submitLabel={t.rsvp.save}
               hidden={{ eventId: event.id }}
               fields={[
-                { name: 'name', label: 'Name', required: true },
-                { name: 'phone', label: 'Phone', type: 'tel', required: true },
-                { name: 'count', label: 'How many people', type: 'number', min: 1, max: 20, required: true, defaultValue: '1' },
+                { name: 'name', label: t.form.name, required: true },
+                { name: 'phone', label: t.form.phone, type: 'tel', required: true },
+                { name: 'count', label: t.rsvp.howMany, type: 'number', min: 1, max: 20, required: true, defaultValue: '1' },
               ]}
             />
           </section>

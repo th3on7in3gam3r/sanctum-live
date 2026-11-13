@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { idleFormState, type FormState } from '@/lib/form';
 import { DEFAULT_PHONE_COUNTRY, phoneCountries } from '@/lib/phone';
+import type { Dict } from '@/lib/i18n';
 
 const PHONE_COUNTRIES = phoneCountries();
 
@@ -23,7 +24,9 @@ export function PublicForm({
   submitLabel,
   hidden,
   formId = 'form',
+  t,
 }: {
+  t: Dict;
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   fields: PublicField[];
   submitLabel: string;
@@ -35,7 +38,7 @@ export function PublicForm({
   if (state.status === 'success') {
     return (
       <p className="rounded-3xl bg-forest-900 px-5 py-4 text-on-dark" role="status">
-        {state.message || 'Thank you. We received that.'}
+        {state.message || t.form.thanks}
       </p>
     );
   }
@@ -76,18 +79,18 @@ export function PublicForm({
               <div className="mt-1 flex gap-2">
                 <select
                   name={`${field.name}Country`}
-                  aria-label={`${field.label} country`}
+                  aria-label={`${field.label} ${t.form.country}`}
                   defaultValue={DEFAULT_PHONE_COUNTRY}
                   className="w-[8.5rem] shrink-0 rounded-2xl border border-ink/15 bg-sand px-3 py-3 text-base"
                 >
-                  <optgroup label="Common">
+                  <optgroup label={t.form.common}>
                     {PHONE_COUNTRIES.preferred.map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.name} ({c.dial})
                       </option>
                     ))}
                   </optgroup>
-                  <optgroup label="All countries">
+                  <optgroup label={t.form.allCountries}>
                     {PHONE_COUNTRIES.others.map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.name} ({c.dial})
@@ -111,7 +114,7 @@ export function PublicForm({
                 </span>
               ) : (
                 <span className="mt-1 block text-xs font-normal text-ink/55">
-                  Outside Uganda? Pick your country, or type the number with its + code.
+                  {t.form.phoneHint}
                 </span>
               )}
             </div>
@@ -122,7 +125,7 @@ export function PublicForm({
             {field.label}
             {field.type === 'textarea' ? <textarea {...shared} rows={4} /> : field.type === 'select' ? (
               <select {...shared} defaultValue={field.defaultValue || ''}>
-                <option value="">Choose a service</option>
+                <option value="">{t.visit.chooseService}</option>
                 {(field.options || []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             ) : (
@@ -148,7 +151,7 @@ export function PublicForm({
         disabled={pending}
         className="site-button bg-gold text-ink disabled:opacity-60"
       >
-        {pending ? 'Sending…' : submitLabel}
+        {pending ? t.form.sending : submitLabel}
       </button>
     </form>
   );

@@ -7,6 +7,7 @@ import { getPage, listFaqs, listServiceTimes } from '@/lib/api';
 import { clock, homeStrip } from '@/lib/schedule';
 import { church } from '@/lib/church';
 import { parseHome } from '@/lib/home';
+import { getDictionary } from '@/lib/locale';
 
 export const metadata: Metadata = {
   title: 'Plan a visit',
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function VisitPage() {
-  const [home, faqs, serviceTimes] = await Promise.all([getPage('home'), listFaqs(), listServiceTimes()]);
+  const [home, faqs, serviceTimes, { t }] = await Promise.all([getPage('home'), listFaqs(), listServiceTimes(), getDictionary()]);
   const parsed = home ? parseHome(home) : null;
   const times = serviceTimes.length
     ? serviceTimes.map((time) => ({ day: time.weekday || time.cadence, time: clock(time), name: time.name, line: time.place || time.note || '' }))
@@ -25,9 +26,9 @@ export default async function VisitPage() {
     <>
       <PageHero
         variant="split"
-        eyebrow="Visit"
-        title="We've saved you a"
-        accent="seat."
+        eyebrow={t.visit.pageEyebrow}
+        title={t.visit.titleA.replace('’', "'")}
+        accent={t.visit.titleB}
         lede={(serviceTimes.length ? homeStrip(serviceTimes) : times.map((item) => item.name)).join(' · ') || church.address}
         photo={home?.heroImageUrl || '/visit-welcome.jpg'}
       >
@@ -36,12 +37,12 @@ export default async function VisitPage() {
       <section className="bg-cream px-4 py-20 text-ink sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-xl">
-            <p className="eyebrow">First Sunday</p>
+            <p className="eyebrow">{t.visit.firstSunday}</p>
             <h2 className="font-display mt-3 text-[clamp(40px,5vw,56px)] font-light leading-none tracking-[-0.02em]">
-              What to expect
+              {t.visit.expect}
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-ink/70">
-              A few simple things so your first visit feels easy and clear.
+              {t.visit.expectLede}
             </p>
           </div>
           <ol className="mt-12 grid border-t border-ink/15 min-[760px]:grid-cols-2">
@@ -64,28 +65,29 @@ export default async function VisitPage() {
           <PublicForm
             action={submitVisitor}
             fields={[
-              { name: 'name', label: 'Name', required: true },
-              { name: 'phone', label: 'Phone', type: 'tel', required: true },
-              { name: 'email', label: 'Email (optional)', type: 'email' },
+              { name: 'name', label: t.form.name, required: true },
+              { name: 'phone', label: t.form.phone, type: 'tel', required: true },
+              { name: 'email', label: t.form.emailOptional, type: 'email' },
               {
                 name: 'service',
-                label: 'Which service',
+                label: t.visit.whichService,
                 type: 'select',
                 options: times.map((item) => ({ value: `${item.name} ${item.time}`, label: `${item.name} · ${item.time}` })),
               },
-              { name: 'message', label: 'Anything we should know', type: 'textarea' },
+              { name: 'message', label: t.visit.anything, type: 'textarea' },
             ]}
-            submitLabel="Save my seat"
+            t={t}
+            submitLabel={t.visit.saveSeat}
             hidden={{ source: 'PLAN_A_VISIT' }}
             formId="visit"
           />
-          <FindUs />
+          <FindUs t={t} />
         </div>
       </section>
       {faqs.length ? (
         <section className="bg-cream px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-3xl">
-            <h2 className="font-display text-5xl font-light text-ink">Questions</h2>
+            <h2 className="font-display text-5xl font-light text-ink">{t.visit.questions}</h2>
             <div className="mt-6 divide-y divide-ink/15 border-y border-ink/15">
               {faqs.map((faq) => (
                 <details key={faq.id} className="py-4">

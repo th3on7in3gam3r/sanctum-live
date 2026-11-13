@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { BiblePicker } from '@/components/bible/BiblePicker';
 import { ChapterText } from '@/components/bible/ChapterText';
 import { PageHero } from '@/components/page/PageHero';
+import { getDictionary } from '@/lib/locale';
+import { fill, LOCALE_BIBLE_LANGUAGE, type Locale } from '@/lib/i18n';
 import {
   BIBLE_LANGUAGES,
   bibleHref,
@@ -33,9 +35,12 @@ type Resolved = {
   usedDefaults: boolean;
 };
 
-async function resolve(params: { t?: string; b?: string; c?: string }): Promise<Resolved> {
+async function resolve(params: { t?: string; b?: string; c?: string }, locale: Locale): Promise<Resolved> {
   const translations = await listBibleTranslations();
-  const translation = translations.find((t) => t.id === params.t) ?? defaultTranslation(translations);
+  // No translation in the link: open in the visitor's site language when the Bible exists in it.
+  const preferred =
+    locale === 'en' ? undefined : translations.find((t) => t.language === LOCALE_BIBLE_LANGUAGE[locale] && t.numberOfBooks >= 66);
+  const translation = translations.find((t) => t.id === params.t) ?? preferred ?? defaultTranslation(translations);
   if (!translation) throw new Error('No Bible translations are available right now.');
   const books = await listBibleBooks(translation.id);
   // Keep the same book when switching translations; fall back if this translation lacks it (e.g. NT only).
@@ -74,10 +79,11 @@ function chapterLink(
 
 export default async function BiblePage({ searchParams }: Search) {
   const params = await searchParams;
+  const { locale, t } = await getDictionary();
   let data: Resolved | null = null;
   let failure = '';
   try {
-    data = await resolve(params);
+    data = await resolve(params, locale);
   } catch (error) {
     failure = error instanceof Error ? error.message : 'The Bible is unavailable right now.';
   }
@@ -95,13 +101,9 @@ export default async function BiblePage({ searchParams }: Search) {
     <>
       <PageHero
         variant="centered"
-        eyebrow="The Bible"
-        title="Read the Word"
-        lede={
-          languageNames
-            ? `Read the Scriptures in ${languageNames} and more, wherever you are.`
-            : 'Read the Scriptures in your language, wherever you are.'
-        }
+        eyebrow={t.bible.eyebrow}
+        title={t.bible.title}
+        lede={languageNames ? fill(t.bible.lede, { langs: languageNames }) : t.bible.ledeShort}
       />
       <section className="bg-cream px-4 pb-20 pt-10 text-ink sm:px-6">
         <div className="mx-auto max-w-5xl">
@@ -121,6 +123,12 @@ export default async function BiblePage({ searchParams }: Search) {
                   bookId={data.chapter.book.id}
                   chapter={data.chapter.chapter}
                   usedDefaults={data.usedDefaults}
+                  labels={{
+                    language: t.bible.language,
+                    translation: t.bible.translation,
+                    book: t.bible.book,
+                    chapter: t.bible.chapter,
+                  }}
                 />
               </div>
 
@@ -171,7 +179,7 @@ export default async function BiblePage({ searchParams }: Search) {
 
               <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-ink/55">
                 {data.chapter.translation.licenseNotice ? `${data.chapter.translation.licenseNotice} ` : ''}
-                Text courtesy of the{' '}
+                {t.bible.courtesy}{' '}
                 <a href="https://bible.helloao.org" className="underline" rel="noopener" target="_blank">
                   Free Use Bible API
                 </a>
@@ -180,10 +188,10 @@ export default async function BiblePage({ searchParams }: Search) {
             </>
           ) : (
             <div className="mx-auto max-w-xl rounded-3xl border border-ink/10 bg-white p-8 text-center">
-              <p className="font-display text-2xl text-forest-800">The Bible is resting for a moment.</p>
-              <p className="mt-2 text-ink/70">{failure} Please try again shortly.</p>
+              <p className="font-display text-2xl text-forest-800">{t.bible.resting}</p>
+              <p className="mt-2 text-ink/70">{failure} {t.bible.later}</p>
               <Link href="/bible" className="mt-6 inline-flex min-h-[48px] items-center rounded-full bg-forest-800 px-6 font-bold text-cream">
-                Try again
+                {t.bible.tryAgain}
               </Link>
             </div>
           )}
