@@ -10,6 +10,8 @@ import { listSermons, type PublicSermon } from '@/lib/api';
 import { church } from '@/lib/church';
 import { formatDay } from '@/lib/format';
 import { youtubeId } from '@/lib/youtube';
+import { getDictionary } from '@/lib/locale';
+import { label } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   title: 'Messages',
@@ -61,7 +63,8 @@ function SermonCard({ sermon }: { sermon: PublicSermon }) {
 }
 
 export default async function SermonsPage({ searchParams }: Search) {
-  const params = await searchParams;
+  const [params, { t }] = await Promise.all([searchParams, getDictionary()]);
+  const s = t.pages.sermons;
   const sermons = await listSermons();
   const series = params.series?.trim() || '';
   const speaker = params.speaker?.trim() || '';
@@ -84,12 +87,12 @@ export default async function SermonsPage({ searchParams }: Search) {
         <PageHero
           fitTitle
           variant="split"
-          eyebrow="Messages"
+          eyebrow={label(t, 'Messages')}
           title={latest.title}
           lede={`${formatDay(latest.preachedOn)}${latest.scripture ? ` · ${latest.scripture}` : ''}`}
           aside={
             <div className="relative">
-              <span className="absolute left-4 top-4 z-10 rounded-full bg-gold px-3 py-1 text-xs font-semibold text-ink">Latest</span>
+              <span className="absolute left-4 top-4 z-10 rounded-full bg-gold px-3 py-1 text-xs font-semibold text-ink">{s.latest}</span>
               {latest.youtubeUrl ? <YoutubeFacade url={latest.youtubeUrl} title={latest.title} /> : <SermonThumb sermon={latest} sizes="(min-width: 900px) 40vw, 100vw" />}
             </div>
           }
@@ -97,39 +100,39 @@ export default async function SermonsPage({ searchParams }: Search) {
           <p className="mt-4 text-sand">{latest.speaker}{latest.seriesName ? ` · ${latest.seriesName}` : ''}</p>
           {latest.youtubeUrl || latest.audioUrl ? (
             <div className="mt-6 flex flex-wrap gap-3">
-              {latest.youtubeUrl ? <Link href={`/sermons/${latest.id}`} className="site-button bg-gold text-ink">Watch</Link> : null}
-              {latest.audioUrl ? <a href={latest.audioUrl} className="site-button border border-sand text-on-dark">Listen</a> : null}
+              {latest.youtubeUrl ? <Link href={`/sermons/${latest.id}`} className="site-button bg-gold text-ink">{t.messages.watch}</Link> : null}
+              {latest.audioUrl ? <a href={latest.audioUrl} className="site-button border border-sand text-on-dark">{t.messages.listen}</a> : null}
             </div>
           ) : null}
         </PageHero>
       ) : (
-        <PageHero variant="centered" eyebrow="Messages" title="Messages" lede="Sermons will be published here." />
+        <PageHero variant="centered" eyebrow={label(t, 'Messages')} title={label(t, 'Messages')} lede={s.soon} />
       )}
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-4 border-b border-white/15 pb-6 min-[900px]:flex-row min-[900px]:items-end min-[900px]:justify-between">
           <div className="flex flex-wrap gap-2">
-            <Link href={sermonQuery('', speaker)} className={`site-button px-4 text-sm ${series ? 'border border-sand/40' : 'bg-gold text-ink'}`}>All series</Link>
+            <Link href={sermonQuery('', speaker)} className={`site-button px-4 text-sm ${series ? 'border border-sand/40' : 'bg-gold text-ink'}`}>{s.allSeries}</Link>
             {seriesNames.map((name) => (
               <Link key={name} href={sermonQuery(name, speaker)} className={`site-button px-4 text-sm ${series === name ? 'bg-gold text-ink' : 'border border-sand/40'}`}>{name}</Link>
             ))}
           </div>
-          <SpeakerFilter speakers={speakers} speaker={speaker} series={series} />
+          <SpeakerFilter speakers={speakers} speaker={speaker} series={series} labels={{ speaker: s.speaker, all: s.allSpeakers }} />
           <noscript>
             <form method="get" action="/sermons" className="flex items-end gap-3">
               {series ? <input type="hidden" name="series" value={series} /> : null}
-              <label className="text-sm font-semibold text-sand" htmlFor="speaker-fallback">Speaker</label>
+              <label className="text-sm font-semibold text-sand" htmlFor="speaker-fallback">{s.speaker}</label>
               <select id="speaker-fallback" name="speaker" defaultValue={speaker} className="rounded-full border border-sand/40 bg-transparent px-4 py-2 text-on-dark">
-                <option value="">All speakers</option>
+                <option value="">{s.allSpeakers}</option>
                 {speakers.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
-              <button type="submit" className="site-button border border-sand/40 px-4 text-sm text-on-dark">Apply</button>
+              <button type="submit" className="site-button border border-sand/40 px-4 text-sm text-on-dark">{s.apply}</button>
             </form>
           </noscript>
         </div>
         {shown.length === 0 ? (
           <div className="mt-12 rounded-[26px] border border-white/10 px-6 py-16 text-center">
-            <p className="font-display text-4xl font-light">No messages in this series yet</p>
-            <Link href="/sermons" className="site-button mt-6 inline-flex border border-sand text-on-dark">See all messages</Link>
+            <p className="font-display text-4xl font-light">{s.noneInSeries}</p>
+            <Link href="/sermons" className="site-button mt-6 inline-flex border border-sand text-on-dark">{s.seeAll}</Link>
           </div>
         ) : (
           <ul className="mt-8 grid gap-8 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
@@ -140,13 +143,13 @@ export default async function SermonsPage({ searchParams }: Search) {
         )}
         {shown.length < visible.length ? (
           <div className="mt-10">
-            <LoadMore href={sermonQuery(series, speaker, page + 1)} />
+            <LoadMore href={sermonQuery(series, speaker, page + 1)} label={s.loadMore} />
           </div>
         ) : null}
         <section className="mt-16 rounded-[26px] border border-white/10 p-8">
-          <h2 className="font-display text-4xl font-light">Every message, on YouTube.</h2>
-          <p className="mt-3 text-sand">Subscribe to PLCC GRACELOVE so you never miss a Sunday.</p>
-          <a href={church.youtube} className="site-button mt-6 bg-gold text-ink">Open the YouTube channel</a>
+          <h2 className="font-display text-4xl font-light">{s.youtubeTitle}</h2>
+          <p className="mt-3 text-sand">{s.youtubeBody}</p>
+          <a href={church.youtube} className="site-button mt-6 bg-gold text-ink">{s.youtubeCta}</a>
         </section>
       </div>
     </div>

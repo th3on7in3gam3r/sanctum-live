@@ -33,16 +33,16 @@ export default async function EventDetailPage({ params }: Params) {
   return (
     <article>
       <JsonLd data={eventJsonLd(event, `${siteEnv().siteUrl}/events/${event.id}`)} />
-      <PageHero fitTitle variant="split" eyebrow="Event" title={event.title} lede={eventWhen(event)} photo={event.imageUrl} />
+      <PageHero fitTitle variant="split" eyebrow={t.pages.events.event} title={event.title} lede={eventWhen(event)} photo={event.imageUrl} />
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 min-[900px]:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-4 text-lg leading-relaxed">
           <p className="font-semibold">{event.location}</p>
-          {event.prayerRoom ? <p className="text-gold-ink">Also live on Sanctum</p> : null}
+          {event.prayerRoom ? <p className="text-gold-ink">{t.pages.events.alsoLive}</p> : null}
           {event.imageUrl ? <CmsImage src={event.imageUrl} alt="" sizes="(min-width: 900px) 640px, 100vw" /> : null}
           {event.description ? <p className="whitespace-pre-wrap">{event.description}</p> : null}
           {albums.albums.length ? (
             <div>
-              <h2 className="font-display text-3xl">Photos from this event</h2>
+              <h2 className="font-display text-3xl">{t.pages.events.photos}</h2>
               <div className="mt-3 flex flex-wrap gap-3">
                 {albums.albums.map((album) => <Link key={album.id} href={`/gallery/${album.slug}`} className="underline">{album.title}</Link>)}
               </div>

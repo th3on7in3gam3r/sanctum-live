@@ -6,10 +6,12 @@ export function SpeakerFilter({
   speakers,
   speaker,
   series,
+  labels,
 }: {
   speakers: string[];
   speaker: string;
   series: string;
+  labels?: { speaker: string; all: string };
 }) {
   const router = useRouter();
 
@@ -23,14 +25,14 @@ export function SpeakerFilter({
 
   return (
     <div className="flex items-end gap-3">
-      <label className="text-sm font-semibold text-sand" htmlFor="speaker">Speaker</label>
+      <label className="text-sm font-semibold text-sand" htmlFor="speaker">{labels?.speaker ?? 'Speaker'}</label>
       <select
         id="speaker"
         value={speaker}
         onChange={(event) => onChange(event.target.value)}
         className="rounded-full border border-sand/40 bg-transparent px-4 py-2 text-on-dark"
       >
-        <option value="">All speakers</option>
+        <option value="">{labels?.all ?? 'All speakers'}</option>
         {speakers.map((name) => <option key={name} value={name}>{name}</option>)}
       </select>
     </div>

@@ -1,24 +1,27 @@
 import type { Metadata } from 'next';
 import { prayerJoinUrl } from '@/lib/env';
+import { getDictionary } from '@/lib/locale';
+import { label } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   title: 'Live prayer',
   description: 'Join Promised Land Christian Center for live prayer in Sanctum.',
 };
 
-export default function PrayerPage() {
+export default async function PrayerPage() {
   const href = prayerJoinUrl();
+  const { t } = await getDictionary();
   return (
     <article className="page-wrap space-y-5">
-      <h1 className="page-title">Live prayer</h1>
+      <h1 className="page-title">{label(t, 'Live prayer')}</h1>
       <p className="text-lg leading-relaxed">
-        Prayer at Promised Land Christian Center continues beyond the Sunday gathering. When the room is open, you can listen, pray along, and raise a hand from your phone.
+        {t.pages.prayer.p1}
       </p>
       <p className="text-lg leading-relaxed">
-        The prayer room opens in Sanctum. You will choose a name, then join the live room. This page does not play the room itself.
+        {t.pages.prayer.p2}
       </p>
       <a href={href} className="site-button bg-gold text-ink">
-        Join live prayer
+        {t.pages.about.joinLive}
       </a>
     </article>
   );

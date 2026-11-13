@@ -8,17 +8,23 @@ import { church } from '@/lib/church';
 import { prayerJoinUrl } from '@/lib/env';
 import { leaderBio, leaderPhotoUrl } from '@/lib/leaders';
 import { firstParagraph, headingPairs } from '@/lib/pages';
+import { getDictionary } from '@/lib/locale';
+import { label } from '@/lib/i18n';
 
 export async function generateMetadata() {
   return cmsMetadata('about', 'About Promised Land Christian Center.');
 }
 
 export default async function AboutPage() {
-  const [about, beliefs, leaders] = await Promise.all([
+  const [about, beliefs, leaders, { locale, t }] = await Promise.all([
     loadCmsPage('about'),
     getPage('beliefs'),
     listLeaders(),
+    getDictionary(),
   ]);
+  const a = t.pages.about;
+  // Text written in Canaan is English; other languages use the translated versions we have.
+  const translated = locale !== 'en';
   const story = headingPairs(about, ['Mission', 'Vision', 'Story']);
   const mission = story.find((item) => item.title === 'Mission');
   const vision = story.find((item) => item.title === 'Vision');
@@ -29,22 +35,22 @@ export default async function AboutPage() {
     <>
       <PageHero
         variant="split"
-        eyebrow="About us"
-        title="Changing hearts."
-        accent="Transforming lives."
-        lede={firstParagraph(about)}
+        eyebrow={a.eyebrow}
+        title={a.titleA}
+        accent={a.titleB}
+        lede={translated ? t.story.missionText : firstParagraph(about)}
         photo={about.heroImageUrl || '/warm-welcome.jpg'}
       />
 
       <section className="bg-cream px-4 py-20 text-ink sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-xl">
-            <p className="eyebrow">Who we are</p>
+            <p className="eyebrow">{a.whoWeAre}</p>
             <h2 className="font-display mt-3 text-[clamp(40px,5vw,56px)] font-light leading-none tracking-[-0.02em]">
-              Mission &amp; vision
+              {a.missionVision}
             </h2>
             <p className="mt-4 text-lg leading-relaxed text-ink/70">
-              Why we gather, and where we believe God is leading this house.
+              {a.missionLede}
             </p>
           </div>
 
@@ -52,15 +58,15 @@ export default async function AboutPage() {
             {mission ? (
               <article className="border-b border-ink/15 py-8 min-[900px]:border-r min-[900px]:pr-10">
                 <p className="font-display text-lg tabular-nums tracking-wide text-gold">01</p>
-                <h3 className="font-display mt-4 text-3xl font-light tracking-[-0.02em]">{mission.title}</h3>
-                <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink/80">{mission.text}</p>
+                <h3 className="font-display mt-4 text-3xl font-light tracking-[-0.02em]">{a.mission}</h3>
+                <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink/80">{translated ? t.story.missionText : mission.text}</p>
               </article>
             ) : null}
             {vision ? (
               <article className="border-b border-ink/15 py-8 min-[900px]:pl-10">
                 <p className="font-display text-lg tabular-nums tracking-wide text-gold">02</p>
-                <h3 className="font-display mt-4 text-3xl font-light tracking-[-0.02em]">{vision.title}</h3>
-                <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink/80">{vision.text}</p>
+                <h3 className="font-display mt-4 text-3xl font-light tracking-[-0.02em]">{a.vision}</h3>
+                <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink/80">{translated ? t.story.visionText : vision.text}</p>
               </article>
             ) : null}
           </div>
@@ -70,11 +76,11 @@ export default async function AboutPage() {
               <div>
                 <p className="font-display text-lg tabular-nums tracking-wide text-gold">03</p>
                 <h3 className="font-display mt-4 text-[clamp(36px,4vw,48px)] font-light leading-none tracking-[-0.02em]">
-                  Our story
+                  {a.ourStory}
                 </h3>
-                <p className="mt-4 text-ink/60">From a bedroom prayer altar to a growing church family.</p>
+                <p className="mt-4 text-ink/60">{a.storyLede}</p>
               </div>
-              <p className="text-[17px] leading-[1.75] text-ink/85">{origin.text}</p>
+              <p className="text-[17px] leading-[1.75] text-ink/85">{translated ? t.story.body : origin.text}</p>
             </article>
           ) : null}
         </div>
@@ -82,7 +88,7 @@ export default async function AboutPage() {
 
       <section className="bg-sand px-4 py-20 text-ink sm:px-6">
         <div className="mx-auto max-w-6xl">
-          <SectionHeader eyebrow="Leadership" title="Shepherds who" accent="walk with you." />
+          <SectionHeader eyebrow={label(t, 'Leadership')} title={a.shepherdsA} accent={a.shepherdsB} />
           {leaders.length ? (
             <ul className="mt-12 grid gap-10 min-[900px]:grid-cols-2 min-[900px]:gap-12">
               {leaders.map((leader, index) => {
@@ -116,7 +122,7 @@ export default async function AboutPage() {
 
       <section className="bg-forest-900 px-4 py-20 text-on-dark sm:px-6">
         <div className="mx-auto max-w-6xl">
-          <SectionHeader title="Rooted in the Word." href="/beliefs" linkLabel="Full statement of faith →" dark />
+          <SectionHeader title={a.rooted} href="/beliefs" linkLabel={a.fullStatement} dark />
           <ul className="mt-12 grid border-t border-white/15 min-[900px]:grid-cols-2">
             {beliefCells.map((cell, index) => (
               <li
@@ -135,9 +141,9 @@ export default async function AboutPage() {
       </section>
 
       <CtaBand
-        title="Come and see for yourself."
-        primary={{ href: '/visit', label: 'Plan your visit' }}
-        secondary={{ href: prayerJoinUrl(), label: 'Join live prayer' }}
+        title={a.comeSee}
+        primary={{ href: '/visit', label: t.hero.planVisit }}
+        secondary={{ href: prayerJoinUrl(), label: a.joinLive }}
       />
     </>
   );

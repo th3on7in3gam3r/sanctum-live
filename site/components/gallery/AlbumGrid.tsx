@@ -1,9 +1,10 @@
+import { formatKampala } from '@/lib/format';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { PublicAlbumCard } from '@/lib/api';
 
 function day(value: string) {
-  return new Intl.DateTimeFormat('en-UG', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Kampala' }).format(new Date(value));
+  return formatKampala(value, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function AlbumCard({ album }: { album: PublicAlbumCard }) {

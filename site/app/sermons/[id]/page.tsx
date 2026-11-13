@@ -9,6 +9,7 @@ import { getSermon, listPublicAlbums } from '@/lib/api';
 import { siteEnv } from '@/lib/env';
 import { formatDay } from '@/lib/format';
 import { sermonJsonLd } from '@/lib/jsonld';
+import { getDictionary } from '@/lib/locale';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function SermonDetailPage({ params }: Params) {
   const { id } = await params;
-  const sermon = await getSermon(id);
+  const [sermon, { t }] = await Promise.all([getSermon(id), getDictionary()]);
   if (!sermon) notFound();
   const albums = await listPublicAlbums(`?sermonId=${sermon.id}`);
   const video = sermonJsonLd(sermon, `${siteEnv().siteUrl}/sermons/${sermon.id}`);
@@ -35,7 +36,7 @@ export default async function SermonDetailPage({ params }: Params) {
       <PageHero
         fitTitle
         variant="split"
-        eyebrow="Message"
+        eyebrow={t.pages.sermons.message}
         title={sermon.title}
         lede={`${formatDay(sermon.preachedOn)}${sermon.scripture ? ` · ${sermon.scripture}` : ''}`}
         aside={sermon.youtubeUrl ? <YoutubeFacade url={sermon.youtubeUrl} title={sermon.title} /> : <PhotoTile src={null} sizes="(min-width: 900px) 40vw, 100vw" className="aspect-video rounded-2xl" />}
@@ -45,7 +46,7 @@ export default async function SermonDetailPage({ params }: Params) {
       {sermon.notes ? <div className="mx-auto max-w-3xl whitespace-pre-wrap px-4 py-16 text-lg leading-relaxed sm:px-6">{sermon.notes}</div> : null}
       {albums.albums.length ? (
         <div className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
-          <h2 className="font-display text-3xl text-on-dark">Photos from this service</h2>
+          <h2 className="font-display text-3xl text-on-dark">{t.pages.sermons.photos}</h2>
           <div className="mt-3 flex flex-wrap gap-3">
             {albums.albums.map((album) => <Link key={album.id} href={`/gallery/${album.slug}`} className="text-gold-light underline">{album.title}</Link>)}
           </div>
@@ -53,7 +54,7 @@ export default async function SermonDetailPage({ params }: Params) {
       ) : null}
       {sermon.audioUrl ? (
         <div className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
-          <a href={sermon.audioUrl} className="site-button border border-sand text-on-dark">Listen (audio only)</a>
+          <a href={sermon.audioUrl} className="site-button border border-sand text-on-dark">{t.pages.sermons.audioOnly}</a>
         </div>
       ) : null}
     </div>

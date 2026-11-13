@@ -4,16 +4,18 @@ import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { listLeaders } from '@/lib/api';
 import { leaderBio, leaderPhotoUrl } from '@/lib/leaders';
 import { firstParagraph } from '@/lib/pages';
+import { getDictionary } from '@/lib/locale';
+import { label } from '@/lib/i18n';
 
 export async function generateMetadata() {
   return cmsMetadata('leadership', 'Leadership at Promised Land Christian Center.');
 }
 
 export default async function LeadershipPage() {
-  const [page, leaders] = await Promise.all([loadCmsPage('leadership'), listLeaders()]);
+  const [page, leaders, { t }] = await Promise.all([loadCmsPage('leadership'), listLeaders(), getDictionary()]);
   return (
     <>
-      <PageHero variant="centered" eyebrow="Leadership" title={page.title} lede={firstParagraph(page)} />
+      <PageHero variant="centered" eyebrow={label(t, 'Leadership')} title={page.title} lede={firstParagraph(page)} />
       <section className="bg-sand px-4 py-16 sm:px-6">
         <ul className="mx-auto grid max-w-6xl gap-8 min-[900px]:grid-cols-3">
           {leaders.map((leader) => {

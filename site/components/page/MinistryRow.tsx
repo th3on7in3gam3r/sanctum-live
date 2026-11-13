@@ -20,7 +20,7 @@ export function groupAnchor(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'group';
 }
 
-export function MinistryRow({ group, index, href = '/visit', huddleHref }: { group: PublicGroup; index: number; href?: string; huddleHref?: string | null }) {
+export function MinistryRow({ group, index, href = '/visit', huddleHref, labels }: { group: PublicGroup; index: number; href?: string; huddleHref?: string | null; labels?: { learnMore: string; joinHuddle: string } }) {
   const flip = index % 2 === 1;
   return (
     <article id={groupAnchor(group.name)} className="grid items-center gap-8 py-10 min-[900px]:grid-cols-2">
@@ -34,8 +34,8 @@ export function MinistryRow({ group, index, href = '/visit', huddleHref }: { gro
         <h2 className="font-display mt-2 text-5xl font-light">{group.name}</h2>
         {group.publicDescription ? <p className="mt-4 text-lg leading-relaxed">{group.publicDescription}</p> : null}
         {group.meetingTime ? <p className="mt-4 font-semibold">{group.meetingTime}</p> : null}
-        <a href={href} className="mt-4 inline-block font-semibold text-gold-ink">Learn more</a>
-        {huddleHref ? <a href={huddleHref} className="mt-3 block font-semibold text-gold-ink">Join the live huddle</a> : null}
+        <a href={href} className="mt-4 inline-block font-semibold text-gold-ink">{labels?.learnMore ?? 'Learn more'}</a>
+        {huddleHref ? <a href={huddleHref} className="mt-3 block font-semibold text-gold-ink">{labels?.joinHuddle ?? 'Join the live huddle'}</a> : null}
       </div>
     </article>
   );

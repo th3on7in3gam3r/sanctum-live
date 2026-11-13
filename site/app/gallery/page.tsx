@@ -4,22 +4,25 @@ import { PageHero } from '@/components/page/PageHero';
 import { AlbumCard, FeaturedMosaic } from '@/components/gallery/AlbumGrid';
 import { VideoTile } from '@/components/gallery/VideoTile';
 import { listPublicAlbums, listPublicVideos } from '@/lib/api';
+import { getDictionary } from '@/lib/locale';
+import { label } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   title: 'Gallery',
   description: 'Worship, baptisms, conferences and Sundays together, captured by our media team.',
 };
 
-const filters = [
-  { label: 'All', value: '' },
-  { label: 'Services', value: 'SERVICE' },
-  { label: 'Events', value: 'EVENT' },
-  { label: 'Ministries', value: 'MINISTRY' },
-  { label: 'Videos', value: 'VIDEOS' },
-];
 
 export default async function GalleryPage({ searchParams }: { searchParams: Promise<{ category?: string; page?: string }> }) {
-  const query = await searchParams;
+  const [query, { t }] = await Promise.all([searchParams, getDictionary()]);
+  const g = t.pages.gallery;
+  const filters = [
+    { label: g.all, value: '' },
+    { label: g.services, value: 'SERVICE' },
+    { label: label(t, 'Events'), value: 'EVENT' },
+    { label: label(t, 'Ministries'), value: 'MINISTRY' },
+    { label: g.videos, value: 'VIDEOS' },
+  ];
   const category = query.category || '';
   const page = Math.max(1, Number(query.page || 1) || 1);
   const albums = category === 'VIDEOS' ? { albums: [], hasMore: false, moments: [] } : await listPublicAlbums(`?page=${page}${category ? `&category=${category}` : ''}`);
@@ -29,7 +32,7 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="bg-cream text-ink">
-      <PageHero fitTitle variant="centered" eyebrow="Gallery" title="Moments in the" accent="house." lede="Worship, baptisms, conferences and Sundays together, captured by our media team." />
+      <PageHero fitTitle variant="centered" eyebrow={label(t, 'Gallery')} title={g.titleA} accent={g.titleB} lede={g.lede} />
       <div className="mx-auto flex max-w-6xl flex-wrap gap-2 px-4 py-6">
         {filters.map((filter) => (
           <Link
@@ -55,10 +58,10 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
               {videos.videos.map((video) => <div key={video.id} className="w-44 shrink-0 sm:w-56"><VideoTile video={video} /></div>)}
             </div>
           ) : null}
-          {albums.hasMore || videos.hasMore ? <Link className="site-button inline-flex bg-forest-900 text-on-dark" href={`/gallery?category=${category}&page=${page + 1}`}>Load more</Link> : null}
+          {albums.hasMore || videos.hasMore ? <Link className="site-button inline-flex bg-forest-900 text-on-dark" href={`/gallery?category=${category}&page=${page + 1}`}>{t.pages.sermons.loadMore}</Link> : null}
         </div>
       ) : (
-        <p className="mx-auto max-w-xl px-4 py-20 text-center font-display text-3xl">Photos from our services will appear here soon.</p>
+        <p className="mx-auto max-w-xl px-4 py-20 text-center font-display text-3xl">{g.empty}</p>
       )}
     </div>
   );

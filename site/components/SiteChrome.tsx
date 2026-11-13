@@ -9,6 +9,7 @@ import { church } from '@/lib/church';
 import { footerNav, MAIN_NAV, type NavLink } from '@/lib/nav';
 import { SocialList } from '@/components/SocialIcons';
 import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
+import { LanguageOffer } from '@/components/i18n/LanguageOffer';
 import { label, type Dict, type Locale } from '@/lib/i18n';
 
 function LiveDot({ pulse = false }: { pulse?: boolean }) {
@@ -46,7 +47,7 @@ function NavAnchor({
   );
 }
 
-export function SiteChrome({ children, locale, t, prayerUrl, oneUrl, staffLoginUrl, serviceStrip = [], liveNow = false }: { children: React.ReactNode; locale: Locale; t: Dict; prayerUrl: string; oneUrl?: string; staffLoginUrl: string; serviceStrip?: string[]; liveNow?: boolean }) {
+export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl, staffLoginUrl, serviceStrip = [], liveNow = false }: { children: React.ReactNode; locale: Locale; t: Dict; offer?: Locale[]; prayerUrl: string; oneUrl?: string; staffLoginUrl: string; serviceStrip?: string[]; liveNow?: boolean }) {
   const path = usePathname();
   const home = path === '/';
   const [open, setOpen] = useState(false);
@@ -121,6 +122,7 @@ export function SiteChrome({ children, locale, t, prayerUrl, oneUrl, staffLoginU
         </div>
       ) : null}
       <main id="content">{children}</main>
+      <LanguageOffer offer={offer} />
       <footer className="bg-footer px-4 pb-24 pt-14 text-on-dark sm:px-6 min-[900px]:pb-14">
         <div className="mx-auto grid max-w-6xl gap-10 min-[900px]:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>

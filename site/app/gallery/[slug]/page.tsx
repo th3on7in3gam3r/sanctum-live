@@ -5,6 +5,8 @@ import { AlbumView } from '@/components/gallery/AlbumView';
 import { VideoTile } from '@/components/gallery/VideoTile';
 import { getPublicAlbum } from '@/lib/api';
 import { siteEnv } from '@/lib/env';
+import { formatKampala } from '@/lib/format';
+import { getLocale } from '@/lib/locale';
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -21,9 +23,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function AlbumPage({ params }: Params) {
   const { slug } = await params;
-  const album = await getPublicAlbum(slug);
+  const [album] = await Promise.all([getPublicAlbum(slug), getLocale()]);
   if (!album) notFound();
-  const when = new Intl.DateTimeFormat('en-UG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Kampala' }).format(new Date(album.date));
+  const when = formatKampala(album.date, { day: 'numeric', month: 'long', year: 'numeric' });
   const shareUrl = `${siteEnv().siteUrl}/gallery/${slug}`;
 
   return (

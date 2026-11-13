@@ -5,19 +5,21 @@ import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { listPublicGroups } from '@/lib/api';
 import { siteEnv } from '@/lib/env';
 import { firstParagraph } from '@/lib/pages';
+import { getDictionary } from '@/lib/locale';
+import { label } from '@/lib/i18n';
 
 export async function generateMetadata() {
   return cmsMetadata('ministries', 'Ministries at Promised Land Christian Center.');
 }
 
 export default async function MinistriesPage() {
-  const [page, groups] = await Promise.all([loadCmsPage('ministries'), listPublicGroups()]);
+  const [page, groups, { t }] = await Promise.all([loadCmsPage('ministries'), listPublicGroups(), getDictionary()]);
   const ministries = groups.filter((group) => group.type === 'MINISTRY');
   return (
     <>
       <PageHero
         variant="centered"
-        eyebrow="Ministries"
+        eyebrow={label(t, 'Ministries')}
         title={page.title}
         lede={firstParagraph(page)}
         jumps={ministries.map((group) => ({ href: `#${groupAnchor(group.name)}`, label: group.name }))}
@@ -30,14 +32,15 @@ export default async function MinistriesPage() {
               group={group}
               index={index}
               huddleHref={group.huddle ? `${siteEnv().sanctumAppUrl}/join/${group.huddle.slug}` : null}
+              labels={{ learnMore: t.pages.ministries.learnMore, joinHuddle: t.pages.ministries.joinHuddle }}
             />
           ))}
         </div>
       </section>
       <section className="bg-forest-900 px-4 py-16 text-on-dark sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
-          <h2 className="font-display text-5xl font-light">Live huddles</h2>
-          <Link href="/huddles" className="site-button bg-gold text-ink">See the huddles</Link>
+          <h2 className="font-display text-5xl font-light">{t.pages.events.liveHuddles}</h2>
+          <Link href="/huddles" className="site-button bg-gold text-ink">{t.pages.ministries.seeHuddles}</Link>
         </div>
       </section>
     </>

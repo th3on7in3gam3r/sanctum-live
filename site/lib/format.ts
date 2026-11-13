@@ -1,7 +1,18 @@
+import { INTL_LOCALE, requestLocale } from './requestLocale';
+
 const kampala: Intl.DateTimeFormatOptions = { timeZone: 'Africa/Kampala' };
 
+function intlLocale(): string {
+  try {
+    return INTL_LOCALE[requestLocale().value] ?? 'en-UG';
+  } catch {
+    return 'en-UG';
+  }
+}
+
+/** Dates in Kampala time, in the visitor's language (Luganda / Kiswahili month and day names). */
 export function formatKampala(value: string, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat('en-UG', { ...kampala, ...options }).format(new Date(value));
+  return new Intl.DateTimeFormat(intlLocale(), { ...kampala, ...options }).format(new Date(value));
 }
 
 export function formatDay(value: string) {
