@@ -14,7 +14,7 @@ export const church = {
     { label: '+256 780 914 274', href: 'tel:+256780914274' },
   ],
   email: 'promisedlandchc@gmail.com',
-  whatsapp: 'https://wa.me/256744836784',
+  whatsapp: 'https://wa.me/256780914274',
   youtube: 'https://www.youtube.com/@PLCCGRACELOVE',
   youtubeLabel: '@PLCCGRACELOVE',
   tiktok: 'https://www.tiktok.com/@gracelovehiire',

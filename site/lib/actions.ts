@@ -1,7 +1,8 @@
 'use server';
 
 import { eventRsvpSchema, visitorCardSchema } from '@shared/validations/cms.ts';
-import { idleFormState, postPublic, ugandaPhoneError, type FormState } from './form';
+import { idleFormState, postPublic, type FormState } from './form';
+import { normalizePhone } from './phone';
 
 function text(formData: FormData, name: string) {
   return String(formData.get(name) ?? '');
@@ -10,10 +11,11 @@ function text(formData: FormData, name: string) {
 export async function submitVisitor(_prev: FormState = idleFormState, formData: FormData): Promise<FormState> {
   if (text(formData, 'company').trim()) return { status: 'success' };
 
-  const phoneError = ugandaPhoneError(text(formData, 'phone'));
+  const phone = normalizePhone(text(formData, 'phone'), text(formData, 'phoneCountry'));
+  const phoneError = phone.ok ? null : phone.error;
   const parsed = visitorCardSchema.safeParse({
     name: text(formData, 'name'),
-    phone: text(formData, 'phone'),
+    phone: phone.ok ? phone.e164 : text(formData, 'phone'),
     email: text(formData, 'email'),
     message: text(formData, 'message'),
     service: text(formData, 'service'),
@@ -44,11 +46,12 @@ export async function submitVisitor(_prev: FormState = idleFormState, formData: 
 export async function submitRsvp(_prev: FormState = idleFormState, formData: FormData): Promise<FormState> {
   if (text(formData, 'company').trim()) return { status: 'success', message: 'Thank you. You are on the list.' };
 
-  const phoneError = ugandaPhoneError(text(formData, 'phone'));
+  const phone = normalizePhone(text(formData, 'phone'), text(formData, 'phoneCountry'));
+  const phoneError = phone.ok ? null : phone.error;
   const count = Number(text(formData, 'count') || '1');
   const parsed = eventRsvpSchema.safeParse({
     name: text(formData, 'name'),
-    phone: text(formData, 'phone'),
+    phone: phone.ok ? phone.e164 : text(formData, 'phone'),
     count,
     company: '',
   });

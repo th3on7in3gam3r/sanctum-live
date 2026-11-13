@@ -12,6 +12,7 @@
   "dependencies": {
     "@plcc/brand": "file:../packages/brand",
     "@sentry/nextjs": "^10.22.0",
+    "libphonenumber-js": "^1.13.16",
     "next": "^15.5.4",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",

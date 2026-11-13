@@ -2,6 +2,9 @@
 
 import { useActionState } from 'react';
 import { idleFormState, type FormState } from '@/lib/form';
+import { DEFAULT_PHONE_COUNTRY, phoneCountries } from '@/lib/phone';
+
+const PHONE_COUNTRIES = phoneCountries();
 
 export type PublicField = {
   name: string;
@@ -66,6 +69,54 @@ export function PublicForm({
           'aria-describedby': error ? `${id}-error` : undefined,
           className: 'mt-1 w-full rounded-2xl border border-ink/15 bg-sand px-4 py-3 text-base',
         };
+        if (field.type === 'tel') {
+          return (
+            <div key={field.name} className="block text-sm font-semibold">
+              <label htmlFor={id}>{field.label}</label>
+              <div className="mt-1 flex gap-2">
+                <select
+                  name={`${field.name}Country`}
+                  aria-label={`${field.label} country`}
+                  defaultValue={DEFAULT_PHONE_COUNTRY}
+                  className="w-[8.5rem] shrink-0 rounded-2xl border border-ink/15 bg-sand px-3 py-3 text-base"
+                >
+                  <optgroup label="Common">
+                    {PHONE_COUNTRIES.preferred.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name} ({c.dial})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="All countries">
+                    {PHONE_COUNTRIES.others.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name} ({c.dial})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+                <input
+                  {...shared}
+                  className="min-w-0 flex-1 rounded-2xl border border-ink/15 bg-sand px-4 py-3 text-base"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="0772 000000"
+                  defaultValue={field.defaultValue}
+                />
+              </div>
+              {error ? (
+                <span id={`${id}-error`} className="mt-1 block font-normal text-red-800">
+                  {error}
+                </span>
+              ) : (
+                <span className="mt-1 block text-xs font-normal text-ink/55">
+                  Outside Uganda? Pick your country, or type the number with its + code.
+                </span>
+              )}
+            </div>
+          );
+        }
         return (
           <label key={field.name} className="block text-sm font-semibold" htmlFor={id}>
             {field.label}
@@ -78,7 +129,7 @@ export function PublicForm({
               <input
                 {...shared}
                 type={field.type || 'text'}
-                inputMode={field.type === 'tel' ? 'tel' : undefined}
+                inputMode={undefined}
                 min={field.min}
                 max={field.max}
                 defaultValue={field.defaultValue}

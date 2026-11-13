@@ -1,9 +1,3 @@
-export function ugandaPhoneError(value: string): string | null {
-  const compact = value.trim().replace(/[\s-]/g, '');
-  if (/^0\d{9}$/.test(compact) || /^\+256\d{9}$/.test(compact)) return null;
-  return 'Use a number like 0772000000 or +256772000000.';
-}
-
 export type FormState = {
   status: 'idle' | 'success' | 'error';
   message?: string;
