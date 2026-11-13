@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ScreenShareStage } from '../realtime/ScreenShareStage';
 import { loadJoinSession } from '../../services/realtime/joinSessionStore';
 import { BrandLockup } from '@plcc/brand/BrandLockup';
 import { sanctumTheme } from './ChurchWordmark';
@@ -333,6 +334,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
       </header>
 
       <main className="w-full max-w-2xl mx-auto my-auto py-4 sm:py-6 space-y-6">
+        <ScreenShareStage />
         {connectionState === 'RECONNECTING' && (
           <div className="sanctum-chip rounded-full px-3 py-2 text-center text-sm font-semibold">
             Reconnecting…

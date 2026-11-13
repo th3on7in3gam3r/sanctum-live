@@ -208,8 +208,19 @@ describe('listener token grants', () => {
       congregationMuted: true,
     });
     expect(host.canPublish).toBe(true);
-    expect(host.canPublishSources).toEqual(['microphone']);
+    expect(host.canPublishSources).toEqual(['microphone', 'screen_share', 'screen_share_audio']);
     expect(host.roomAdmin).toBe(true);
+
+    // Prayer leaders who may speak (but are not room admins) get the microphone only: no screen share.
+    const leader = buildLiveKitTokenGrants({
+      roomName: 'session_1',
+      sessionRole: 'LISTENER',
+      holdsSpeakerFloor: false,
+      speakerPermission: 'PRAYER_LEADERS',
+      orgRole: 'PRAYER_LEADER',
+    });
+    expect(leader.canPublish).toBe(true);
+    expect(leader.canPublishSources).toEqual(['microphone']);
 
     const idleSpeaker = buildLiveKitTokenGrants({
       roomName: 'session_1',

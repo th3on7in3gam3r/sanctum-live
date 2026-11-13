@@ -1,4 +1,4 @@
-import type { RemoteParticipant, RemoteTrack, Room } from 'livekit-client';
+import type { RemoteParticipant, RemoteTrack, Room, Track as LkTrack } from 'livekit-client';
 import type { ConnectionQuality, ConnectionState, Role } from '../../types';
 import type { IRealtimeProvider, RealtimeEventListener, RealtimeEventPayload } from './types';
 
@@ -20,6 +20,13 @@ export interface LiveKitJoinParams {
   audioOnly?: boolean;
 }
 
+/** Who is sharing a screen right now, if anyone. */
+export interface ScreenShareInfo {
+  identity: string;
+  name: string;
+  isLocal: boolean;
+}
+
 function mapConnectionState(kit: LiveKitModule, state: string): ConnectionState {
   const states = kit.ConnectionState;
   switch (state) {
@@ -39,7 +46,7 @@ function mapConnectionState(kit: LiveKitModule, state: string): ConnectionState 
 
 /**
  * Client LiveKit provider. Tokens are minted only by the Express API.
- * Never import livekit-server-sdk from this file. Audio-only.
+ * Never import livekit-server-sdk from this file. Audio plus screen share (no cameras).
  */
 export class LiveKitRealtimeProvider implements IRealtimeProvider {
   readonly isDevelopment = false;
@@ -51,6 +58,9 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
   connectionState: ConnectionState = 'DISCONNECTED';
   audioBlocked = false;
   connectedCount = 0;
+  /** The screen share on stage: a remote presenter's, or our own. */
+  private screenTrack: LkTrack | null = null;
+  private screenInfo: ScreenShareInfo | null = null;
 
   async joinRoom(params: LiveKitJoinParams): Promise<{
     sessionId: string;
@@ -99,6 +109,86 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
       participantId: this.room.localParticipant.identity,
       connectionQuality: 'GOOD',
     };
+  }
+
+  getScreenShare(): ScreenShareInfo | null {
+    return this.screenInfo;
+  }
+
+  /** Shows the current screen share in a <video> element. Returns a detach function. */
+  attachScreenShare(el: HTMLVideoElement): () => void {
+    const track = this.screenTrack;
+    if (!track) return () => undefined;
+    track.attach(el);
+    el.muted = true; // screen-share audio plays through its own hidden element
+    return () => {
+      try {
+        track.detach(el);
+      } catch {
+        /* already gone */
+      }
+    };
+  }
+
+  async startScreenShare(): Promise<void> {
+    if (!this.room) throw new Error('Join the prayer room before sharing your screen.');
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getDisplayMedia) {
+      throw new Error('Screen sharing works on a computer in Chrome, Edge, Firefox or Safari.');
+    }
+    if (this.screenInfo && !this.screenInfo.isLocal) {
+      throw new Error(`${this.screenInfo.name || 'Someone'} is already sharing their screen.`);
+    }
+    try {
+      await this.room.localParticipant.setScreenShareEnabled(true, {
+        audio: true,
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'include',
+        systemAudio: 'include',
+      });
+    } catch (err) {
+      const name = (err as { name?: string })?.name;
+      if (name === 'NotAllowedError' || name === 'AbortError') return; // picker cancelled
+      if (/permission|not allowed|insufficient/i.test(String((err as Error)?.message))) {
+        throw new Error('Only the host or a moderator can share their screen in this room.');
+      }
+      throw err;
+    }
+    this.syncLocalScreenShare();
+  }
+
+  async stopScreenShare(): Promise<void> {
+    if (!this.room) return;
+    await this.room.localParticipant.setScreenShareEnabled(false);
+    this.syncLocalScreenShare();
+  }
+
+  private syncLocalScreenShare(): void {
+    const kit = this.kit;
+    const room = this.room;
+    if (!kit || !room) return;
+    const pub = room.localParticipant.getTrackPublication(kit.Track.Source.ScreenShare);
+    if (pub?.track && !pub.isMuted) {
+      this.setScreen(pub.track, {
+        identity: room.localParticipant.identity,
+        name: room.localParticipant.name || 'You',
+        isLocal: true,
+      });
+    } else if (this.screenInfo?.isLocal) {
+      this.setScreen(null, null);
+    }
+  }
+
+  private setScreen(track: LkTrack | null, info: ScreenShareInfo | null): void {
+    this.screenTrack = track;
+    this.screenInfo = info;
+    this.emit({
+      type: 'SCREEN_SHARE_CHANGED',
+      sessionId: this.sessionId,
+      displayName: info?.name,
+      realtimeIdentity: info?.identity,
+      timestamp: new Date().toISOString(),
+      metadata: { sharing: Boolean(info), isLocal: Boolean(info?.isLocal) },
+    });
   }
 
   async tryStartAudio(): Promise<boolean> {
@@ -165,6 +255,7 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     }
     this.room = null;
     this.connectionState = 'DISCONNECTED';
+    if (this.screenInfo) this.setScreen(null, null);
   }
 
   getIdentity(): string | null {
@@ -340,19 +431,39 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
       });
     });
 
-    room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+    room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      if (publication.source === Track.Source.ScreenShare && track.kind === Track.Kind.Video) {
+        this.setScreen(track, { identity: participant.identity, name: participant.name || '', isLocal: false });
+        return;
+      }
       if (track.kind !== Track.Kind.Audio) {
         track.stop();
         return;
       }
-      this.attachAudio(track, participant.identity);
+      const key =
+        publication.source === Track.Source.ScreenShareAudio ? `${participant.identity}:screen` : participant.identity;
+      this.attachAudio(track, key);
       void this.tryStartAudio();
     });
 
-    room.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
-      if (track.kind === Track.Kind.Audio) {
-        this.detachAudio(participant.identity);
+    room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+      if (publication.source === Track.Source.ScreenShare) {
+        if (this.screenInfo?.identity === participant.identity) this.setScreen(null, null);
+        return;
       }
+      if (track.kind === Track.Kind.Audio) {
+        this.detachAudio(
+          publication.source === Track.Source.ScreenShareAudio ? `${participant.identity}:screen` : participant.identity
+        );
+      }
+    });
+
+    // Browser "Stop sharing" bar, or the share ending on its own.
+    room.on(RoomEvent.LocalTrackUnpublished, (publication) => {
+      if (publication.source === Track.Source.ScreenShare) this.syncLocalScreenShare();
+    });
+    room.on(RoomEvent.LocalTrackPublished, (publication) => {
+      if (publication.source === Track.Source.ScreenShare) this.syncLocalScreenShare();
     });
 
     room.on(RoomEvent.ParticipantConnected, (participant) => {
@@ -366,8 +477,11 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
       });
     });
 
-    room.on(RoomEvent.ParticipantDisconnected, () => {
+    room.on(RoomEvent.ParticipantDisconnected, (participant) => {
       this.connectedCount = room.remoteParticipants.size + 1;
+      if (this.screenInfo && !this.screenInfo.isLocal && this.screenInfo.identity === participant.identity) {
+        this.setScreen(null, null);
+      }
       this.emit({
         type: 'PARTICIPANT_LEFT',
         sessionId: this.sessionId,
@@ -421,6 +535,14 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
   private attachParticipantAudio(participant: RemoteParticipant): void {
     const Track = this.kit?.Track;
     if (!Track) return;
+    const screen = participant.getTrackPublication(Track.Source.ScreenShare);
+    if (screen?.track && screen.isSubscribed) {
+      this.setScreen(screen.track, { identity: participant.identity, name: participant.name || '', isLocal: false });
+    }
+    const screenAudio = participant.getTrackPublication(Track.Source.ScreenShareAudio);
+    if (screenAudio?.track && screenAudio.isSubscribed) {
+      this.attachAudio(screenAudio.track, `${participant.identity}:screen`);
+    }
     const mic = participant.getTrackPublication(Track.Source.Microphone);
     if (mic?.track && mic.isSubscribed && mic.track.kind === Track.Kind.Audio) {
       this.attachAudio(mic.track, participant.identity);
@@ -428,6 +550,7 @@ export class LiveKitRealtimeProvider implements IRealtimeProvider {
     }
     participant.trackPublications.forEach((publication) => {
       if (publication.kind !== Track.Kind.Audio || !publication.track || !publication.isSubscribed) return;
+      if (publication.source === Track.Source.ScreenShareAudio) return;
       this.attachAudio(publication.track, participant.identity);
     });
   }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ScreenShareButton, ScreenShareStage } from '../components/realtime/ScreenShareStage';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { PrayerSessionStatus } from '../components/common/PrayerSessionStatus';
@@ -523,6 +524,9 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
       {/* Main Console Tab (Multi-column view) */}
       {activeTab === 'CONSOLE' && (
         <div className="space-y-6">
+          {/* Shared screen (slides, lyrics, a video) — visible to the whole room */}
+          <ScreenShareStage />
+
           {/* Moderator Live Prayer Flow Countdown */}
           <PrayerCountdownTimer
             initialMinutes={5}
@@ -588,6 +592,14 @@ export const PrayerControlRoomPage: React.FC<PrayerControlRoomPageProps> = ({
                       ? 'The congregation can hear your microphone.'
                       : 'Press the microphone to let the congregation hear the sermon.'}
                 </p>
+                {canControlCongregation && (
+                  <ScreenShareButton
+                    className="mt-5"
+                    disabled={!liveConnected}
+                    onStarted={() => addToast('You are sharing your screen with the congregation.', 'success')}
+                    onError={(message) => addToast(message, 'error')}
+                  />
+                )}
                 <div className="mt-5 flex items-center gap-2 text-xs font-bold text-muted">
                   <Users className="w-4 h-4" />
                   {connectedNow} connected

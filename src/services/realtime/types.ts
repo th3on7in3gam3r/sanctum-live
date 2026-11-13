@@ -26,7 +26,8 @@ export type RealtimeEventType =
   | 'PTT_STARTED'
   | 'PTT_ENDED'
   | 'PRIVATE_PRAYER_STARTED'
-  | 'PRIVATE_PRAYER_ENDED';
+  | 'PRIVATE_PRAYER_ENDED'
+  | 'SCREEN_SHARE_CHANGED';
 
 export interface RealtimeEventPayload {
   type: RealtimeEventType;

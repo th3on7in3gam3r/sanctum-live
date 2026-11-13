@@ -81,12 +81,29 @@ export class LiveKitRealtimeProvider implements ILiveKitRealtimeProvider {
 
   async updatePublishPermission(roomName: string, identity: string, canPublish: boolean): Promise<void> {
     const client = requireClient();
+    // Keep screen sharing for hosts/moderators whose token already allowed it, so a
+    // mic or floor change mid-service does not cut off a screen share.
+    let keepScreenShare = false;
+    if (canPublish) {
+      try {
+        const current = await client.getParticipant(roomName, identity);
+        keepScreenShare = Boolean(current.permission?.canPublishSources?.includes(TrackSource.SCREEN_SHARE));
+      } catch {
+        /* not connected yet */
+      }
+    }
     await client.updateParticipant(roomName, identity, {
       permission: {
         canSubscribe: true,
         canPublish,
         canPublishData: true,
-        ...(canPublish ? { canPublishSources: [TrackSource.MICROPHONE] } : {}),
+        ...(canPublish
+          ? {
+              canPublishSources: keepScreenShare
+                ? [TrackSource.MICROPHONE, TrackSource.SCREEN_SHARE, TrackSource.SCREEN_SHARE_AUDIO]
+                : [TrackSource.MICROPHONE],
+            }
+          : {}),
       },
     });
   }

@@ -6,7 +6,7 @@ export interface LiveKitTokenGrants {
   canPublish: boolean;
   canSubscribe: true;
   canPublishData: boolean;
-  canPublishSources: Array<'microphone'>;
+  canPublishSources: Array<'microphone' | 'screen_share' | 'screen_share_audio'>;
   roomAdmin: boolean;
 }
 
@@ -32,7 +32,12 @@ export function buildLiveKitTokenGrants(options: {
     canPublish,
     canSubscribe: true,
     canPublishData: true,
-    canPublishSources: canPublish ? ['microphone'] : [],
+    // Hosts and moderators may also share their screen (slides, lyrics, a video).
+    canPublishSources: canPublish
+      ? roomAdmin
+        ? ['microphone', 'screen_share', 'screen_share_audio']
+        : ['microphone']
+      : [],
     roomAdmin,
   };
 }

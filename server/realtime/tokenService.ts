@@ -44,8 +44,13 @@ export async function mintLiveKitAccessToken(input: MintTokenInput): Promise<str
     canPublishData: true,
     roomAdmin: grants.roomAdmin,
   };
-  if (grants.canPublishSources.includes('microphone')) {
-    videoGrant.canPublishSources = [TrackSource.MICROPHONE];
+  if (grants.canPublishSources.length > 0) {
+    const map = {
+      microphone: TrackSource.MICROPHONE,
+      screen_share: TrackSource.SCREEN_SHARE,
+      screen_share_audio: TrackSource.SCREEN_SHARE_AUDIO,
+    } as const;
+    videoGrant.canPublishSources = grants.canPublishSources.map((source) => map[source]);
   }
 
   token.addGrant(videoGrant);
