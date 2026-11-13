@@ -62,9 +62,9 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
         {t.skip}
       </a>
       <header className={`z-40 ${home ? 'absolute inset-x-0 top-0' : 'bg-forest-900 text-on-dark'}`}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-5 sm:px-6">
-          <BrandLockup size="md" href="/" />
-          <nav className="hidden items-center gap-5 text-sm text-on-dark min-[900px]:flex" aria-label="Primary">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-5 sm:px-6">
+          <BrandLockup size="md" href="/" className="shrink-0 whitespace-nowrap" />
+          <nav className="hidden items-center gap-4 text-sm text-on-dark min-[1300px]:flex" aria-label="Primary">
             {MAIN_NAV.map((link) => {
               const current = isCurrent(path, link.href);
               return (
@@ -85,9 +85,7 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
             {give ? (
               <NavAnchor link={give} className="site-button bg-gold px-4 text-ink">{label(t, give.label)}</NavAnchor>
             ) : null}
-            <span className="hidden min-[1100px]:block">
-              <LanguageSwitcher locale={locale} label={t.language} />
-            </span>
+            <LanguageSwitcher locale={locale} label={t.language} variant="short" />
           </nav>
           <button
             type="button"
@@ -100,7 +98,7 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
         </div>
       </header>
       {open ? (
-        <div className="fixed inset-0 z-50 flex flex-col bg-forest-950 px-6 py-8 text-on-dark min-[900px]:hidden">
+        <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-forest-950 px-6 py-8 text-on-dark min-[1300px]:hidden">
           <div className="flex items-center justify-between">
             <BrandLockup size="sm" href="/" />
             <button type="button" className="site-button border border-sand/40 px-4" onClick={() => setOpen(false)}>{t.close}</button>

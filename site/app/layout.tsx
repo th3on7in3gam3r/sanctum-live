@@ -33,6 +33,8 @@ export const metadata: Metadata = {
     template: `%s · ${BRAND.fullName}`,
   },
   description: `${BRAND.fullName} in Kampala. Worship, prayer, and community.`,
+  // The site has its own English / Luganda / Kiswahili switcher, so browsers should not offer to translate it.
+  other: { google: 'notranslate' },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -41,7 +43,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const offer = await languageOffer(locale);
   const prayerUrl = prayerJoinUrl();
   return (
-    <html lang={LOCALE_TAGS[locale]} className={`${fraunces.variable} ${manrope.variable}`}>
+    <html lang={LOCALE_TAGS[locale]} translate="no" className={`${fraunces.variable} ${manrope.variable}`}>
       <body>
         <SiteChrome locale={locale} t={t} offer={offer} prayerUrl={prayerUrl} oneUrl={plccOneUrl()} liveNow={Boolean(liveRoom)} staffLoginUrl={staffSignInLink(siteEnv().sanctumAppUrl).href} serviceStrip={homeStrip(serviceTimes)}>{children}</SiteChrome>
       </body>

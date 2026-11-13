@@ -43,7 +43,8 @@ body {
     linear-gradient(160deg, #1d372c, #12231c 55%, #0d1a14);
 }
 
-@media (min-width: 900px) {
+/* The full header menu needs room for the longer Luganda / Kiswahili labels. */
+@media (min-width: 1300px) {
   .site-button.mobile-only {
     display: none;
   }

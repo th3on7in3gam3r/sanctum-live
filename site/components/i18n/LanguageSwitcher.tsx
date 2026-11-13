@@ -14,7 +14,7 @@ export function LanguageSwitcher({
   locale: Locale;
   label: string;
   className?: string;
-  variant?: 'compact' | 'list';
+  variant?: 'compact' | 'short' | 'list';
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -61,11 +61,12 @@ export function LanguageSwitcher({
         value={locale}
         disabled={pending}
         onChange={(event) => choose(event.target.value as Locale)}
-        className="min-h-11 cursor-pointer appearance-none rounded-full border border-sand/40 bg-transparent py-2 pl-9 pr-4 text-sm text-on-dark outline-none focus:border-gold-light [&>option]:text-ink"
+        title={label}
+        className={`min-h-11 cursor-pointer appearance-none rounded-full border border-sand/40 bg-transparent py-2 pl-9 text-sm text-on-dark outline-none focus:border-gold-light [&>option]:text-ink ${variant === 'short' ? 'pr-3 font-semibold' : 'pr-4'}`}
       >
         {LOCALES.map((code) => (
           <option key={code} value={code} lang={code}>
-            {LOCALE_NAMES[code]}
+            {variant === 'short' ? code.toUpperCase() : LOCALE_NAMES[code]}
           </option>
         ))}
       </select>

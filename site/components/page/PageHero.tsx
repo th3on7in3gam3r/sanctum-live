@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { GlowPhoto } from '@/components/GlowPhoto';
 
+/** Big titles shrink when one word is long enough to overflow its column (e.g. "Tukuterekedde"). */
+function longestWord(text: string) {
+  return Math.max(0, ...text.split(/\s+/).map((word) => word.length));
+}
+
 export function heroTitleClass(title: string) {
   if (title.length <= 28) return 'text-[clamp(56px,7vw,104px)]';
   if (title.length <= 48) return 'text-[clamp(44px,5.4vw,80px)]';
@@ -44,7 +49,7 @@ export function PageHero({
           {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
           <h1
             title={accent ? `${title} ${accent}` : title}
-            className={`font-display mt-4 font-light leading-[0.92] tracking-[-0.035em] ${fitTitle ? `${heroTitleClass(title)} text-balance line-clamp-3` : 'text-[clamp(56px,7vw,104px)]'}`}
+            className={`font-display mt-4 font-light leading-[0.92] tracking-[-0.035em] ${fitTitle ? `${heroTitleClass(title)} text-balance line-clamp-3` : longestWord(`${title} ${accent || ''}`) > 10 ? 'text-[clamp(40px,4.6vw,68px)]' : 'text-[clamp(56px,7vw,104px)]'} break-words hyphens-auto`}
           >
             {title}{accent ? <> <em className="italic text-gold-light">{accent}</em></> : null}
           </h1>
