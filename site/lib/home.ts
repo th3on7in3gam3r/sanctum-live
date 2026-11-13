@@ -34,6 +34,7 @@ export function parseHome(page: PublicPage) {
     scripture: scripture && scripture.type === 'scripture' ? { reference: scripture.reference, text: scripture.text } : null,
     times,
     visit,
-    hero: page.heroImageUrl || '/hero-fallback.webp',
+    // The future PLCC building at dusk (architect's render).
+    hero: '/plcc-building-dusk.webp',
   };
 }

@@ -83,28 +83,33 @@ export function Hero({
   return (
     <section className="relative overflow-hidden bg-forest-950 text-on-dark">
       <div
-        className="pointer-events-none absolute inset-0 bg-cover bg-center"
+        className="pointer-events-none absolute inset-0 bg-cover bg-[position:center_42%]"
         style={{ backgroundImage: `url(${image})` }}
         aria-hidden="true"
       />
       <div
         className="pointer-events-none absolute inset-0"
-        style={{ background: 'linear-gradient(100deg, rgba(13,26,20,0.95) 0%, rgba(13,26,20,0.82) 48%, rgba(13,26,20,0.42) 100%)' }}
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(13,26,20,0.75) 0%, rgba(13,26,20,0) 18%), ' +
+            'linear-gradient(0deg, rgba(13,26,20,0.80) 0%, rgba(13,26,20,0) 42%), ' +
+            'linear-gradient(100deg, rgba(13,26,20,0.77) 0%, rgba(13,26,20,0.50) 45%, rgba(13,26,20,0.19) 100%)',
+        }}
         aria-hidden="true"
       />
       <div className="relative mx-auto flex max-w-6xl flex-col gap-12 px-4 pb-20 pt-32 sm:px-6 min-[900px]:flex-row min-[900px]:items-end min-[900px]:pb-24 min-[900px]:pt-44">
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-extrabold tracking-[0.22em] text-gold-light">A PENTECOSTAL FAMILY IN KIRA-KITUKUTWE, WAKISO</p>
-          <h1 className="font-display mt-6 max-w-2xl text-[clamp(48px,6.4vw,92px)] font-light leading-[0.98] tracking-[-0.03em] text-cream">
+          <p className="text-[13px] font-extrabold tracking-[0.22em] text-gold-light [text-shadow:0_1px_12px_rgba(0,0,0,0.5)]">A PENTECOSTAL FAMILY IN KIRA-KITUKUTWE, WAKISO</p>
+          <h1 className="font-display mt-6 max-w-2xl text-[clamp(48px,6.4vw,92px)] font-light leading-[0.98] tracking-[-0.03em] text-cream [text-shadow:0_2px_30px_rgba(0,0,0,0.45)]">
             Come home to the <em className="italic text-gold-light">land of promise.</em>
           </h1>
-          <p className="mt-6 max-w-[520px] text-[19px] leading-relaxed text-sand">
+          <p className="mt-6 max-w-[520px] text-[19px] leading-relaxed text-sand [text-shadow:0_1px_14px_rgba(0,0,0,0.55)]">
             {lead || 'Changing hearts. Transforming lives.'}{' '}
             Worship with us on Sunday, or pray with the church from wherever you are.
           </p>
           <div className="mt-9 flex flex-wrap gap-3.5">
             <Link href="/visit" className="site-button min-h-[52px] bg-gold px-7 text-[16px] font-extrabold text-ink">Plan your visit</Link>
-            <a href={oneUrl} className="site-button min-h-[52px] border border-sand/55 px-7 text-[16px] font-bold text-cream">
+            <a href={oneUrl} className="site-button min-h-[52px] border border-sand/55 bg-forest-950/35 px-7 text-[16px] font-bold text-cream">
               Step into the Promised Land <Arrow />
             </a>
           </div>
