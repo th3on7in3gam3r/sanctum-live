@@ -31,6 +31,7 @@ import { promptInstall } from '../../pwa';
 import { cn } from '../../lib/utils';
 import { cmsApi } from '../../services/api/cmsApi';
 import { PrayerRoomShortcuts } from './PrayerRoomShortcuts';
+import { PLCC_ONE_URL } from '../../lib/plccLinks';
 
 interface DashboardSidebarProps {
   currentPath: string;
@@ -48,7 +49,8 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   className,
 }) => {
   const { user, organization, logout } = useAuth();
-  const { isDarkMode, toggleDarkMode } = useApp();
+  const { isDarkMode, toggleDarkMode, raisedHands = [] } = useApp();
+  const handsWaiting = raisedHands.filter((h) => h.status === 'WAITING').length;
   const [reviewCount, setReviewCount] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
   const mediaOnly = user?.role === 'MEDIA';
@@ -58,7 +60,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   }, [organization.id, user?.role]);
 
   const navItems = [
-    { label: 'Overview', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Control Room', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Prayer Rooms', path: '/dashboard/prayer-rooms', icon: Radio },
     { label: 'Prayer Requests', path: '/dashboard/prayer-requests', icon: FileText },
     { label: 'Participants', path: '/dashboard/participants', icon: Users },
@@ -158,6 +160,11 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 >
                   <Icon className={cn('w-4 h-4', isActive ? 'text-white dark:text-paper' : 'text-current')} />
                   {collapsed ? null : <span>{item.label}</span>}
+                  {item.path === '/dashboard' && handsWaiting > 0 ? (
+                    <span className="ml-auto rounded-full bg-[#c4352d] px-2 py-0.5 text-[10px] font-bold text-white" title="Raised hands waiting">
+                      {handsWaiting}
+                    </span>
+                  ) : null}
                 </button>
                 {!collapsed && item.path === '/dashboard/prayer-rooms' ? <PrayerRoomShortcuts onNavigate={onNavigate} /> : null}
               </React.Fragment>
@@ -191,6 +198,13 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
       {/* Bottom Section: User Profile & Actions */}
       <div className="pt-4 border-t border-line space-y-3">
+        <a
+          href={PLCC_ONE_URL}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-muted hover:bg-black/5 dark:hover:bg-white/5"
+        >
+          <Home className="w-3.5 h-3.5 shrink-0" />
+          {collapsed ? null : <span>Back to PLCC ONE</span>}
+        </a>
         {/* Quick link to public join preview */}
         <button
           type="button"

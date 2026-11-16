@@ -4,12 +4,8 @@ import { loadJoinSession } from '../../services/realtime/joinSessionStore';
 import { BrandLockup } from '@plcc/brand/BrandLockup';
 import { sanctumTheme } from './ChurchWordmark';
 import { churchSiteUrl } from '../../lib/appMode';
-import { LiveBadge } from '../common/LiveBadge';
 import { ConnectionStatus } from '../common/ConnectionStatus';
-import { ParticipantCount } from '../common/ParticipantCount';
 import { PrayerTimer } from '../common/PrayerTimer';
-import { AudioVisualizerPlaceholder } from '../common/AudioVisualizerPlaceholder';
-import { ListenerReactionBar } from './ListenerReactionBar';
 import { PrayerRequestModal } from './PrayerRequestModal';
 import { InvitedSpeakerBanner } from './InvitedSpeakerBanner';
 import { PrayerChatPanel } from './PrayerChatPanel';
@@ -18,7 +14,7 @@ import { PostPrayerSummaryView } from './PostPrayerSummaryView';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { isClientMinister } from '../../lib/permissions';
-import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff, CircleHelp } from 'lucide-react';
+import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff, CircleHelp, Hand, Headphones, FileText, Check, Users, Info, ShieldCheck, Search } from 'lucide-react';
 import { DevelopmentPreviewBadge } from '../common/DevelopmentPreviewBadge';
 import { RealtimeEngineStatus } from '../common/RealtimeEngineStatus';
 import { LocalMicStatus } from '../common/LocalMicStatus';
@@ -84,6 +80,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   const [selfMuted, setSelfMuted] = useState(false);
   const [micOn, setMicOn] = useState(false);
   const [pttActive, setPttActive] = useState(false);
+  const [participantQuery, setParticipantQuery] = useState('');
   const { startTour } = useTour(TOUR_IDS.listenerRoom, listenerRoomTourSteps, { delayMs: 900 });
 
   useEffect(() => {
@@ -285,283 +282,361 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     );
   }
 
+  const people = participants.filter((person) => !person.leftAt);
+  const leaders = people.filter((person) => isClientMinister(person.role) || person.role === 'SPEAKER');
+  const others = people.filter((person) => !(isClientMinister(person.role) || person.role === 'SPEAKER'));
+  const peopleQuery = participantQuery.trim().toLowerCase();
+  const peopleShown = [...leaders, ...others].filter(
+    (person) => !peopleQuery || person.displayName.toLowerCase().includes(peopleQuery)
+  );
+  const speakingName = liveSession?.activeSpeakerName?.trim() || '';
+  const speaking = pttActive || (showLiveMic && !selfMuted) || privateWithMe;
+  const micState: 'speaking' | 'open' | 'muted' = speaking ? 'speaking' : canUseMic ? 'open' : 'muted';
+  const statusLine = privateWithMe
+    ? 'Private prayer with your pastor'
+    : speaking
+      ? 'You are speaking'
+      : canDiscuss
+        ? 'The floor is open'
+        : isMinister || isInvitedSpeaker
+          ? 'Your microphone is off'
+          : isHandRaised
+            ? 'Hand raised — waiting for a moderator'
+            : 'You are muted';
+
   return (
-    <div data-theme={sanctumTheme(isDarkMode)} className="sanctum-screen flex min-h-screen select-none flex-col justify-between p-4 transition-colors sm:p-6">
-      <header className="mx-auto flex w-full max-w-3xl flex-col gap-3 pb-4">
-        <div className="flex items-center justify-between gap-3">
-        <BrandLockup size="sm" href={churchSiteUrl()} className="min-w-0" />
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          <LocalMicStatus locked={!canUseMic} compact className="sanctum-chip" />
-          <ConnectionStatus
-            status={connectionStateToQuality(connectionState)}
-            showLabel={false}
-            preview={!liveConnected}
-            live={liveConnected}
-            className="sanctum-chip"
-          />
-          <button
-            onClick={toggleDarkMode}
-            aria-label="Toggle theme"
-            className="sanctum-icon cursor-pointer rounded-xl p-2"
-          >
-            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <button
-            type="button"
-            onClick={() => startTour()}
-            aria-label="Show prayer room tutorial"
-            className="sanctum-icon cursor-pointer rounded-xl p-2"
-          >
-            <CircleHelp className="h-4 w-4" />
-          </button>
-          <button
-            onClick={onLeave}
-            aria-label={isAuthenticated ? 'Back to dashboard' : 'Leave prayer session'}
-            data-tour="listener-leave"
-            className="sanctum-outline flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-          >
-            {isAuthenticated ? <LayoutDashboard className="w-3.5 h-3.5" /> : <LogOut className="w-3.5 h-3.5" />}
-            <span>{isAuthenticated ? 'Dashboard' : 'Leave'}</span>
-          </button>
-        </div>
-        </div>
-        {canControl && altarFlags?.id ? (
-          <div className="flex justify-end">
-            <ControlRoomLink roomId={altarFlags.id} />
+    <div data-theme={sanctumTheme(isDarkMode)} className="sanctum-screen sr-room flex min-h-screen select-none flex-col transition-colors">
+      {/* Banner */}
+      <header data-theme="dusk" className="sr-banner relative overflow-hidden">
+        <img src="/brand/room-banner.webp" alt="" aria-hidden className="sr-banner-art" />
+        <div className="relative mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <BrandLockup size="sm" href={churchSiteUrl()} className="min-w-0" />
+            <span className="sr-eyebrow hidden sm:inline">Prayer overflow room</span>
           </div>
-        ) : null}
-      </header>
-
-      <main className="w-full max-w-2xl mx-auto my-auto py-4 sm:py-6 space-y-6">
-        <ScreenShareStage />
-        {connectionState === 'RECONNECTING' && (
-          <div className="sanctum-chip rounded-full px-3 py-2 text-center text-sm font-semibold">
-            Reconnecting…
-          </div>
-        )}
-        {(connectionState === 'FAILED' || connectionState === 'DISCONNECTED') &&
-          (localParticipantId || loadJoinSession()) && (
-          <div className="text-center">
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            <LocalMicStatus locked={!canUseMic} compact className="sanctum-chip hidden sm:inline-flex" />
+            <ConnectionStatus
+              status={connectionStateToQuality(connectionState)}
+              showLabel={false}
+              preview={!liveConnected}
+              live={liveConnected}
+              className="sanctum-chip"
+            />
+            <button onClick={toggleDarkMode} aria-label="Toggle theme" className="sanctum-icon cursor-pointer rounded-xl p-2">
+              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
             <button
               type="button"
-              onClick={() => void reconnectToPrayer()}
-              className="sanctum-accent cursor-pointer rounded-xl px-4 py-2 text-xs font-bold"
+              onClick={() => startTour()}
+              aria-label="Show prayer room tutorial"
+              className="sanctum-icon cursor-pointer rounded-xl p-2"
             >
-              Reconnect
+              <CircleHelp className="h-4 w-4" />
             </button>
+            {isAuthenticated ? (
+              <button
+                onClick={onLeave}
+                aria-label="Back to dashboard"
+                className="sanctum-outline hidden cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold sm:flex"
+              >
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                <span>Dashboard</span>
+              </button>
+            ) : null}
           </div>
-        )}
-        {audioBlocked && (
-          <div className="text-center">
+        </div>
+      </header>
+
+      <div className="mx-auto grid w-full max-w-6xl flex-1 gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+        {/* Main room card */}
+        <main className="sanctum-surface sr-card flex min-w-0 flex-col gap-5 rounded-3xl p-4 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" data-tour="listener-welcome">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="sr-orb-sm flex h-12 w-12 shrink-0 items-center justify-center rounded-full sm:h-14 sm:w-14">
+                <Headphones className="h-6 w-6" />
+              </span>
+              <div className="min-w-0">
+                <h1 className="font-display text-xl leading-tight sm:text-3xl">{gatheringName}</h1>
+                <p className="sanctum-muted mt-1 text-xs sm:text-sm">
+                  Audio prayer room · Overflow
+                  {sermonLeader ? <> · Led by <strong>{sermonLeader}</strong></> : null}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
+              {prayerHasStarted ? (
+                <span className="sr-live inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold">
+                  <span className="sr-live-dot h-2 w-2 rounded-full" /> LIVE
+                </span>
+              ) : (
+                <span className="sanctum-chip rounded-lg px-3 py-1 text-xs font-bold">Waiting to begin</span>
+              )}
+              <span className="sanctum-muted inline-flex items-center gap-1.5 text-xs font-semibold sm:text-sm">
+                <Users className="h-4 w-4" />
+                {participantCount ?? people.length} {(participantCount ?? people.length) === 1 ? 'person' : 'people'}
+                <span aria-hidden>·</span>
+                <PrayerTimer seconds={liveSession?.durationSeconds || 0} size="sm" />
+              </span>
+            </div>
+          </div>
+
+          <ScreenShareStage />
+
+          {connectionState === 'RECONNECTING' && (
+            <div className="sanctum-chip rounded-full px-3 py-2 text-center text-sm font-semibold">Reconnecting…</div>
+          )}
+          {(connectionState === 'FAILED' || connectionState === 'DISCONNECTED') && (localParticipantId || loadJoinSession()) && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => void reconnectToPrayer()}
+                className="sanctum-accent cursor-pointer rounded-xl px-4 py-2 text-xs font-bold"
+              >
+                Reconnect
+              </button>
+            </div>
+          )}
+          {audioBlocked && (
             <button
               type="button"
               onClick={() => void enablePrayerAudio()}
               data-tour="listener-enable-audio"
-              className="sanctum-outline inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold"
+              className="sanctum-accent mx-auto inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold"
             >
-              <Volume2 className="w-4 h-4" />
-              Enable Prayer Audio
+              <Volume2 className="h-4 w-4" />
+              Tap to hear the prayer
             </button>
-          </div>
-        )}
+          )}
 
-        <div
-          className="sanctum-surface flex flex-col justify-between gap-3 rounded-2xl p-4 text-center sm:flex-row sm:items-center sm:text-left"
-          data-tour="listener-welcome"
-        >
-          <div>
-            <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-              {prayerHasStarted ? <LiveBadge size="sm" className="sanctum-chip" /> : null}
-              <h1 className="text-lg font-bold sm:text-xl">
-                {gatheringName}
-              </h1>
-            </div>
-            {sermonLeader && (
-              <p className="text-xs font-semibold">
-                Sermon leader: {sermonLeader}
-              </p>
-            )}
-            <p className="sanctum-muted text-xs">
-              {privateWithMe
-                ? 'Pastor is praying with you privately — only you two can hear each other.'
-                  : isMinister || isInvitedSpeaker
-                  ? showLiveMic
-                    ? <>You are leading: <span className="font-semibold">{participantName}</span></>
-                      : isInvitedSpeaker
-                        ? 'You are invited to speak. Accept the invitation to turn on your microphone.'
-                        : 'You are a minister. Turn on your microphone to speak.'
-                  : congregationMuted
-                    ? sermonLeader
-                      ? `Sermon — the congregation is muted. You will hear ${sermonLeader} and ministers.`
-                      : 'Sermon — the congregation is muted. You will hear the ministers.'
-                    : pttActive || showLiveMic
-                      ? 'You are speaking. Tap again to stop.'
-                      : 'The floor is open. Hold to speak.'}
-            </p>
-            {!isMinister && !isInvitedSpeaker && (
-              <p
-                className="sanctum-chip mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider"
-              >
-                {privateWithMe ? (
-                  <>Private prayer</>
-                ) : (
-                  <>
-                    {congregationMuted ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-                    {congregationMuted ? 'Sermon mode' : 'Floor open'}
-                  </>
-                )}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center justify-center sm:justify-end gap-3 flex-wrap">
-            <ParticipantCount
-              count={participantCount}
-              className="sanctum-chip"
-              suffix="praying with you"
-              size="sm"
-              emptyLabel="Waiting for participants"
-              localParticipantId={localParticipantId}
-              names={participants
-                .filter((person) => !person.leftAt)
-                .map((person) => ({
-                  id: person.id,
-                  displayName: person.displayName,
-                  role: person.role,
-                }))}
+          {showLiveMic && (isMinister || isInvitedSpeaker) ? (
+            <SpeakerLiveView
+              participantName={participantName}
+              participantCount={participantCount}
+              selfMuted={selfMuted}
+              onToggleSelfMute={() => void handleToggleLeadMic()}
+              onFinishPrayer={handleFinishPrayer}
             />
-            <PrayerTimer seconds={liveSession?.durationSeconds || 0} size="sm" />
-          </div>
-        </div>
-
-        {privateWithMe && (
-          <div className="sanctum-raised w-full space-y-1 rounded-2xl px-4 py-4 text-center">
-            <p className="text-sm font-bold">Private prayer with your pastor</p>
-            <p className="sanctum-muted text-xs">
-              Only you and the host can hear this exchange. Speak normally — your mic is open for this private moment.
-            </p>
-          </div>
-        )}
-
-        {(isMinister || isInvitedSpeaker) && canUseMic && (
-          <button
-            type="button"
-            onClick={() => void handleToggleLeadMic()}
-            data-tour="listener-mic"
-            className={`w-full py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer ${
-              showLiveMic && !selfMuted
-                ? 'sanctum-danger'
-                : 'sanctum-accent'
-            }`}
-          >
-            {showLiveMic && !selfMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            <span>{showLiveMic && !selfMuted ? 'Mute microphone' : 'Unmute microphone to lead'}</span>
-          </button>
-        )}
-
-        {canDiscuss && !privateWithMe && (
-          <button
-            type="button"
-            data-tour="listener-mic"
-            onClick={() => void handleTogglePtt()}
-            className={`w-full py-6 px-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 cursor-pointer ${
-              pttActive
-                ? 'sanctum-accent scale-[0.98]'
-                : 'sanctum-accent'
-            }`}
-          >
-            <Mic className="w-5 h-5" />
-            <span>{pttActive ? 'Speaking… tap again to stop' : 'Hold to speak'}</span>
-          </button>
-        )}
-
-        {!canUseMic && (
-          <div
-            data-tour="listener-mic-locked"
-            className="sanctum-chip flex w-full items-center justify-center gap-2 rounded-full px-4 py-3 text-center text-xs font-medium"
-          >
-            <MicOff className="h-4 w-4 shrink-0" />
-            Your microphone stays off until the pastor opens the floor for prayer.
-          </div>
-        )}
-
-        {showLiveMic && (isMinister || isInvitedSpeaker) ? (
-          <SpeakerLiveView
-            participantName={participantName}
-            participantCount={participantCount}
-            selfMuted={selfMuted}
-            onToggleSelfMute={() => void handleToggleLeadMic()}
-            onFinishPrayer={handleFinishPrayer}
-          />
-        ) : (
-          <div className="space-y-3">
-            <AudioVisualizerPlaceholder
-              eyebrow={floorHeld ? 'Currently speaking' : 'Waiting'}
-              speakerName={
-                floorHeld
-                  ? liveSession?.activeSpeakerName?.trim() || (isMinister ? participantName : 'Prayer leader')
-                  : 'Waiting for the next prayer leader.'
-              }
-              speakerTitle={
-                privateWithMe
-                  ? 'Private prayer — only you and the host hear this.'
-                  : isMinister
-                    ? 'Turn on your microphone. The congregation is waiting to hear you.'
+          ) : (
+            <div className="flex flex-col items-center py-2 text-center sm:py-4">
+              <div className={`sr-stage ${floorHeld || speaking ? 'is-active' : ''}`}>
+                <span className="sr-wave sr-wave-l" aria-hidden>
+                  {Array.from({ length: 9 }).map((_, n) => <i key={n} style={{ animationDelay: `${n * 0.11}s` }} />)}
+                </span>
+                <span className={`sr-orb sr-orb-${micState}`}>
+                  {micState === 'muted' ? <MicOff className="h-12 w-12 sm:h-16 sm:w-16" /> : <Mic className="h-12 w-12 sm:h-16 sm:w-16" />}
+                </span>
+                <span className="sr-wave sr-wave-r" aria-hidden>
+                  {Array.from({ length: 9 }).map((_, n) => <i key={n} style={{ animationDelay: `${n * 0.11}s` }} />)}
+                </span>
+              </div>
+              <p className={`sr-status mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold sm:text-base sr-status-${micState}`}>
+                {micState === 'muted' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {statusLine}
+              </p>
+              <p className="sanctum-muted mt-2 max-w-md text-sm">
+                {floorHeld && speakingName
+                  ? <>Now praying: <strong>{speakingName}</strong></>
+                  : privateWithMe
+                    ? 'Only you and the host can hear each other.'
                     : congregationMuted
                       ? sermonLeader
-                        ? `Sermon mode — listen as ${sermonLeader} leads.`
-                        : 'Sermon mode — the congregation is listening.'
-                      : 'The floor is open. Hold to speak.'
-              }
-              isLive={prayerHasStarted}
-            />
-          </div>
-        )}
-
-        {!showLiveMic && (
-          <div data-tour="listener-reactions">
-            <ListenerReactionBar
-              isHandRaised={isHandRaised}
-              onSendAmen={() => sendReactionAttendee('AMEN')}
-              onSendPraiseGod={() => sendReactionAttendee('PRAISE_GOD')}
-              onToggleRaiseHand={handleToggleRaiseHand}
-              onOpenPrayerRequest={() => setIsPrayerRequestOpen(true)}
-              showRaiseHand={!leadersOnly}
-              showPrayerRequest={prayerRequestsOn}
-            />
-          </div>
-        )}
-
-        <div data-tour="listener-chat">
-          {chatOn && (
-          <PrayerChatPanel
-            sessionId={liveSession?.id || loadJoinSession()?.sessionId}
-            senderName={participantName}
-            compact
-          />
+                        ? `Audio only · Listen as ${sermonLeader} leads`
+                        : 'Audio only · Speaking by moderator approval'
+                      : 'Audio only · The floor is open — tap to speak'}
+              </p>
+            </div>
           )}
-        </div>
-      </main>
 
-      <p className="sanctum-muted mx-auto w-full max-w-2xl text-center text-[11px] leading-relaxed">
-        Keep listening while you browse —{' '}
-        <a
-          href="https://github.com/th3on7in3gam3r/sanctum-live/blob/main/extension/README.md"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-semibold underline"
-        >
-          install the Sanctum Live side panel
-        </a>
-        .
-      </p>
+          {/* Action tiles */}
+          {!showLiveMic && (
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3" data-tour="listener-reactions">
+              {!leadersOnly ? (
+                <button
+                  type="button"
+                  onClick={() => void handleToggleRaiseHand()}
+                  aria-pressed={isHandRaised}
+                  className={`sr-tile ${isHandRaised ? 'is-on' : 'is-gold'}`}
+                >
+                  <span className="sr-tile-icon">{isHandRaised ? <Check className="h-5 w-5" /> : <Hand className="h-5 w-5" />}</span>
+                  <span className="sr-tile-title">{isHandRaised ? 'Hand raised' : 'Raise hand'}</span>
+                  <span className="sr-tile-sub">{isHandRaised ? 'Tap to lower' : 'Ask to pray aloud'}</span>
+                </button>
+              ) : (
+                <div className="sr-tile is-off">
+                  <span className="sr-tile-icon"><Hand className="h-5 w-5" /></span>
+                  <span className="sr-tile-title">Leaders only</span>
+                  <span className="sr-tile-sub">Prayer leaders speak</span>
+                </div>
+              )}
 
-      <footer className="sanctum-muted mx-auto flex w-full max-w-2xl items-center justify-between border-t pt-4 text-center text-xs" style={{ borderColor: 'var(--border)' }}>
-        <span className="text-[11px]">Sanctum Live™ — Prayer without barriers</span>
-        <span className="text-[11px] inline-flex items-center gap-2">
+              {(isMinister || isInvitedSpeaker) && canUseMic ? (
+                <button type="button" onClick={() => void handleToggleLeadMic()} data-tour="listener-mic" className="sr-tile is-gold">
+                  <span className="sr-tile-icon"><Mic className="h-5 w-5" /></span>
+                  <span className="sr-tile-title">Unmute</span>
+                  <span className="sr-tile-sub">Lead in prayer</span>
+                </button>
+              ) : canDiscuss && !privateWithMe ? (
+                <button
+                  type="button"
+                  onClick={() => void handleTogglePtt()}
+                  data-tour="listener-mic"
+                  className={`sr-tile ${pttActive ? 'is-on' : 'is-gold'}`}
+                >
+                  <span className="sr-tile-icon">{pttActive ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}</span>
+                  <span className="sr-tile-title">{pttActive ? 'Stop' : 'Speak'}</span>
+                  <span className="sr-tile-sub">{pttActive ? 'Tap to stop' : 'The floor is open'}</span>
+                </button>
+              ) : (
+                <div className="sr-tile is-off" data-tour="listener-mic-locked" aria-disabled>
+                  <span className="sr-tile-icon"><Mic className="h-5 w-5" /></span>
+                  <span className="sr-tile-title">Unmute</span>
+                  <span className="sr-tile-sub">When approved</span>
+                </div>
+              )}
+
+              {prayerRequestsOn ? (
+                <button type="button" onClick={() => setIsPrayerRequestOpen(true)} className="sr-tile">
+                  <span className="sr-tile-icon"><FileText className="h-5 w-5" /></span>
+                  <span className="sr-tile-title">Prayer request</span>
+                  <span className="sr-tile-sub">Send to the pastors</span>
+                </button>
+              ) : (
+                <div className="sr-tile">
+                  <span className="sr-tile-icon"><Volume2 className="h-5 w-5" /></span>
+                  <span className="sr-tile-title">Listening</span>
+                  <span className="sr-tile-sub">Audio only</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!showLiveMic && (
+            <div className="flex items-center justify-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => sendReactionAttendee('AMEN')}
+                aria-label="Say Amen"
+                className="sanctum-outline cursor-pointer rounded-full px-4 py-2 text-sm font-semibold active:scale-95"
+              >
+                🙏 Amen
+              </button>
+              <button
+                type="button"
+                onClick={() => sendReactionAttendee('PRAISE_GOD')}
+                aria-label="Praise God"
+                className="sanctum-outline cursor-pointer rounded-full px-4 py-2 text-sm font-semibold active:scale-95"
+              >
+                ❤️ Praise God
+              </button>
+            </div>
+          )}
+
+          {canControl && altarFlags?.id ? (
+            <div className="flex justify-center">
+              <ControlRoomLink roomId={altarFlags.id} />
+            </div>
+          ) : null}
+
+          <button
+            onClick={onLeave}
+            data-tour="listener-leave"
+            className="sr-leave mx-auto mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full px-8 py-3 text-sm font-bold"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Leave room</span>
+          </button>
+        </main>
+
+        {/* Right rail */}
+        <aside className="flex min-w-0 flex-col gap-5">
+          <section className="sanctum-surface sr-card rounded-3xl p-5">
+            <h2 className="flex items-center gap-2 text-base font-bold">
+              <Info className="sr-gold h-5 w-5" />
+              About this room
+            </h2>
+            <p className="sanctum-muted mt-2 text-sm">
+              The overflow for our worldwide family when the main prayer room in Jordan is full.
+            </p>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              <li className="flex items-center gap-2.5"><Headphones className="sr-gold h-4 w-4 shrink-0" />Audio only — no video</li>
+              <li className="flex items-center gap-2.5"><MicOff className="sr-gold h-4 w-4 shrink-0" />Everyone joins muted</li>
+              {!leadersOnly ? (
+                <li className="flex items-center gap-2.5"><Hand className="sr-gold h-4 w-4 shrink-0" />Raise your hand to pray aloud</li>
+              ) : null}
+              <li className="flex items-center gap-2.5"><ShieldCheck className="sr-gold h-4 w-4 shrink-0" />Keep every prayer respectful and focused</li>
+            </ul>
+          </section>
+
+          <section className="sanctum-surface sr-card rounded-3xl p-5">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-base font-bold">
+                <Users className="sr-gold h-5 w-5" />
+                In the room ({participantCount ?? people.length})
+              </h2>
+            </div>
+            {people.length > 6 ? (
+              <label className="sanctum-raised mt-3 flex items-center gap-2 rounded-xl px-3 py-2">
+                <Search className="h-4 w-4 shrink-0" />
+                <input
+                  value={participantQuery}
+                  onChange={(e) => setParticipantQuery(e.target.value)}
+                  placeholder="Find someone"
+                  className="w-full bg-transparent text-sm outline-none"
+                />
+              </label>
+            ) : null}
+            {peopleShown.length ? (
+              <ul className="mt-3 max-h-80 space-y-1 overflow-y-auto pr-1">
+                {peopleShown.slice(0, 80).map((person) => {
+                  const leader = isClientMinister(person.role) || person.role === 'SPEAKER';
+                  const isMe = person.id === localParticipantId;
+                  return (
+                    <li key={person.id} className="flex items-center gap-3 rounded-xl px-1.5 py-1.5">
+                      <span className={`sr-avatar ${leader ? 'is-leader' : ''}`}>
+                        {person.displayName.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                        {person.displayName}{isMe ? ' (you)' : ''}
+                      </span>
+                      {leader ? (
+                        <span className="sr-badge shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold">
+                          {person.role === 'SPEAKER' ? 'Praying' : 'Moderator'}
+                        </span>
+                      ) : null}
+                      {person.isHandRaised ? <Hand className="sr-gold h-4 w-4 shrink-0" aria-label="Hand raised" /> : null}
+                      {person.isMuted === false || (person.role === 'SPEAKER') ? (
+                        <Mic className="sr-ok h-4 w-4 shrink-0" aria-label="Can speak" />
+                      ) : (
+                        <MicOff className="sr-mute h-4 w-4 shrink-0" aria-label="Muted" />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="sanctum-muted mt-3 text-sm">
+                {people.length ? 'No one matches that name.' : 'People appear here as they join.'}
+              </p>
+            )}
+          </section>
+
+          <div data-tour="listener-chat">
+            {chatOn && (
+              <PrayerChatPanel sessionId={liveSession?.id || loadJoinSession()?.sessionId} senderName={participantName} compact />
+            )}
+          </div>
+        </aside>
+      </div>
+
+      <footer
+        className="sanctum-muted mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 border-t px-4 py-4 text-[11px] sm:px-6"
+        style={{ borderColor: 'var(--border)' }}
+      >
+        <span>Promised Land Christian Center · One family. Many nations. One purpose.</span>
+        <span className="inline-flex items-center gap-2">
           <RealtimeEngineStatus />
-          {!liveConnected ? <DevelopmentPreviewBadge /> : <span>Media Engine Connected</span>}
+          {!liveConnected ? <DevelopmentPreviewBadge /> : <span>Connected</span>}
         </span>
       </footer>
 

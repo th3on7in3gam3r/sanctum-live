@@ -4,7 +4,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
-import { DashboardOverviewPage } from './pages/DashboardOverviewPage';
+import { PrayerOperationsCenterPage } from './pages/PrayerOperationsCenterPage';
 import { PrayerRoomsListPage } from './pages/PrayerRoomsListPage';
 import { PrayerRoomDetailsPage } from './pages/PrayerRoomDetailsPage';
 import { CreatePrayerRoomPage } from './pages/CreatePrayerRoomPage';
@@ -342,7 +342,7 @@ const RouterContent: React.FC = () => {
   if (currentPath.startsWith('/dashboard')) {
     return (
       <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
-        <DashboardOverviewPage onNavigate={navigate} />
+        <PrayerOperationsCenterPage onNavigate={navigate} />
       </DashboardLayout>
     );
   }
