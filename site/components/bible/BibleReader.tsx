@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import type { ChapterItem } from '@/lib/bible';
 import { parseReference } from '@/lib/bibleRef';
+import { stepFor } from '@/lib/bibleSteps';
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 
@@ -63,16 +64,13 @@ const todayKey = () => new Date().toLocaleDateString('en-CA');
 /** "King James (Authorized) Version" → KJV; otherwise the translation's short name. */
 export const shortLabel = (t: { englishName: string; shortName: string; id: string }) =>
   /king james/i.test(t.englishName) || /(^|_)kjv$/i.test(t.id) ? 'KJV' : t.shortName;
+/** "Accessible Ancients Bible (AAB)" — the full name, with the short form readers may know. */
+export const fullLabel = (t: { englishName: string; name: string; shortName: string; id: string }) => {
+  const short = shortLabel(t);
+  const name = (t.englishName || t.name).replace(/\s*\((Authorized|Authorised)\)/i, '').trim();
+  return name.toLowerCase().includes(short.toLowerCase()) ? name : `${name} (${short})`;
+};
 
-const STEPS = [
-  'Take five quiet minutes to pray and return your attention to God.',
-  'Send one verse from today’s reading to someone who needs encouragement.',
-  'Read today’s chapter aloud once, slowly.',
-  'Thank God for three specific things before you sleep.',
-  'Pray by name for one person in your family and one in the church.',
-  'Choose one verse and carry it with you through the day.',
-  'Forgive someone in your heart today, and tell God about it.',
-];
 const STOP = new Set(
   'the and of to in that he his i a is for unto shall be ye they with not all them their it was as which you your my me him have will from this are by but on there were thy thee so or at had when what an we were our who one hath o us also even then out up do upon these those into if no said say come came shall let now has her she been than more any can did did own went like before after over made make man men day'.split(
     ' '
@@ -473,7 +471,7 @@ export function BibleReader({
   }, [verses]);
 
   const minutes = Math.max(1, Math.round(verses.reduce((n, v) => n + v.text.split(' ').length, 0) / 200));
-  const step = STEPS[Math.floor(Date.now() / 86400000) % STEPS.length];
+  const step = stepFor(book.id, chapter.chapter);
 
   const goto = (target: { book: string; chapter: number } | null) => (target ? href(t.id, target.book, target.chapter) : null);
   const prevHref = goto(chapter.previous);
@@ -560,7 +558,7 @@ export function BibleReader({
             writeJson(STORAGE.compare, e.target.value);
           }}
           aria-label="Second translation"
-          className="h-9 appearance-none rounded-lg border border-ink/15 bg-white pl-3 pr-8 text-sm font-medium text-ink outline-none focus:border-forest-800"
+          className="h-9 max-w-[min(70vw,340px)] appearance-none truncate rounded-lg border border-ink/15 bg-white pl-3 pr-8 text-sm font-medium text-ink outline-none focus:border-forest-800"
         >
           {languages.map((lang) => {
             const list = translations.filter((x) => x.language === lang.code && x.id !== t.id);
@@ -569,7 +567,7 @@ export function BibleReader({
               <optgroup key={lang.code} label={lang.label}>
                 {list.map((x) => (
                   <option key={x.id} value={x.id}>
-                    {lang.label.split(' · ')[0]} · {shortLabel(x)}
+                    {lang.label.split(' · ')[0]} · {fullLabel(x)}
                   </option>
                 ))}
               </optgroup>
@@ -765,7 +763,8 @@ export function BibleReader({
               <I.leaf className="mt-0.5 h-6 w-6 shrink-0 text-gold-text" />
               <div>
                 <p className="font-display text-[19px] text-ink">Today’s small step</p>
-                <p className="mt-0.5 text-[15px] leading-snug text-ink/80">{step}</p>
+                <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-gold-text">From {ref}</p>
+                <p className="mt-1 text-[15px] leading-snug text-ink/80">{step}</p>
               </div>
             </div>
             <Reflection key={`${t.id}-${book.id}-${chapter.chapter}`} refLabel={ref} storageKey={`${book.id}.${chapter.chapter}`} />
@@ -790,7 +789,7 @@ export function BibleReader({
         <Select
           label={labels.language}
           value={t.language}
-          className="w-[180px] shrink-0"
+          className="w-[150px] shrink-0"
           onChange={(code) => {
             const next = translations.find((x) => x.language === code);
             if (next) router.push(href(next.id, book.id, chapter.chapter));
@@ -800,17 +799,17 @@ export function BibleReader({
             <option key={l.code} value={l.code}>{l.label}</option>
           ))}
         </Select>
-        <Select label={labels.translation} value={t.id} className="w-[170px] shrink-0" onChange={(id) => router.push(href(id, book.id, chapter.chapter))}>
+        <Select label={labels.translation} value={t.id} className="w-[260px] shrink-0 min-[1200px]:w-[300px]" onChange={(id) => router.push(href(id, book.id, chapter.chapter))}>
           {translations.filter((x) => x.language === t.language).map((x) => (
-            <option key={x.id} value={x.id} title={x.englishName}>{shortLabel(x)}</option>
+            <option key={x.id} value={x.id} title={x.name}>{fullLabel(x)}</option>
           ))}
         </Select>
-        <Select label={labels.book} value={book.id} className="w-[180px] shrink-0" onChange={(id) => router.push(href(t.id, id, 1))}>
+        <Select label={labels.book} value={book.id} className="w-[160px] shrink-0" onChange={(id) => router.push(href(t.id, id, 1))}>
           {books.map((b) => (
             <option key={b.id} value={b.id}>{b.name}</option>
           ))}
         </Select>
-        <Select label={labels.chapter} value={chapter.chapter} className="w-[110px] shrink-0" onChange={(c) => router.push(href(t.id, book.id, Number(c)))}>
+        <Select label={labels.chapter} value={chapter.chapter} className="w-[90px] shrink-0" onChange={(c) => router.push(href(t.id, book.id, Number(c)))}>
           {Array.from({ length: book.numberOfChapters }, (_, i) => i + 1).map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}
@@ -821,7 +820,7 @@ export function BibleReader({
 
       {/* Toolbar — phone/tablet */}
       <div className="sticky top-0 z-20 -mx-4 border-b border-ink/[0.06] bg-cream/95 px-4 py-3 backdrop-blur min-[900px]:hidden sm:-mx-6 sm:px-6">
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] gap-2.5">
           <PassagePicker books={books} bookId={book.id} chapter={chapter.chapter} onPick={(b, c) => router.push(href(t.id, b, c))} />
           <Select value={t.id} onChange={(id) => router.push(href(id, book.id, chapter.chapter))}>
             {languages.map((lang) => {
@@ -830,7 +829,7 @@ export function BibleReader({
               return (
                 <optgroup key={lang.code} label={lang.label}>
                   {list.map((x) => (
-                    <option key={x.id} value={x.id}>{lang.label.split(' · ')[0]} · {shortLabel(x)}</option>
+                    <option key={x.id} value={x.id}>{fullLabel(x)}</option>
                   ))}
                 </optgroup>
               );

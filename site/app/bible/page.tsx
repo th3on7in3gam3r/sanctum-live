@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BibleReader } from '@/components/bible/BibleReader';
-import { PageHero } from '@/components/page/PageHero';
 import { getDictionary } from '@/lib/locale';
 import { LOCALE_BIBLE_LANGUAGE, type Locale } from '@/lib/i18n';
 import {
@@ -76,13 +75,26 @@ export default async function BiblePage({ searchParams }: Search) {
 
   return (
     <>
-      <PageHero
-        variant="centered"
-        eyebrow={t.bible.eyebrow}
-        title={t.bible.title}
-        lede={locale === 'en' ? 'One Word. Many languages. A daily walk with God.' : t.bible.ledeShort}
-      />
-      <section className="bg-cream px-4 pb-24 pt-8 text-ink sm:px-6 min-[900px]:-mt-10">
+      <section className="relative isolate overflow-hidden bg-forest-900 text-on-dark">
+        {/* Artwork in two pieces fitted to the hero's height: branches left, hills right, plain green between. */}
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[#063220]">
+          <img src="/bible-hero-left.webp" alt="" width={700} height={724} className="absolute inset-y-0 left-0 h-full w-auto max-w-none" />
+          <img src="/bible-hero-right.webp" alt="" width={1352} height={724} className="absolute inset-y-0 right-0 hidden h-full w-auto max-w-none sm:block" />
+        </div>
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(7,30,22,0.5),transparent_65%)]" />
+        <div className="mx-auto max-w-3xl px-6 pb-9 pt-8 text-center min-[900px]:pb-20 min-[900px]:pt-12">
+          <p className="eyebrow inline-flex items-center gap-3">
+            <span aria-hidden="true" className="h-px w-8 bg-gold/70" />
+            {t.bible.eyebrow}
+            <span aria-hidden="true" className="h-px w-8 bg-gold/70" />
+          </p>
+          <h1 className="font-display mt-3 text-[clamp(40px,5.6vw,68px)] font-light leading-none tracking-[-0.03em]">{t.bible.title}</h1>
+          <p className="mt-3 text-[16px] text-[#E2D9C6] sm:text-[18px]">
+            {locale === 'en' ? 'One Word. Many languages. A daily walk with God.' : t.bible.ledeShort}
+          </p>
+        </div>
+      </section>
+      <section className="bg-cream px-4 pb-24 pt-6 text-ink sm:px-6 min-[900px]:-mt-12 min-[900px]:pt-0">
         <div className="relative">
           {data ? (
             <BibleReader
