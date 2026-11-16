@@ -82,14 +82,21 @@ export default async function BiblePage({ searchParams }: Search) {
 
   return (
     <>
-      <section className="relative isolate overflow-hidden bg-forest-900 text-on-dark">
-        {/* Artwork in two pieces fitted to the hero's height: branches left, hills right, plain green between. */}
-        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[#063220]">
-          <img src="/bible-hero-left.webp" alt="" width={700} height={724} className="absolute inset-y-0 left-0 h-full w-auto max-w-none" />
-          <img src="/bible-hero-right.webp" alt="" width={1352} height={724} className="absolute inset-y-0 right-0 hidden h-full w-auto max-w-none sm:block" />
-        </div>
-        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(7,30,22,0.5),transparent_65%)]" />
-        <div className="mx-auto max-w-3xl px-6 pb-9 pt-8 text-center min-[900px]:pb-20 min-[900px]:pt-12">
+      <section className={`relative isolate overflow-hidden text-on-dark ${luganda ? 'bible-hero-luganda' : 'bg-forest-900'}`}>
+        {luganda ? (
+          /* Bayibuli Entukuvu: one picture (flag · open Bible · crowned crane), set in globals.css. Darken behind the words. */
+          <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_50%_28%,rgba(4,30,18,0.55),transparent_60%)]" />
+        ) : (
+          <>
+            {/* Artwork in two pieces fitted to the hero's height: branches left, hills right, plain green between. */}
+            <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[#063220]">
+              <img src="/bible-hero-left.webp" alt="" width={700} height={724} className="absolute inset-y-0 left-0 h-full w-auto max-w-none" />
+              <img src="/bible-hero-right.webp" alt="" width={1352} height={724} className="absolute inset-y-0 right-0 hidden h-full w-auto max-w-none sm:block" />
+            </div>
+            <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(7,30,22,0.5),transparent_65%)]" />
+          </>
+        )}
+        <div className={`mx-auto max-w-3xl px-6 pt-8 text-center min-[900px]:pt-12 ${luganda ? 'pb-0' : 'pb-9 min-[900px]:pb-20'}`}>
           <p className="eyebrow inline-flex items-center gap-3">
             <span aria-hidden="true" className="h-px w-8 bg-gold/70" />
             {t.bible.eyebrow}
@@ -98,6 +105,7 @@ export default async function BiblePage({ searchParams }: Search) {
           <h1 lang={luganda ? 'lg' : undefined} className="font-display mt-3 text-[clamp(40px,5.6vw,68px)] font-light leading-none tracking-[-0.03em]">
             {luganda ? 'Bayibuli Entukuvu' : t.bible.title}
           </h1>
+          {luganda ? <p className="mt-2 text-[13px] font-bold uppercase tracking-[0.18em] text-gold">Luganda</p> : null}
           <p className="mt-3 text-[16px] text-[#E2D9C6] sm:text-[18px]">
             {locale === 'en' ? 'One Word. Many languages. A daily walk with God.' : t.bible.ledeShort}
           </p>
