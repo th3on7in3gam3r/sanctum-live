@@ -227,7 +227,7 @@ const en = {
     },
     prayer: {
       p1: 'Prayer at Promised Land Christian Center continues beyond the Sunday gathering. When the room is open, you can listen, pray along, and raise a hand from your phone.',
-      p2: 'The prayer room opens in Sanctum. You will choose a name, then join the live room. This page does not play the room itself.',
+      p2: 'The prayer room opens in Jordan, the PLCC chat. Sign in with your PLCC account and you will go straight to the live room, or see which rooms are live.',
     },
     notFound: {
       title: 'Page not found',
@@ -480,7 +480,7 @@ const lg: Dict = {
     },
     prayer: {
       p1: "Okusaba e Promised Land Christian Center kugenda mu maaso n'oluvannyuma lw'okukuŋŋaana kwa Ssande. Ekisenge bwe kiba nga kiggule, osobola okuwuliriza, okusaba wamu, n'okuyimusa omukono ng'oyita ku ssimu yo.",
-      p2: "Ekisenge ky'okusaba kiggulwa mu Sanctum. Ojja kulonda erinnya, olwo oyingire mu kisenge eky'obutereevu. Olupapula luno terukuba kisenge kyennyini.",
+      p2: "Ekisenge ky'okusaba kiggulwa mu Jordan. Yingira n'akawunti yo eya PLCC, olwo oyingire mu kisenge eky'obutereevu.",
     },
     notFound: {
       title: 'Olupapula terulabise',
@@ -731,7 +731,7 @@ const sw: Dict = {
     },
     prayer: {
       p1: 'Maombi katika Promised Land Christian Center yanaendelea zaidi ya mkusanyiko wa Jumapili. Chumba kikiwa wazi, unaweza kusikiliza, kuomba pamoja, na kuinua mkono kupitia simu yako.',
-      p2: 'Chumba cha maombi kinafunguka kwenye Sanctum. Utachagua jina, kisha ujiunge na chumba mubashara. Ukurasa huu haucheze chumba chenyewe.',
+      p2: 'Chumba cha maombi kinafunguka kwenye Jordan, gumzo la PLCC. Ingia kwa akaunti yako ya PLCC na utaingia moja kwa moja kwenye chumba mubashara.',
     },
     notFound: {
       title: 'Ukurasa haupatikani',

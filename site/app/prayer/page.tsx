@@ -5,7 +5,7 @@ import { label } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   title: 'Live prayer',
-  description: 'Join Promised Land Christian Center for live prayer in Sanctum.',
+  description: 'Join Promised Land Christian Center for live prayer in a Live Huddle.',
 };
 
 export default async function PrayerPage() {

@@ -31,7 +31,18 @@ export function plccOneUrl() {
   return base.includes('#') ? base : `${base}/#/login`;
 }
 
+/**
+ * "Live prayer" opens Jordan, which finds the Live Huddle the member can join
+ * (or says none is live). PLCC Sanctum stays the overflow room for very large
+ * gatherings: sanctumPrayerUrl(), or set LIVE_PRAYER_URL to point everything there.
+ */
 export function prayerJoinUrl() {
+  const override = trimSlash(process.env.LIVE_PRAYER_URL || '');
+  if (override) return override;
+  return `${trimSlash(process.env.JORDAN_APP_URL || 'https://plcc-chat.vercel.app')}/live`;
+}
+
+export function sanctumPrayerUrl() {
   const env = siteEnv();
   return `${env.sanctumAppUrl}/join/${env.prayerRoomSlug}`;
 }
