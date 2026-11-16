@@ -40,7 +40,17 @@ const STORAGE = {
   days: 'plcc_bible_days_v1',
   journal: 'plcc_bible_journal_v1',
   compare: 'plcc_bible_compare_v1',
+  verses: 'plcc_bible_verses_v1',
 };
+/** The church's chat (Jordan) and community feed (Tribes). */
+const JORDAN_ORIGIN = (process.env.NEXT_PUBLIC_JORDAN_ORIGIN || 'https://plcc-chat.vercel.app').replace(/\/+$/, '');
+const TRIBES_ORIGIN = (process.env.NEXT_PUBLIC_TRIBES_ORIGIN || 'https://plcc-connect.vercel.app').replace(/\/+$/, '');
+type Passage = { t: string; b: string; c: number; from: number; to: number };
+export type SavedVerse = Passage & { ref: string; tLabel: string; text: string; savedAt: string };
+const passageQuery = (p: Passage) => `t=${encodeURIComponent(p.t)}&b=${p.b}&c=${p.c}&v=${p.from}${p.to > p.from ? `-${p.to}` : ''}`;
+const jordanShareUrl = (p: Passage) => `${JORDAN_ORIGIN}/share?kind=verse&${passageQuery(p)}`;
+const tribesShareUrl = (p: Passage) => `${TRIBES_ORIGIN}/community?share=verse&${passageQuery(p)}`;
+const samePassage = (a: Passage, b: Passage) => a.t === b.t && a.b === b.b && a.c === b.c && a.from === b.from && a.to === b.to;
 const SIZES = [18, 20, 22, 25];
 
 function readJson<T>(key: string, fallback: T): T {
@@ -101,6 +111,9 @@ const I = {
   layers: (p: IconProps) => <Svg {...p}><path d="m12 3 9 5-9 5-9-5z" /><path d="m3 13 9 5 9-5" /></Svg>,
   copy: (p: IconProps) => <Svg {...p}><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a1 1 0 0 1 1-1h10" /></Svg>,
   check: (p: IconProps) => <Svg {...p}><path d="m5 12 5 5L20 7" /></Svg>,
+  chat: (p: IconProps) => <Svg {...p}><path d="M4 5h16v11H9l-5 4z" /></Svg>,
+  people: (p: IconProps) => <Svg {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5" /><circle cx="17" cy="9" r="2.4" /><path d="M16.5 14c2.4.2 4 1.8 4.5 4.5" /></Svg>,
+  trash: (p: IconProps) => <Svg {...p}><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></Svg>,
   headphones: (p: IconProps) => <Svg {...p}><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><rect x="3" y="14" width="4" height="7" rx="1.5" /><rect x="17" y="14" width="4" height="7" rx="1.5" /></Svg>,
   whatsapp: ({ className = 'h-5 w-5' }: IconProps) => (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
@@ -267,6 +280,7 @@ export function BibleReader({
   const [searchNote, setSearchNote] = useState('');
   const [focusMode, setFocusMode] = useState(false);
   const [saved, setSaved] = useState<{ t: string; b: string; c: number; label: string }[]>([]);
+  const [savedVerses, setSavedVerses] = useState<SavedVerse[]>([]);
   const [days, setDays] = useState<string[]>([]);
   const [toast, setToast] = useState('');
   const [compareId, setCompareId] = useState<string>('');
@@ -286,6 +300,7 @@ export function BibleReader({
   useEffect(() => {
     setSizeIdx(readJson(STORAGE.size, 2));
     setSaved(readJson(STORAGE.saved, []));
+    setSavedVerses(readJson(STORAGE.verses, []));
     setDays(readJson(STORAGE.days, []));
     const savedCompare = readJson<string>(STORAGE.compare, '');
     const fallback =
@@ -427,6 +442,45 @@ export function BibleReader({
     if (typeof window === 'undefined') return '';
     return `${window.location.origin}${href(t.id, book.id, chapter.chapter, selected[0])}`;
   };
+  const selectionPassage: Passage | null = selected.length
+    ? { t: t.id, b: book.id, c: chapter.chapter, from: selected[0], to: selected[selected.length - 1] }
+    : null;
+  const selectionSaved = selectionPassage ? savedVerses.some((v) => samePassage(v, selectionPassage)) : false;
+  const toggleSavedVerse = () => {
+    if (!selectionPassage) return;
+    const next = selectionSaved
+      ? savedVerses.filter((v) => !samePassage(v, selectionPassage))
+      : [
+          {
+            ...selectionPassage,
+            ref: `${ref}:${rangeLabel(selected)}`,
+            tLabel,
+            text: selected.map((n) => verses.find((v) => v.number === n)?.text ?? '').join(' ').slice(0, 600),
+            savedAt: new Date().toISOString(),
+          },
+          ...savedVerses,
+        ].slice(0, 100);
+    setSavedVerses(next);
+    writeJson(STORAGE.verses, next);
+    showToast(selectionSaved ? 'Removed from saved verses' : 'Verse saved — find it under Read');
+  };
+  const removeSavedVerse = (v: SavedVerse) => {
+    const next = savedVerses.filter((x) => !samePassage(x, v));
+    setSavedVerses(next);
+    writeJson(STORAGE.verses, next);
+  };
+  const savedVerseText = (v: SavedVerse) =>
+    `“${v.text}”\n— ${v.ref} (${v.tLabel})\n${typeof window !== 'undefined' ? window.location.origin : ''}${href(v.t, v.b, v.c)}&v=${v.from}${v.to > v.from ? `-${v.to}` : ''}`;
+  const copySaved = async (v: SavedVerse) => {
+    try {
+      await navigator.clipboard.writeText(savedVerseText(v));
+      showToast('Copied');
+    } catch {
+      showToast('Could not copy on this device');
+    }
+  };
+  const openOut = (url: string) => window.open(url, '_blank', 'noopener');
+
   const copySelection = async () => {
     try {
       await navigator.clipboard.writeText(`${selectionText(compareOn)}\n${shareUrl()}`);
@@ -694,6 +748,30 @@ export function BibleReader({
               </div>
             ) : null}
             <div className={miniCard}>
+              <p className="font-semibold text-ink">Saved verses</p>
+              {savedVerses.length ? (
+                <ul className="mt-2 space-y-2.5">
+                  {savedVerses.slice(0, 12).map((v) => (
+                    <li key={`${v.t}-${v.b}-${v.c}-${v.from}-${v.to}`} className="rounded-xl border border-ink/[0.07] bg-[#fbf8f1] p-3">
+                      <Link href={`${href(v.t, v.b, v.c)}&v=${v.from}${v.to > v.from ? `-${v.to}` : ''}`} className="block">
+                        <span className="block text-[13px] font-bold text-gold-text">{v.ref} · {v.tLabel}</span>
+                        <span className="mt-0.5 font-display text-[15px] leading-snug text-ink line-clamp-2">“{v.text}”</span>
+                      </Link>
+                      <div className="mt-2 flex items-center gap-1">
+                        <button type="button" onClick={() => void copySaved(v)} aria-label={`Copy ${v.ref}`} title="Copy" className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-ink/70 hover:bg-ink/5 ${focusRing}`}><I.copy className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => openOut(jordanShareUrl(v))} className={`inline-flex h-9 items-center gap-1.5 rounded-full bg-forest-800 px-3 text-[13px] font-semibold text-cream hover:bg-forest-900 ${focusRing}`}><I.chat className="h-4 w-4" /> Jordan</button>
+                        <button type="button" onClick={() => openOut(`https://wa.me/?text=${encodeURIComponent(savedVerseText(v))}`)} aria-label={`Share ${v.ref} on WhatsApp`} title="WhatsApp" className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-[#128c4a] hover:bg-ink/5 ${focusRing}`}><I.whatsapp className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => openOut(tribesShareUrl(v))} aria-label={`Post ${v.ref} to Tribes`} title="Post to Tribes" className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-ink/70 hover:bg-ink/5 ${focusRing}`}><I.people className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => removeSavedVerse(v)} aria-label={`Remove ${v.ref}`} title="Remove" className={`ml-auto inline-flex h-9 w-9 items-center justify-center rounded-full text-ink/45 hover:bg-ink/5 hover:text-ink ${focusRing}`}><I.trash className="h-4 w-4" /></button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-sm text-ink/60">Tap a verse, then Bookmark, to keep it here and share it later.</p>
+              )}
+            </div>
+            <div className={miniCard}>
               <p className="font-semibold text-ink">Saved chapters</p>
               {saved.length ? (
                 <ul className="mt-2 divide-y divide-ink/[0.06]">
@@ -932,14 +1010,23 @@ export function BibleReader({
             <span className="whitespace-nowrap pr-2 text-sm font-semibold">
               {ref}:{rangeLabel(selected)}
             </span>
-            <button type="button" onClick={copySelection} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
-              <I.copy className="h-4 w-4" /> Copy
+            <button type="button" onClick={toggleSavedVerse} aria-pressed={selectionSaved} aria-label={selectionSaved ? 'Remove bookmark' : 'Bookmark'} title={selectionSaved ? 'Remove bookmark' : 'Bookmark'} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
+              <I.bookmark className={`h-4 w-4 ${selectionSaved ? 'text-gold' : ''}`} filled={selectionSaved} /> <span className="hidden sm:inline">{selectionSaved ? 'Saved' : 'Bookmark'}</span>
             </button>
-            <button type="button" onClick={whatsappSelection} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#25d366] px-3.5 text-sm font-bold text-[#0b2b17] hover:brightness-105 ${focusRing}`}>
-              <I.whatsapp className="h-4 w-4" /> {compareOn && compare ? 'Share both languages' : 'WhatsApp'}
+            <button type="button" onClick={copySelection} aria-label="Copy" className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
+              <I.copy className="h-4 w-4" /> <span className="hidden sm:inline">Copy</span>
+            </button>
+            <button type="button" onClick={() => selectionPassage && openOut(jordanShareUrl(selectionPassage))} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-gold px-3.5 text-sm font-bold text-forest-950 hover:brightness-105 ${focusRing}`}>
+              <I.chat className="h-4 w-4" /> Share to Jordan
+            </button>
+            <button type="button" onClick={whatsappSelection} aria-label={compareOn && compare ? 'Share both languages on WhatsApp' : 'WhatsApp'} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#25d366] px-3.5 text-sm font-bold text-[#0b2b17] hover:brightness-105 ${focusRing}`}>
+              <I.whatsapp className="h-4 w-4" /> <span className="hidden sm:inline">{compareOn && compare ? 'Both languages' : 'WhatsApp'}</span>
+            </button>
+            <button type="button" onClick={() => selectionPassage && openOut(tribesShareUrl(selectionPassage))} aria-label="Post to Tribes" className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
+              <I.people className="h-4 w-4" /> <span className="hidden md:inline">Post to Tribes</span>
             </button>
             {!compareOn ? (
-              <button type="button" onClick={openCompare} className={`hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 sm:inline-flex ${focusRing}`}>
+              <button type="button" onClick={openCompare} className={`hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 xl:inline-flex ${focusRing}`}>
                 <I.layers className="h-4 w-4" /> Add a language
               </button>
             ) : null}
