@@ -13,6 +13,7 @@ import {
   type BibleBook,
   type BibleChapter,
 } from '@/lib/bible';
+import { LCB_ID } from '@/lib/bibleLocal';
 
 type Search = { searchParams: Promise<{ t?: string; b?: string; c?: string; v?: string }> };
 
@@ -76,6 +77,9 @@ export default async function BiblePage({ searchParams }: Search) {
   const verseEnd = verseStart && Number.isFinite(vTo) && vTo > verseStart && vTo < 200 ? Math.min(vTo, verseStart + 40) : verseStart;
   const verses = verseStart && verseEnd ? Array.from({ length: verseEnd - verseStart + 1 }, (_, i) => verseStart + i) : undefined;
 
+  // The church's Luganda Bible gets its own name in the banner.
+  const luganda = data?.chapter.translation.id === LCB_ID;
+
   return (
     <>
       <section className="relative isolate overflow-hidden bg-forest-900 text-on-dark">
@@ -91,7 +95,9 @@ export default async function BiblePage({ searchParams }: Search) {
             {t.bible.eyebrow}
             <span aria-hidden="true" className="h-px w-8 bg-gold/70" />
           </p>
-          <h1 className="font-display mt-3 text-[clamp(40px,5.6vw,68px)] font-light leading-none tracking-[-0.03em]">{t.bible.title}</h1>
+          <h1 lang={luganda ? 'lg' : undefined} className="font-display mt-3 text-[clamp(40px,5.6vw,68px)] font-light leading-none tracking-[-0.03em]">
+            {luganda ? 'Bayibuli Entukuvu' : t.bible.title}
+          </h1>
           <p className="mt-3 text-[16px] text-[#E2D9C6] sm:text-[18px]">
             {locale === 'en' ? 'One Word. Many languages. A daily walk with God.' : t.bible.ledeShort}
           </p>

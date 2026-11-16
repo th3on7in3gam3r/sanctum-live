@@ -20,7 +20,7 @@ export type ReaderTranslation = {
 };
 export type ReaderBook = { id: string; name: string; order: number; numberOfChapters: number };
 export type ReaderChapter = {
-  translation: ReaderTranslation & { licenseNotice: string | null };
+  translation: ReaderTranslation & { licenseNotice: string | null; source?: { name: string; url: string } };
   book: ReaderBook;
   chapter: number;
   content: ChapterItem[];
@@ -1095,8 +1095,13 @@ export function BibleReader({
       ) : null}
 
       <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-ink/55">
-        {t.licenseNotice ? `${t.licenseNotice} ` : ''}Text courtesy of the{' '}
-        <a href="https://bible.helloao.org" className="underline" rel="noopener" target="_blank">Free Use Bible API</a>. {bookName(book.id)} {chapter.chapter} · {t.name}.
+        {t.licenseNotice ? `${t.licenseNotice} ` : ''}Text courtesy of{' '}
+        {t.source ? (
+          <a href={t.source.url} className="underline" rel="noopener" target="_blank">{t.source.name}</a>
+        ) : (
+          <>the <a href="https://bible.helloao.org" className="underline" rel="noopener" target="_blank">Free Use Bible API</a></>
+        )}
+        . {bookName(book.id)} {chapter.chapter} · {t.name}.
       </p>
     </div>
   );

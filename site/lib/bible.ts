@@ -1,4 +1,5 @@
 import { unstable_cache } from 'next/cache';
+import { LCB_TRANSLATION, getLocalChapter, isLocalTranslation, listLocalBooks } from './bibleLocal';
 
 /**
  * Bible text from the Free Use Bible API (bible.helloao.org, AO Lab):
@@ -41,6 +42,8 @@ export type BibleTranslation = {
   licenseNotice: string | null;
   licenseUrl: string;
   website: string;
+  /** Where the text comes from, for the credit line. Absent means the Free Use Bible API. */
+  source?: { name: string; url: string };
 };
 
 export type BibleBook = {
@@ -98,7 +101,7 @@ async function getJson<T>(path: string, revalidate: number): Promise<T> {
  * Translations in our languages with at least a complete New Testament.
  * The full catalog is large, so only the filtered list is cached (daily).
  */
-export const listBibleTranslations = unstable_cache(
+const listApiTranslations = unstable_cache(
   async (): Promise<BibleTranslation[]> => {
     const res = await fetch(`${API}/api/available_translations.json`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Bible translations are unavailable right now (${res.status}).`);
@@ -128,7 +131,19 @@ export const listBibleTranslations = unstable_cache(
   { revalidate: 86400 }
 );
 
+/**
+ * Every translation offered. Luganda is the church's own choice, Bayibuli Entukuvu
+ * (bundled with the site), in place of any Luganda translation the API carries.
+ * If the API is down, Bayibuli Entukuvu is still offered.
+ */
+export async function listBibleTranslations(): Promise<BibleTranslation[]> {
+  const fromApi = await listApiTranslations().catch(() => [] as BibleTranslation[]);
+  const others = fromApi.filter((t) => t.language !== LCB_TRANSLATION.language);
+  return [{ ...LCB_TRANSLATION }, ...others];
+}
+
 export async function listBibleBooks(translationId: string): Promise<BibleBook[]> {
+  if (isLocalTranslation(translationId)) return listLocalBooks();
   const data = await getJson<{ books: BibleBook[] }>(
     `/api/${encodeURIComponent(translationId)}/books.json`,
     604800
@@ -144,6 +159,7 @@ export async function getBibleChapter(
   book: BibleBook,
   chapter: number
 ): Promise<BibleChapter> {
+  if (isLocalTranslation(translation.id)) return getLocalChapter(book, chapter);
   const data = await getJson<{
     chapter: {
       number: number;

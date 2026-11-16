@@ -1,0 +1,398 @@
+[
+ {
+  "id": "GEN",
+  "name": "Olubereberye",
+  "order": 1,
+  "numberOfChapters": 50
+ },
+ {
+  "id": "EXO",
+  "name": "Okuva",
+  "order": 2,
+  "numberOfChapters": 40
+ },
+ {
+  "id": "LEV",
+  "name": "Ebyabaleevi",
+  "order": 3,
+  "numberOfChapters": 27
+ },
+ {
+  "id": "NUM",
+  "name": "Okubala",
+  "order": 4,
+  "numberOfChapters": 36
+ },
+ {
+  "id": "DEU",
+  "name": "Ekyamateeka Olwokubiri",
+  "order": 5,
+  "numberOfChapters": 34
+ },
+ {
+  "id": "JOS",
+  "name": "Yoswa",
+  "order": 6,
+  "numberOfChapters": 24
+ },
+ {
+  "id": "JDG",
+  "name": "Ekyabalamuzi",
+  "order": 7,
+  "numberOfChapters": 21
+ },
+ {
+  "id": "RUT",
+  "name": "Luusi",
+  "order": 8,
+  "numberOfChapters": 4
+ },
+ {
+  "id": "1SA",
+  "name": "1 Samwiri",
+  "order": 9,
+  "numberOfChapters": 31
+ },
+ {
+  "id": "2SA",
+  "name": "2 Samwiri",
+  "order": 10,
+  "numberOfChapters": 24
+ },
+ {
+  "id": "1KI",
+  "name": "1 Bassekabaka",
+  "order": 11,
+  "numberOfChapters": 22
+ },
+ {
+  "id": "2KI",
+  "name": "2 Bassekabaka",
+  "order": 12,
+  "numberOfChapters": 25
+ },
+ {
+  "id": "1CH",
+  "name": "1 Ebyomumirembe",
+  "order": 13,
+  "numberOfChapters": 29
+ },
+ {
+  "id": "2CH",
+  "name": "2 Ebyomumirembe",
+  "order": 14,
+  "numberOfChapters": 36
+ },
+ {
+  "id": "EZR",
+  "name": "Ezera",
+  "order": 15,
+  "numberOfChapters": 10
+ },
+ {
+  "id": "NEH",
+  "name": "Nekkemiya",
+  "order": 16,
+  "numberOfChapters": 13
+ },
+ {
+  "id": "EST",
+  "name": "Eseza",
+  "order": 17,
+  "numberOfChapters": 10
+ },
+ {
+  "id": "JOB",
+  "name": "Yobu",
+  "order": 18,
+  "numberOfChapters": 42
+ },
+ {
+  "id": "PSA",
+  "name": "Zabbuli",
+  "order": 19,
+  "numberOfChapters": 150
+ },
+ {
+  "id": "PRO",
+  "name": "Engero",
+  "order": 20,
+  "numberOfChapters": 31
+ },
+ {
+  "id": "ECC",
+  "name": "Omubuulizi",
+  "order": 21,
+  "numberOfChapters": 12
+ },
+ {
+  "id": "SNG",
+  "name": "Oluyimba",
+  "order": 22,
+  "numberOfChapters": 8
+ },
+ {
+  "id": "ISA",
+  "name": "Isaaya",
+  "order": 23,
+  "numberOfChapters": 66
+ },
+ {
+  "id": "JER",
+  "name": "Yeremiya",
+  "order": 24,
+  "numberOfChapters": 52
+ },
+ {
+  "id": "LAM",
+  "name": "Okukungubaga",
+  "order": 25,
+  "numberOfChapters": 5
+ },
+ {
+  "id": "EZK",
+  "name": "Ezeekyeri",
+  "order": 26,
+  "numberOfChapters": 48
+ },
+ {
+  "id": "DAN",
+  "name": "Danyeri",
+  "order": 27,
+  "numberOfChapters": 12
+ },
+ {
+  "id": "HOS",
+  "name": "Koseya",
+  "order": 28,
+  "numberOfChapters": 14
+ },
+ {
+  "id": "JOL",
+  "name": "Yoweeri",
+  "order": 29,
+  "numberOfChapters": 3
+ },
+ {
+  "id": "AMO",
+  "name": "Amosi",
+  "order": 30,
+  "numberOfChapters": 9
+ },
+ {
+  "id": "OBA",
+  "name": "Obadiya",
+  "order": 31,
+  "numberOfChapters": 1
+ },
+ {
+  "id": "JON",
+  "name": "Yona",
+  "order": 32,
+  "numberOfChapters": 4
+ },
+ {
+  "id": "MIC",
+  "name": "Mikka",
+  "order": 33,
+  "numberOfChapters": 7
+ },
+ {
+  "id": "NAM",
+  "name": "Nakkumu",
+  "order": 34,
+  "numberOfChapters": 3
+ },
+ {
+  "id": "HAB",
+  "name": "Kaabakuuku",
+  "order": 35,
+  "numberOfChapters": 3
+ },
+ {
+  "id": "ZEP",
+  "name": "Zeffaniya",
+  "order": 36,
+  "numberOfChapters": 3
+ },
+ {
+  "id": "HAG",
+  "name": "Kaggayi",
+  "order": 37,
+  "numberOfChapters": 2
+ },
+ {
+  "id": "ZEC",
+  "name": "Zekkaliya",
+  "order": 38,
+  "numberOfChapters": 14
+ },
+ {
+  "id": "MAL",
+  "name": "Malaki",
+  "order": 39,
+  "numberOfChapters": 4
+ },
+ {
+  "id": "MAT",
+  "name": "Matayo",
+  "order": 40,
+  "numberOfChapters": 28
+ },
+ {
+  "id": "MRK",
+  "name": "Makko",
+  "order": 41,
+  "numberOfChapters": 16
+ },
+ {
+  "id": "LUK",
+  "name": "Lukka",
+  "order": 42,
+  "numberOfChapters": 24
+ },
+ {
+  "id": "JHN",
+  "name": "Yokaana",
+  "order": 43,
+  "numberOfChapters": 21
+ },
+ {
+  "id": "ACT",
+  "name": "Ebikolwa by’Abatume",
+  "order": 44,
+  "numberOfChapters": 28
+ },
+ {
+  "id": "ROM",
+  "name": "Abaruumi",
+  "order": 45,
+  "numberOfChapters": 16
+ },
+ {
+  "id": "1CO",
+  "name": "1 Abakkolinso",
+  "order": 46,
+  "numberOfChapters": 16
+ },
+ {
+  "id": "2CO",
+  "name": "2 Abakkolinso",
+  "order": 47,
+  "numberOfChapters": 13
+ },
+ {
+  "id": "GAL",
+  "name": "Abaggalatiya",
+  "order": 48,
+  "numberOfChapters": 6
+ },
+ {
+  "id": "EPH",
+  "name": "Abaefeso",
+  "order": 49,
+  "numberOfChapters": 6
+ },
+ {
+  "id": "PHP",
+  "name": "Abafiripi",
+  "order": 50,
+  "numberOfChapters": 4
+ },
+ {
+  "id": "COL",
+  "name": "Abakkolosaayi",
+  "order": 51,
+  "numberOfChapters": 4
+ },
+ {
+  "id": "1TH",
+  "name": "1 Basessaloniika",
+  "order": 52,
+  "numberOfChapters": 5
+ },
+ {
+  "id": "2TH",
+  "name": "2 Basessaloniika",
+  "order": 53,
+  "numberOfChapters": 3
+ },
+ {
+  "id": "1TI",
+  "name": "1 Timoseewo",
+  "order": 54,
+  "numberOfChapters": 6
+ },
+ {
+  "id": "2TI",
+  "name": "2 Timoseewo",
+  "order": 55,
+  "numberOfChapters": 4
+ },
+ {
+  "id": "TIT",
+  "name": "Tito",
+  "order": 56,
+  "numberOfChapters": 3
+ },
+ {
+  "id": "PHM",
+  "name": "Firemooni",
+  "order": 57,
+  "numberOfChapters": 1
+ },
+ {
+  "id": "HEB",
+  "name": "Abaebbulaniya",
+  "order": 58,
+  "numberOfChapters": 13
+ },
+ {
+  "id": "JAS",
+  "name": "Yakobo",
+  "order": 59,
+  "numberOfChapters": 5
+ },
+ {
+  "id": "1PE",
+  "name": "1 Peetero",
+  "order": 60,
+  "numberOfChapters": 5
+ },
+ {
+  "id": "2PE",
+  "name": "2 Peetero",
+  "order": 61,
+  "numberOfChapters": 3
+ },
+ {
+  "id": "1JN",
+  "name": "1 Yokaana",
+  "order": 62,
+  "numberOfChapters": 5
+ },
+ {
+  "id": "2JN",
+  "name": "2 Yokaana",
+  "order": 63,
+  "numberOfChapters": 1
+ },
+ {
+  "id": "3JN",
+  "name": "3 Yokaana",
+  "order": 64,
+  "numberOfChapters": 1
+ },
+ {
+  "id": "JUD",
+  "name": "Yuda",
+  "order": 65,
+  "numberOfChapters": 1
+ },
+ {
+  "id": "REV",
+  "name": "Okubikkulirwa",
+  "order": 66,
+  "numberOfChapters": 22
+ }
+]
