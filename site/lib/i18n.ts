@@ -193,6 +193,9 @@ const en = {
       share: 'Share on WhatsApp',
       shareText: 'Join {name}: {url}',
       none: 'Huddle times will be posted here.',
+      roomsTitle: 'Prayer rooms',
+      scheduleTitle: 'Weekly times',
+      openRoom: 'Open room',
     },
     sermons: {
       message: 'Message',
@@ -446,6 +449,9 @@ const lg: Dict = {
       share: 'Gabana ku WhatsApp',
       shareText: 'Yingira mu {name}: {url}',
       none: "Essaawa z'ebibinja zijja kuteekebwa wano.",
+      roomsTitle: "Ebisenge by'okusaba",
+      scheduleTitle: 'Essaawa za buli wiiki',
+      openRoom: 'Ggulawo ekisenge',
     },
     sermons: {
       message: 'Obubaka',
@@ -697,6 +703,9 @@ const sw: Dict = {
       share: 'Shiriki kwenye WhatsApp',
       shareText: 'Jiunge na {name}: {url}',
       none: 'Ratiba za vikundi zitawekwa hapa.',
+      roomsTitle: 'Vyumba vya maombi',
+      scheduleTitle: 'Ratiba ya wiki',
+      openRoom: 'Fungua chumba',
     },
     sermons: {
       message: 'Ujumbe',

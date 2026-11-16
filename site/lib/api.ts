@@ -172,19 +172,35 @@ export async function getLive(): Promise<PublicLive | null> {
  * Is a prayer huddle live in an open Jordan room right now? (Public yes/no from
  * PLCC Canaan; no names or counts.) Lights the website's "Live now" dot.
  */
-export async function getJordanLive(): Promise<boolean> {
+export type JordanRoom = { id: string; name: string; live: boolean };
+
+async function fetchJordanLive(rooms: boolean): Promise<{ live: boolean; rooms: JordanRoom[] }> {
   const origin = (process.env.PLCC_API_ORIGIN || 'https://plcc-opal.vercel.app').replace(/\/+$/, '');
   try {
-    const response = await fetch(`${origin}/api/vault?resource=live-prayer`, {
+    const response = await fetch(`${origin}/api/vault?resource=live-prayer${rooms ? '&rooms=1' : ''}`, {
       next: { revalidate: 20 },
       signal: AbortSignal.timeout(3000),
     });
-    if (!response.ok) return false;
-    const data = (await response.json()) as { live?: unknown };
-    return data.live === true;
+    if (!response.ok) return { live: false, rooms: [] };
+    const data = (await response.json()) as { live?: unknown; rooms?: unknown };
+    const list = Array.isArray(data.rooms)
+      ? data.rooms
+          .filter((r): r is JordanRoom => Boolean(r && typeof r.id === 'string' && typeof r.name === 'string'))
+          .map((r) => ({ id: r.id, name: r.name, live: r.live === true }))
+      : [];
+    return { live: data.live === true, rooms: list };
   } catch {
-    return false;
+    return { live: false, rooms: [] };
   }
+}
+
+export async function getJordanLive(): Promise<boolean> {
+  return (await fetchJordanLive(false)).live;
+}
+
+/** Open (everyone) Jordan rooms, live ones first. Empty when PLCC Canaan can't be reached. */
+export async function listJordanRooms(): Promise<JordanRoom[]> {
+  return (await fetchJordanLive(true)).rooms;
 }
 
 export const publicLeaderSchema = z.object({

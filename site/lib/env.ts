@@ -36,10 +36,19 @@ export function plccOneUrl() {
  * (or says none is live). PLCC Sanctum stays the overflow room for very large
  * gatherings: sanctumPrayerUrl(), or set LIVE_PRAYER_URL to point everything there.
  */
+export function jordanOrigin() {
+  return trimSlash(process.env.JORDAN_APP_URL || 'https://plcc-chat.vercel.app');
+}
+
+/** A Jordan room; a live one opens with its one-tap Join card. */
+export function jordanRoomUrl(roomId: string, live: boolean) {
+  return `${jordanOrigin()}/community/chat/${encodeURIComponent(roomId)}${live ? '?huddle=join' : ''}`;
+}
+
 export function prayerJoinUrl() {
   const override = trimSlash(process.env.LIVE_PRAYER_URL || '');
   if (override) return override;
-  return `${trimSlash(process.env.JORDAN_APP_URL || 'https://plcc-chat.vercel.app')}/live`;
+  return `${jordanOrigin()}/live`;
 }
 
 /**
