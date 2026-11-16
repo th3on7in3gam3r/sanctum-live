@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero } from '@/components/page/PageHero';
 import { listPublicGroups, type PublicGroup } from '@/lib/api';
-import { siteEnv } from '@/lib/env';
+import { huddleJoinUrl } from '@/lib/env';
 import { formatKampala } from '@/lib/format';
 import { getDictionary } from '@/lib/locale';
 import { fill, type Dict } from '@/lib/i18n';
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 function joinHref(slug: string) {
-  return `${siteEnv().sanctumAppUrl}/join/${slug}`;
+  return huddleJoinUrl(slug);
 }
 
 function whatsAppHref(name: string, slug: string, t: Dict) {

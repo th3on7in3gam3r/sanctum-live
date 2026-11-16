@@ -168,6 +168,25 @@ export async function getLive(): Promise<PublicLive | null> {
   }
 }
 
+/**
+ * Is a prayer huddle live in an open Jordan room right now? (Public yes/no from
+ * PLCC Canaan; no names or counts.) Lights the website's "Live now" dot.
+ */
+export async function getJordanLive(): Promise<boolean> {
+  const origin = (process.env.PLCC_API_ORIGIN || 'https://plcc-opal.vercel.app').replace(/\/+$/, '');
+  try {
+    const response = await fetch(`${origin}/api/vault?resource=live-prayer`, {
+      next: { revalidate: 20 },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) return false;
+    const data = (await response.json()) as { live?: unknown };
+    return data.live === true;
+  } catch {
+    return false;
+  }
+}
+
 export const publicLeaderSchema = z.object({
   id: z.string(),
   name: z.string(),

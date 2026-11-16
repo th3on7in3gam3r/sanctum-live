@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Fraunces, Manrope } from 'next/font/google';
 import { BRAND } from '@plcc/brand/brand';
 import { SiteChrome } from '@/components/SiteChrome';
-import { getLive } from '@/lib/api';
+import { getJordanLive, getLive } from '@/lib/api';
 import { listServiceTimes } from '@/lib/api';
 import { plccOneUrl, prayerJoinUrl, siteEnv } from '@/lib/env';
 import { homeStrip } from '@/lib/schedule';
@@ -38,14 +38,14 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [live, serviceTimes, { locale, t }] = await Promise.all([getLive(), listServiceTimes(), getDictionary()]);
+  const [live, jordanLive, serviceTimes, { locale, t }] = await Promise.all([getLive(), getJordanLive(), listServiceTimes(), getDictionary()]);
   const liveRoom = live?.rooms?.find((room) => room.status === 'LIVE');
   const offer = await languageOffer(locale);
   const prayerUrl = prayerJoinUrl();
   return (
     <html lang={LOCALE_TAGS[locale]} translate="no" className={`${fraunces.variable} ${manrope.variable}`}>
       <body>
-        <SiteChrome locale={locale} t={t} offer={offer} prayerUrl={prayerUrl} oneUrl={plccOneUrl()} liveNow={Boolean(liveRoom)} staffLoginUrl={staffSignInLink(siteEnv().sanctumAppUrl).href} serviceStrip={homeStrip(serviceTimes)}>{children}</SiteChrome>
+        <SiteChrome locale={locale} t={t} offer={offer} prayerUrl={prayerUrl} oneUrl={plccOneUrl()} liveNow={jordanLive || Boolean(liveRoom)} staffLoginUrl={staffSignInLink(siteEnv().sanctumAppUrl).href} serviceStrip={homeStrip(serviceTimes)}>{children}</SiteChrome>
       </body>
     </html>
   );

@@ -3,7 +3,7 @@ import { MinistryRow, groupAnchor } from '@/components/page/MinistryRow';
 import { PageHero } from '@/components/page/PageHero';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { listPublicGroups } from '@/lib/api';
-import { siteEnv } from '@/lib/env';
+import { huddleJoinUrl } from '@/lib/env';
 import { firstParagraph } from '@/lib/pages';
 import { getDictionary } from '@/lib/locale';
 import { label } from '@/lib/i18n';
@@ -31,7 +31,7 @@ export default async function MinistriesPage() {
               key={group.id}
               group={group}
               index={index}
-              huddleHref={group.huddle ? `${siteEnv().sanctumAppUrl}/join/${group.huddle.slug}` : null}
+              huddleHref={group.huddle ? huddleJoinUrl(group.huddle.slug) : null}
               labels={{ learnMore: t.pages.ministries.learnMore, joinHuddle: t.pages.ministries.joinHuddle }}
             />
           ))}

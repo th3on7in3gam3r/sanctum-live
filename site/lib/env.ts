@@ -42,6 +42,16 @@ export function prayerJoinUrl() {
   return `${trimSlash(process.env.JORDAN_APP_URL || 'https://plcc-chat.vercel.app')}/live`;
 }
 
+/**
+ * "Join the live huddle" on the Huddles and Ministries pages. Huddles meet in Jordan,
+ * so this opens Jordan's live-prayer page. HUDDLES_IN_SANCTUM=true sends each one to
+ * its PLCC Sanctum room instead (overflow).
+ */
+export function huddleJoinUrl(sanctumSlug: string) {
+  if (process.env.HUDDLES_IN_SANCTUM === 'true') return `${siteEnv().sanctumAppUrl}/join/${sanctumSlug}`;
+  return prayerJoinUrl();
+}
+
 export function sanctumPrayerUrl() {
   const env = siteEnv();
   return `${env.sanctumAppUrl}/join/${env.prayerRoomSlug}`;
