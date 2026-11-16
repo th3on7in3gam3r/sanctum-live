@@ -6,6 +6,8 @@ import { usePastorJourney } from '../../hooks/usePastorJourney';
 import { isPastorJourneyActive } from '../../tour/pastorJourney/storage';
 import { useApp } from '../../context/AppContext';
 import { sanctumTheme } from '../public/ChurchWordmark';
+import { DashboardTopBar } from './DashboardTopBar';
+import { OpsSearchProvider } from '../../context/OpsSearchContext';
 
 interface DashboardLayoutProps {
   currentPath: string;
@@ -28,7 +30,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     startPastorJourney();
   };
 
+  const wide = currentPath === '/dashboard';
   return (
+    <OpsSearchProvider>
     <div
       data-staff
       data-staff-theme={sanctumTheme(isDarkMode)}
@@ -41,7 +45,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onNavigate={onNavigate}
         onShowTutorial={handleShowTutorial}
         showPastorWalkthrough={isPastorJourneyActive()}
-        className="staff-sidebar hidden md:flex"
+        className="hidden md:flex"
       />
 
       {/* Mobile Top Header */}
@@ -53,7 +57,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto max-h-screen">
-        <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6 md:p-8">
+        <div className="hidden md:block">
+          <DashboardTopBar currentPath={currentPath} onNavigate={onNavigate} onShowTutorial={handleShowTutorial} />
+        </div>
+        <main className={`mx-auto w-full flex-1 p-4 sm:p-6 ${wide ? 'max-w-[112rem] md:px-6 md:pb-8 md:pt-0' : 'max-w-7xl md:p-8'}`}>
           {children}
         </main>
         <p className="staff-credit">Powered by Sanctum Live</p>
@@ -61,6 +68,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       <AdminHelpChatWidget currentPath={currentPath} />
     </div>
+    </OpsSearchProvider>
   );
 };
 

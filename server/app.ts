@@ -44,7 +44,7 @@ import { createSpaceHandler, deleteCurrentSpaceHandler, updateCurrentSpaceHandle
 import { inviteTeamMemberHandler, listTeamHandler, removeTeamMemberHandler, updateGalleryPublishHandler } from './routes/team.ts';
 import { livekitWebhookHandler } from './routes/webhooks.ts';
 import { helpChatHandler } from './routes/help.ts';
-import { broadcastHandler, jordanRoomsHandler } from './routes/plcc.ts';
+import { auditListHandler, broadcastHandler, jordanRoomsHandler } from './routes/plcc.ts';
 import { registerCmsPublicRoutes } from './routes/cms/public.ts';
 import { registerCmsStaffRoutes } from './routes/cms/staff.ts';
 import { registerGalleryRoutes } from './routes/cms/gallery.ts';
@@ -109,6 +109,7 @@ export function createApp() {
   app.post('/api/sessions/:id/chat', postChatHandler);
   app.post('/api/sessions/:id/broadcast', broadcastHandler);
   app.get('/api/plcc/jordan-rooms', jordanRoomsHandler);
+  app.get('/api/audit', auditListHandler);
   app.post('/api/sessions/:id/congregation-mute', setCongregationMuteHandler);
   app.post('/api/sessions/:id/ptt/start', startPttHandler);
   app.post('/api/sessions/:id/ptt/end', endPttHandler);

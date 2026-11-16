@@ -25,12 +25,13 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
 
   const navItems = [
     { label: 'Control Room', path: '/dashboard', icon: LayoutDashboard },
-    { label: 'Prayer Rooms', path: '/dashboard/prayer-rooms', icon: Radio },
-    { label: 'Prayer Requests', path: '/dashboard/prayer-requests', icon: FileText },
     { label: 'Participants', path: '/dashboard/participants', icon: Users },
-    { label: 'History', path: '/dashboard/history', icon: History },
+    { label: 'Prayer Requests', path: '/dashboard/prayer-requests', icon: FileText },
+    { label: 'Room Schedule', path: '/dashboard/prayer-rooms', icon: Radio },
+    { label: 'Audit Log', path: '/dashboard/audit', icon: History },
+    { label: 'Session History', path: '/dashboard/history', icon: History },
     { label: 'Settings', path: '/dashboard/settings', icon: Settings },
-    { label: 'Church', path: '/dashboard/church', icon: LayoutDashboard },
+    { label: 'Church overview', path: '/dashboard/church', icon: LayoutDashboard },
     { label: 'Members', path: '/dashboard/church/members', icon: Users },
     { label: 'Households', path: '/dashboard/church/households', icon: Home },
     { label: 'Groups', path: '/dashboard/church/groups', icon: Users },
@@ -54,7 +55,10 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   return (
     <>
       <header className="staff-sidebar md:hidden flex items-center justify-between p-4 bg-card border-b border-line sticky top-0 z-40">
-        <StaffBrand size="sm" />
+        <div className="ops-mobile-brand">
+          <img src="/prayer-room/prayer-emblem.png" alt="" aria-hidden />
+          <p>PLCC <span style={{ color: "#e9c36c" }}>SANCTUM</span></p>
+        </div>
         <div className="flex items-center gap-2">
           <UserButton afterSignOutUrl={isChurchMode() ? churchSiteUrl() : '/'} />
           <button

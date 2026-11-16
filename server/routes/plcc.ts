@@ -6,6 +6,8 @@ import { requireOrganization } from '../cms/access.ts';
 import { resolveActorFromRequest } from '../clerkAuth.ts';
 import { requireCanManageParticipants } from '../authz.ts';
 import { sendError } from '../http.ts';
+import { getPrisma } from '../prisma.ts';
+import { DatabaseUnavailable } from '../../shared/errors.ts';
 import { broadcastSessionEvent } from '../realtime/ensureLiveKitRoom.ts';
 import {
   chatMessageRepository,
@@ -109,6 +111,58 @@ export async function broadcastHandler(req: Request, res: Response): Promise<voi
     });
 
     res.status(201).json({ sent: true, roomName: room.name, timestamp });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+/**
+ * GET /api/audit — moderators only. The organization's latest audit events (who did
+ * what, in which prayer room), newest first. Read only.
+ */
+export async function auditListHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const actor = await resolveActorFromRequest(req);
+    requireOrganization(actor);
+    requireCanManageParticipants(actor);
+    const prisma = getPrisma();
+    if (!prisma) throw DatabaseUnavailable();
+    const take = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+    const rows = await prisma.auditEvent.findMany({
+      where: { organizationId: actor.organizationId },
+      orderBy: { createdAt: 'desc' },
+      take,
+      include: {
+        actor: { select: { name: true } },
+        session: { select: { prayerRoom: { select: { name: true } } } },
+      },
+    });
+    // Participant names for targets that are participants (removed, invited to speak…).
+    const targetIds = [...new Set(rows.map((r) => r.targetId).filter(Boolean))] as string[];
+    const participants = targetIds.length
+      ? await prisma.sessionParticipant.findMany({
+          where: { id: { in: targetIds } },
+          select: { id: true, guestName: true, user: { select: { name: true } } },
+        })
+      : [];
+    const rooms = targetIds.length
+      ? await prisma.prayerRoom.findMany({ where: { id: { in: targetIds } }, select: { id: true, name: true } })
+      : [];
+    const names = new Map<string, string>([
+      ...participants.map((p) => [p.id, p.user?.name || p.guestName || 'A participant'] as [string, string]),
+      ...rooms.map((r) => [r.id, r.name] as [string, string]),
+    ]);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.json({
+      events: rows.map((r) => ({
+        id: r.id,
+        action: r.action,
+        actorName: r.actor?.name || null,
+        roomName: r.session?.prayerRoom?.name || null,
+        targetName: r.targetId ? names.get(r.targetId) || null : null,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    });
   } catch (error) {
     sendError(res, error);
   }

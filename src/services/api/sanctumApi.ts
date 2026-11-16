@@ -278,6 +278,10 @@ export const sanctumApi = {
       method: 'POST',
       body: JSON.stringify({ message }),
     }, staff(actor)),
+  auditEvents: (actor: Actor) =>
+    apiFetch<{
+      events: Array<{ id: string; action: string; actorName: string | null; roomName: string | null; targetName: string | null; createdAt: string }>;
+    }>('/api/audit', undefined, staff(actor)),
   jordanRooms: (actor: Actor) =>
     apiFetch<{
       rooms: Array<{ id: string; name: string; live: boolean; count: number | null; capacity: number | null }>;

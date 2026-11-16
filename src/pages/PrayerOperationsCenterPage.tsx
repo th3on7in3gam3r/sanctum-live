@@ -3,26 +3,30 @@ import { createPortal } from 'react-dom';
 import {
   Activity,
   ArrowRight,
-  CalendarClock,
   Check,
+  CheckCircle2,
+  Clock,
+  Copy,
   ExternalLink,
   Eye,
   FileText,
   Hand,
   Headphones,
-  History,
   Lock,
   Megaphone,
-  MessageCircle,
-  Send,
-  Plus,
+  MoreVertical,
+  PlusCircle,
   Radio,
   RefreshCw,
+  ScrollText,
+  Send,
   Settings2,
   ShieldAlert,
+  ShieldCheck,
   UserPlus,
   Users,
   X,
+  Zap,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
@@ -31,13 +35,14 @@ import { fetchHealth, sanctumApi, type ApiHealth } from '../services/api/sanctum
 import { BROADCAST_MAX } from '../../shared/broadcast.ts';
 import { fetchJordanRooms, JORDAN_ORIGIN, jordanRoomUrl, PLCC_ONE_URL, type JordanRoom } from '../lib/plccLinks';
 import { cn } from '../lib/utils';
+import { useOpsSearch } from '../context/OpsSearchContext';
 import type { PrayerRoom } from '../types';
 
 interface Props {
   onNavigate: (path: string) => void;
 }
 
-type Filter = 'all' | 'live' | 'scheduled';
+type Filter = 'all' | 'live' | 'full' | 'scheduled';
 
 interface Row {
   key: string;
@@ -53,6 +58,8 @@ interface Row {
   monitor: () => void;
   manage?: () => void;
   manageLabel?: string;
+  thumb: string;
+  copyLink?: string;
 }
 
 const KIND_LABEL: Record<Row['kind'], string> = {
@@ -98,6 +105,7 @@ function scheduleLabel(room: PrayerRoom) {
 
 export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
   const { user, organization } = useAuth();
+  const { query: opsSearch } = useOpsSearch();
   const {
     prayerRooms = [],
     liveSession,
@@ -169,6 +177,8 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
       people: typeof room.count === 'number' ? room.count : null,
       capacity: room.capacity || 50,
       hands: null,
+      thumb: '/prayer-room/room-thumb-1.webp',
+      copyLink: jordanRoomUrl(room.id, room.live),
       monitor: () => window.open(jordanRoomUrl(room.id, room.live), '_blank', 'noopener,noreferrer'),
     }));
     const sanctumRows: Row[] = activeRooms.map((room) => {
@@ -187,6 +197,8 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
         monitor: () => window.open(`/join/${room.slug}`, '_blank', 'noopener,noreferrer'),
         manage: () => onNavigate(`/dashboard/prayer-rooms/${room.id}/control`),
         manageLabel: 'Manage',
+        thumb: roomKind(room) === 'restricted' ? '/prayer-room/room-thumb-3.webp' : '/prayer-room/room-thumb-2.webp',
+        copyLink: `${window.location.origin}/join/${room.slug}`,
       };
     });
     const all = [...jordanRows, ...sanctumRows];
@@ -214,8 +226,17 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
       setBroadcastSending(false);
     }
   };
+  const isFull = (r: Row) => r.live && r.capacity !== null && r.people !== null && r.people >= r.capacity;
+  const fullCount = rows.filter(isFull).length;
   const scheduledCount = rows.filter((r) => !r.live && !r.waiting).length;
-  const shown = rows.filter((r) => (filter === 'live' ? r.live || r.waiting : filter === 'scheduled' ? !r.live && !r.waiting : true));
+  const search = opsSearch.trim().toLowerCase();
+  const shown = rows
+    .filter((r) =>
+      filter === 'live' ? r.live || r.waiting : filter === 'full' ? isFull(r) : filter === 'scheduled' ? !r.live && !r.waiting : true
+    )
+    .filter((r) => !search || `${r.name} ${r.where} ${KIND_LABEL[r.kind]}`.toLowerCase().includes(search));
+  const roleShort =
+    role === 'OWNER' ? 'Senior Pastor' : role === 'ADMIN' ? 'Administrator' : role === 'TECHNICAL_ADMIN' ? 'Technical Admin' : 'Moderator';
 
   const activity = useMemo(() => {
     const items: { id: string; icon: React.ElementType; text: string; at: string }[] = [];
@@ -241,12 +262,14 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
 
   const permissions = caps
     ? [
-        { label: 'Watch prayer rooms', ok: true },
+        { label: 'Monitor authorized rooms', ok: true },
+        { label: 'Manage participants', ok: caps.canMuteSpeakers },
         { label: 'Approve requests to speak', ok: caps.canInviteSpeakers },
-        { label: 'Mute and remove participants', ok: caps.canMuteSpeakers },
-        { label: 'Start and end sessions', ok: caps.canEndSessions },
+        { label: 'Mute / Remove participants', ok: caps.canMuteSpeakers },
+        { label: 'Lock / End sessions', ok: caps.canEndSessions },
         { label: 'Create and edit rooms', ok: caps.canManageRooms },
         { label: 'Read private prayer requests', ok: caps.canViewPrivateRequests },
+        { label: 'View reports & audit logs', ok: caps.canMuteSpeakers },
       ]
     : [];
 
@@ -257,105 +280,86 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="space-y-6" data-tour="dashboard-welcome">
+    <div className="space-y-5" data-tour="dashboard-welcome">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-[#12231c] text-[#f6f1e6] shadow-lg">
-        <img
-          src="/brand/ops-banner.webp"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 h-full w-[85%] object-cover object-center opacity-95 sm:w-[62%]"
-          style={{ WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, #000 45%)', maskImage: 'linear-gradient(90deg, transparent 0%, #000 45%)' }}
-        />
-        <div className="pointer-events-none absolute inset-0 bg-[#12231c]/60 sm:hidden" />
-        <div className="relative flex flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-xl">
-            <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[#e4c98f]">PLCC Sanctum</p>
-            <h1 className="font-display mt-2 text-3xl leading-tight sm:text-4xl lg:text-[2.75rem]">
-              Prayer Operations Center
-            </h1>
-            <p className="mt-2 text-sm text-[#f6f1e6]/80">
-              {greeting()}, {firstName}. Watch every prayer room, answer raised hands and open the overflow when Jordan fills up.
-            </p>
+      <section className="ops-hero">
+        <img src="/prayer-room/ops-hero.webp" alt="" aria-hidden className="ops-hero-art" />
+        <div className="ops-hero-inner">
+          <div className="min-w-0">
+            <p className="ops-hero-eyebrow">PLCC Sanctum</p>
+            <h1 className="ops-hero-title">Prayer Operations Center</h1>
+            <p className="ops-hero-sub">Monitor • Support • Manage • Overflow Prayer Rooms</p>
           </div>
-          <div className="flex flex-wrap gap-2.5">
-            <button
-              type="button"
-              onClick={openControl}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-[#c9a35a] px-5 py-2.5 text-sm font-bold text-[#16251f] shadow-md transition hover:bg-[#e4c98f]"
-            >
-              <Headphones className="h-4 w-4" />
-              {liveRoom ? 'Open live control room' : 'Open control room'}
-            </button>
-            <button
-              type="button"
-              data-tour="dashboard-create-room"
-              onClick={() => onNavigate('/dashboard/prayer-rooms/new')}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[#e4c98f]/50 px-4 py-2.5 text-sm font-semibold text-[#f6f1e6] transition hover:bg-white/10"
-            >
-              <Plus className="h-4 w-4" />
-              New room
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button type="button" onClick={openControl} className="ops-hero-btn">
+              <Headphones className="h-5 w-5" aria-hidden />
+              {liveRoom ? 'Moderator Control Room' : 'Moderator Control Room'}
+              <Lock className="h-4 w-4" aria-hidden />
             </button>
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* Summary cards */}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <Stat
           tone="green"
           icon={Radio}
-          label="Rooms live"
+          label="Active Rooms"
           value={liveCount}
-          note={`${rows.length} room${rows.length === 1 ? '' : 's'} in total`}
+          note={`${liveCount} Live${fullCount ? ` • ${fullCount} Full` : ''} • ${rows.length} total`}
         />
         <Stat
           tone="gold"
           icon={Headphones}
-          label="Praying now"
+          label="Listeners"
           value={listenerCount + jordanPeople}
           note={
             jordanCounts
               ? `${jordanPeople} in Jordan · ${listenerCount} in Sanctum`
-              : sessionLive
+              : sessionLive || sessionWaiting
                 ? `in ${liveRoom?.name || 'the Sanctum room'}`
-                : sessionWaiting
-                  ? 'in the Sanctum waiting room'
-                  : 'No overflow open'
+                : 'No one in Sanctum right now'
           }
         />
         <Stat
           tone="plain"
           icon={Hand}
-          label="Raised hands"
+          label="Raised Hands"
           value={waitingHands.length}
-          note={waitingHands.length ? 'Waiting for approval' : 'None waiting'}
+          note={waitingHands.length ? 'Awaiting approval' : 'None waiting'}
           onClick={liveRoom ? openControl : undefined}
         />
-        <Stat
-          tone="plain"
-          icon={FileText}
-          label="Prayer requests"
-          value={pendingRequests.length}
-          note="Not yet answered"
-          onClick={() => onNavigate('/dashboard/prayer-requests')}
-        />
+        <section className="ops-profile">
+          <span className="ops-profile-avatar">{(user?.name || 'M').split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase()}</span>
+          <div className="min-w-0">
+            <p className="truncate text-base font-extrabold text-ink lg:text-lg">{user?.name || 'Moderator'}</p>
+            <span className="ops-role-pill">
+              <ShieldAlert className="h-3.5 w-3.5" aria-hidden />
+              {roleShort}
+            </span>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#2f9d5c]" aria-hidden /> Online
+            </p>
+          </div>
+        </section>
       </section>
 
-      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="min-w-0 space-y-6">
-          {/* Rooms */}
-          <section className="overflow-hidden rounded-3xl border border-line bg-card shadow-sm">
-            <header className="flex flex-col gap-3 bg-[#1d372c] px-5 py-4 text-[#f6f1e6] sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="flex items-center gap-2.5 text-lg font-bold">
-                <Radio className="h-5 w-5 text-[#e4c98f]" />
-                Prayer rooms
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_17.5rem]">
+        <div className="min-w-0 space-y-5">
+          {/* Live Prayer Rooms */}
+          <section id="ops-rooms" className="scroll-mt-4 overflow-hidden rounded-3xl border border-line bg-card shadow-sm">
+            <header className="flex flex-col gap-3 bg-[#0f3d2c] px-5 py-3.5 text-[#f6f1e6] sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="flex items-center gap-2.5 text-lg font-bold lg:text-xl">
+                <Radio className="h-6 w-6 text-[#f1d58a]" aria-hidden />
+                Live Prayer Rooms
               </h2>
               <div className="flex items-center gap-1.5 overflow-x-auto">
                 {(
                   [
-                    ['all', `All (${rows.length})`],
+                    ['all', `All Rooms (${rows.length})`],
                     ['live', `Live (${liveCount})`],
+                    ['full', `Full (${fullCount})`],
                     ['scheduled', `Scheduled (${scheduledCount})`],
                   ] as const
                 ).map(([value, label]) => (
@@ -364,72 +368,60 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
                     type="button"
                     onClick={() => setFilter(value)}
                     className={cn(
-                      'shrink-0 cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition',
-                      filter === value ? 'bg-[#c9a35a] text-[#16251f]' : 'bg-white/10 text-[#f6f1e6] hover:bg-white/15'
+                      'shrink-0 cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition lg:text-sm',
+                      filter === value ? 'bg-gradient-to-b from-[#f1d58a] to-[#d9b45e] text-[#1d2414]' : 'bg-white/10 text-[#f6f1e6] hover:bg-white/15'
                     )}
                   >
                     {label}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => void refresh()}
-                  aria-label="Refresh rooms"
-                  className="ml-1 shrink-0 cursor-pointer rounded-full p-2 text-[#f6f1e6] hover:bg-white/10"
-                >
-                  <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+                <button type="button" onClick={() => void refresh()} aria-label="Refresh rooms" className="ml-1 shrink-0 cursor-pointer rounded-full p-2 text-[#f6f1e6] hover:bg-white/10">
+                  <RefreshCw className={cn('h-5 w-5', refreshing && 'animate-spin')} />
                 </button>
               </div>
             </header>
 
-            {/* Desktop table */}
-            <div className="hidden md:block">
-              <table className="w-full text-sm">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[52rem] text-sm">
                 <thead>
-                  <tr className="border-b border-line text-left text-[11px] font-bold uppercase tracking-wider text-muted">
-                    <th className="px-5 py-3 w-[34%]">Room</th>
-                    <th className="px-3 py-3">Type</th>
-                    <th className="px-3 py-3">People</th>
+                  <tr className="border-b border-line text-left text-[13px] font-bold text-ink">
+                    <th className="px-4 py-3">Room Name</th>
+                    <th className="px-3 py-3">Room Type</th>
+                    <th className="px-3 py-3">Participants</th>
                     <th className="px-3 py-3">Status</th>
-                    <th className="px-3 py-3">Hands</th>
-                    <th className="px-5 py-3 text-right">Controls</th>
+                    <th className="px-3 py-3">Raised Hands</th>
+                    <th className="px-4 py-3 text-center">Controls</th>
                   </tr>
                 </thead>
                 <tbody>
                   {shown.map((row) => (
                     <tr key={row.key} className="border-b border-line last:border-0">
-                      <td className="px-5 py-3.5">
-                        <p className="font-bold text-ink">{row.name}</p>
-                        <p className="text-xs text-muted">{row.where}</p>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <img src={row.thumb} alt="" aria-hidden className="h-11 w-16 shrink-0 rounded-lg object-cover" />
+                          <div className="min-w-0">
+                            <p className="truncate text-[15px] font-bold text-ink">{row.name}</p>
+                            <p className="truncate text-xs text-muted">{row.where}</p>
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-3 py-3.5"><KindPill kind={row.kind} /></td>
-                      <td className="px-3 py-3.5 text-ink">
-                        <PeopleCount row={row} />
-                      </td>
-                      <td className="px-3 py-3.5"><StatusPill row={row} /></td>
-                      <td className="px-3 py-3.5 text-ink">
-                        {row.hands === null ? <span className="text-muted">—</span> : (
-                          <span className="inline-flex items-center gap-1.5">
-                            <Hand className="h-4 w-4 text-[#c9a35a]" />
-                            {row.hands}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <RowControls row={row} />
-                      </td>
+                      <td className="px-3 py-3"><KindPill kind={row.kind} /></td>
+                      <td className="px-3 py-3 text-ink"><PeopleCount row={row} /></td>
+                      <td className="px-3 py-3"><StatusPill row={row} /></td>
+                      <td className="px-3 py-3 text-ink"><HandsCount row={row} /></td>
+                      <td className="px-4 py-3"><RowControls row={row} /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Phone cards */}
             <ul className="divide-y divide-line md:hidden">
               {shown.map((row) => (
                 <li key={row.key} className="space-y-3 px-4 py-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                  <div className="flex items-start gap-3">
+                    <img src={row.thumb} alt="" aria-hidden className="h-12 w-16 shrink-0 rounded-lg object-cover" />
+                    <div className="min-w-0 flex-1">
                       <p className="font-bold text-ink">{row.name}</p>
                       <p className="text-xs text-muted">{row.where}</p>
                     </div>
@@ -438,9 +430,7 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
                   <div className="flex flex-wrap items-center gap-3 text-xs text-ink">
                     <KindPill kind={row.kind} />
                     <PeopleCount row={row} />
-                    {row.hands ? (
-                      <span className="inline-flex items-center gap-1"><Hand className="h-3.5 w-3.5 text-[#c9a35a]" />{row.hands}</span>
-                    ) : null}
+                    <HandsCount row={row} />
                   </div>
                   <RowControls row={row} full />
                 </li>
@@ -449,53 +439,51 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
 
             {shown.length === 0 && (
               <div className="px-5 py-10 text-center text-sm text-muted">
-                {filter === 'live'
-                  ? 'No room is live right now.'
-                  : !jordanLoaded
-                    ? 'Loading rooms…'
-                    : 'No prayer rooms yet. Create one to open the overflow.'}
+                {search
+                  ? 'No room matches your search.'
+                  : filter === 'live'
+                    ? 'No room is live right now.'
+                    : filter === 'full'
+                      ? 'No room is full.'
+                      : !jordanLoaded
+                        ? 'Loading rooms…'
+                        : 'No prayer rooms yet. Create one to open the overflow.'}
               </div>
             )}
-            <p className="border-t border-line px-5 py-3 text-[11px] text-muted">
-              Jordan rooms hold up to 50 people. When one fills, start the Sanctum overflow and members are sent here.
+            <p className="border-t border-line px-5 py-3 text-[12px] text-muted">
+              Jordan rooms hold up to 50 people. When one fills, open the Sanctum overflow room.
               {jordan.length && !jordanCounts ? ' Headcounts for Jordan rooms need SANCTUM_SERVICE_KEY on both servers.' : ''}
             </p>
           </section>
 
           {/* Quick actions */}
           <section className="rounded-3xl border border-line bg-card p-5 shadow-sm">
-            <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-ink">
-              <Activity className="h-4 w-4 text-[#c9a35a]" />
-              Quick actions
+            <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-[#0f3d2c] dark:text-[#f1d58a]">
+              <Zap className="h-5 w-5" aria-hidden />
+              Quick Actions <span className="text-sm font-semibold text-muted">(Moderator)</span>
             </h2>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
-              <Action icon={Plus} label="Create room" onClick={() => onNavigate('/dashboard/prayer-rooms/new')} />
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+              <Action icon={PlusCircle} label="Create Prayer Room" onClick={() => onNavigate('/dashboard/prayer-rooms/new')} />
               <Action
                 icon={Radio}
-                label="Open overflow"
+                label="Open Overflow Room"
                 onClick={() => (overflowRoom ? onNavigate(`/dashboard/prayer-rooms/${overflowRoom.id}/control`) : onNavigate('/dashboard/prayer-rooms/new'))}
               />
-              <Action icon={Megaphone} label="Broadcast message" onClick={() => setBroadcastOpen(true)} />
-              <Action icon={FileText} label="Prayer requests" onClick={() => onNavigate('/dashboard/prayer-requests')} />
-              <Action icon={Users} label="Participants" onClick={() => onNavigate('/dashboard/participants')} />
-              <Action icon={History} label="Session history" onClick={() => onNavigate('/dashboard/history')} />
+              <Action icon={Megaphone} label="Broadcast Message" onClick={() => setBroadcastOpen(true)} />
+              <Action icon={ShieldAlert} label="View Reports" onClick={() => window.open(PLCC_ONE_URL, '_blank', 'noopener,noreferrer')} />
+              <Action icon={ScrollText} label="Audit Log" onClick={() => onNavigate('/dashboard/audit')} />
             </div>
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Recent activity */}
+          <div className="grid gap-5 lg:grid-cols-2">
             <section className="rounded-3xl border border-line bg-card p-5 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-base font-bold text-ink">
-                  <CalendarClock className="h-4 w-4 text-[#c9a35a]" />
-                  Recent activity
+                <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+                  <Clock className="h-5 w-5" aria-hidden />
+                  Recent Activity
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => onNavigate('/dashboard/history')}
-                  className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-muted hover:text-ink"
-                >
-                  History <ArrowRight className="h-3.5 w-3.5" />
+                <button type="button" onClick={() => onNavigate('/dashboard/audit')} className="inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-ink hover:underline">
+                  View All Activity <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
               {activity.length ? (
@@ -503,8 +491,8 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
                   {activity.map((item) => {
                     const Icon = item.icon;
                     return (
-                      <li key={item.id} className="flex items-center gap-3 py-2.5 text-sm">
-                        <Icon className="h-4 w-4 shrink-0 text-[#c9a35a]" />
+                      <li key={item.id} className="flex items-center gap-3 py-2.5 text-[15px]">
+                        <Icon className="h-5 w-5 shrink-0 text-[#c9a35a]" />
                         <span className="min-w-0 flex-1 truncate text-ink">{item.text}</span>
                         <span className="shrink-0 text-xs text-muted">{timeAgo(item.at)}</span>
                       </li>
@@ -512,98 +500,54 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
                   })}
                 </ul>
               ) : (
-                <p className="py-6 text-center text-sm text-muted">Quiet for now. Activity shows here during a session.</p>
+                <p className="py-6 text-center text-sm text-muted">Quiet for now. Activity from the live room shows here.</p>
               )}
             </section>
 
-            {/* System status */}
             <section className="rounded-3xl border border-line bg-card p-5 shadow-sm">
-              <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-ink">
-                <Activity className="h-4 w-4 text-[#c9a35a]" />
-                System status
+              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-ink">
+                <Activity className="h-5 w-5" aria-hidden />
+                System Status
               </h2>
-              <ul className="divide-y divide-line text-sm">
-                <StatusLine label="Audio service (LiveKit)" state={health === undefined ? 'checking' : health?.livekit === 'configured' ? 'ok' : 'down'} />
-                <StatusLine label="Rooms & database" state={health === undefined ? 'checking' : health?.database === 'configured' ? 'ok' : 'down'} />
+              <ul className="divide-y divide-line text-[15px]">
+                <StatusLine label="Audio Service (LiveKit)" state={health === undefined ? 'checking' : health?.livekit === 'configured' ? 'ok' : 'down'} />
+                <StatusLine label="Connection & Rooms" state={health === undefined ? 'checking' : health?.database === 'configured' ? 'ok' : 'down'} />
                 <StatusLine label="Sign-in" state={health === undefined ? 'checking' : health?.clerk === 'unavailable' ? 'down' : health ? 'ok' : 'down'} />
-                <StatusLine label="Jordan rooms" state={!jordanLoaded ? 'checking' : jordan.length ? 'ok' : 'down'} downLabel="Not reachable" />
+                <StatusLine label="Jordan headcounts" state={!jordanLoaded ? 'checking' : jordanCounts ? 'ok' : 'off'} offLabel="Key not set" />
+                <StatusLine label="Audio bridge (Jordan → Sanctum)" state="off" offLabel="Not set up yet" />
               </ul>
             </section>
           </div>
         </div>
 
         {/* Right rail */}
-        <aside className="grid gap-6 md:grid-cols-2 2xl:flex 2xl:flex-col">
+        <aside className="grid gap-5 md:grid-cols-2 xl:flex xl:flex-col">
           <section className="rounded-3xl border border-line bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1d372c] text-base font-bold text-[#e4c98f]">
-                {(user?.name || 'P').split(' ').map((p) => p[0]).slice(0, 2).join('')}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-bold text-ink">{user?.name || 'Moderator'}</p>
-                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#c9a35a]/20 px-2.5 py-0.5 text-[11px] font-bold text-ink">
-                  <ShieldAlert className="h-3 w-3" />
-                  {caps?.label || 'Moderator'}
-                </span>
-              </div>
-            </div>
-            <div className="mt-5 border-t border-line pt-4">
-              <p className="mb-2.5 text-xs font-bold uppercase tracking-wider text-muted">What you can do</p>
-              <ul className="space-y-2 text-sm">
-                {permissions.map((p) => (
-                  <li key={p.label} className={cn('flex items-center gap-2.5', p.ok ? 'text-ink' : 'text-muted line-through decoration-muted/40')}>
-                    {p.ok ? <Check className="h-4 w-4 shrink-0 text-[#3d8a5f]" /> : <X className="h-4 w-4 shrink-0 text-muted" />}
-                    {p.label}
-                  </li>
-                ))}
-              </ul>
-              {caps?.canManageSettings ? (
-                <button
-                  type="button"
-                  onClick={() => onNavigate('/dashboard/settings')}
-                  className="mt-4 inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-ink hover:underline"
-                >
-                  Team & roles <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
+            <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+              <ShieldCheck className="h-5 w-5" aria-hidden />
+              Role & Access
+            </h2>
+            <ul className="mt-3 space-y-2.5 text-[15px]">
+              {permissions.map((p) => (
+                <li key={p.label} className={cn('flex items-start gap-2.5', p.ok ? 'text-ink' : 'text-muted line-through decoration-muted/40')}>
+                  {p.ok ? <Check className="mt-0.5 h-5 w-5 shrink-0 text-[#2f7d4f]" /> : <X className="mt-0.5 h-5 w-5 shrink-0 text-muted" />}
+                  {p.label}
+                </li>
+              ))}
+            </ul>
+            {caps?.canManageSettings ? (
+              <button type="button" onClick={() => onNavigate('/dashboard/settings')} className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-1 text-sm font-bold text-[#0f3d2c] hover:underline dark:text-[#f1d58a]">
+                Role Permissions Details <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : null}
           </section>
 
-          <section className="rounded-3xl border border-line bg-card p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted">Moderator guide</p>
-            <ol className="mt-3 space-y-2.5 text-sm text-ink">
-              <li className="flex gap-2.5"><Num n={1} />Jordan's main room fills at 50.</li>
-              <li className="flex gap-2.5"><Num n={2} />Open the overflow and start the session.</li>
-              <li className="flex gap-2.5"><Num n={3} />Everyone joins muted. Approve raised hands to let someone pray aloud.</li>
-            </ol>
-          </section>
-
-          <a
-            href={PLCC_ONE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-3xl border-2 border-[#b4413a]/40 bg-[#b4413a]/5 p-5 transition hover:bg-[#b4413a]/10"
-          >
-            <ShieldAlert className="h-8 w-8 shrink-0 text-[#b4413a]" />
-            <span className="min-w-0 flex-1">
-              <span className="block font-bold text-[#b4413a]">Report a concern</span>
-              <span className="block text-xs text-muted">Safety, conduct or a technical problem. Opens PLCC ONE.</span>
+          <a href={PLCC_ONE_URL} target="_blank" rel="noopener noreferrer" className="ops-incident">
+            <ShieldAlert className="h-10 w-10 shrink-0" aria-hidden />
+            <span className="min-w-0">
+              <span className="block text-xl font-extrabold">Incident / Report</span>
+              <span className="block text-sm">Safety • Conduct • Technical</span>
             </span>
-            <ExternalLink className="h-4 w-4 shrink-0 text-[#b4413a]" />
-          </a>
-
-          <a
-            href={`${JORDAN_ORIGIN}/live`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-3xl border border-line bg-card p-5 shadow-sm transition hover:bg-black/[0.02]"
-          >
-            <MessageCircle className="h-6 w-6 shrink-0 text-[#c9a35a]" />
-            <span className="min-w-0 flex-1">
-              <span className="block font-bold text-ink">Open Jordan live prayer</span>
-              <span className="block text-xs text-muted">Join the main room as a member.</span>
-            </span>
-            <ExternalLink className="h-4 w-4 shrink-0 text-muted" />
           </a>
         </aside>
       </div>
@@ -696,14 +640,6 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
   );
 };
 
-function Num({ n }: { n: number }) {
-  return (
-    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#c9a35a]/25 text-[11px] font-bold text-ink">
-      {n}
-    </span>
-  );
-}
-
 function Stat({
   tone,
   icon: Icon,
@@ -724,42 +660,23 @@ function Stat({
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={cn(
-        'relative overflow-hidden rounded-3xl p-4 text-left shadow-sm sm:p-5',
-        onClick && 'cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md',
-        tone === 'green' && 'bg-[#1d372c] text-[#f6f1e6]',
-        tone === 'gold' && 'bg-gradient-to-br from-[#f6e7c4] to-[#e4c98f] text-[#16251f]',
-        tone === 'plain' && 'border border-line bg-card text-ink'
-      )}
+      className={cn('ops-stat', `is-${tone}`, onClick && 'is-clickable')}
     >
-      <Icon
-        className={cn(
-          'absolute -right-2 -bottom-2 h-16 w-16 opacity-15 sm:h-20 sm:w-20',
-          tone === 'green' ? 'text-[#e4c98f]' : 'text-[#16251f]'
-        )}
-      />
-      <p className="flex items-center gap-2 text-xs font-bold sm:text-sm">
-        <Icon className={cn('h-4 w-4', tone === 'green' ? 'text-[#e4c98f]' : 'text-[#8a6a2e]')} />
-        {label}
-      </p>
-      <p className="mt-1.5 text-3xl font-extrabold tabular-nums sm:text-4xl">{value}</p>
-      <p className={cn('mt-0.5 truncate text-[11px] sm:text-xs', tone === 'green' ? 'text-[#f6f1e6]/75' : 'opacity-70')}>{note}</p>
+      <Icon className="ops-stat-icon" aria-hidden />
+      <span className="min-w-0">
+        <span className="block text-sm font-bold lg:text-lg">{label}</span>
+        <span className="block text-3xl font-extrabold leading-tight tabular-nums lg:text-[2.6rem]">{value}</span>
+        <span className="block truncate text-xs lg:text-sm">{note}</span>
+      </span>
+      <Users className="ops-stat-ghost" aria-hidden />
     </Tag>
   );
 }
 
 function KindPill({ kind }: { kind: Row['kind'] }) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold',
-        kind === 'main' && 'bg-[#3d8a5f]/15 text-[#245c3d] dark:text-[#9fd8b5]',
-        kind === 'overflow' && 'bg-[#c9a35a]/20 text-[#7a5a22] dark:text-[#e4c98f]',
-        kind === 'restricted' && 'bg-[#6b4fa8]/15 text-[#4d3585] dark:text-[#c7b6ee]',
-        kind === 'test' && 'bg-black/5 text-muted'
-      )}
-    >
-      {kind === 'restricted' ? <Lock className="h-3 w-3" /> : null}
+    <span className={cn('ops-kind', `is-${kind}`)}>
+      {kind === 'restricted' ? <Lock className="h-3.5 w-3.5" aria-hidden /> : <span className="ops-kind-dot" aria-hidden />}
       {KIND_LABEL[kind]}
     </span>
   );
@@ -767,104 +684,133 @@ function KindPill({ kind }: { kind: Row['kind'] }) {
 
 function StatusPill({ row }: { row: Row }) {
   if (row.live && row.capacity && row.people !== null && row.people >= row.capacity) {
-    return <Pill dot="bg-[#c4352d]" className="bg-[#c4352d]/12 text-[#9c2a23] dark:text-[#ffb4ad]">Full</Pill>;
+    return <span className="ops-status is-full"><i aria-hidden />Full</span>;
   }
-  if (row.live) return <Pill dot="bg-[#2f9d5c] animate-pulse" className="bg-[#2f9d5c]/12 text-[#1f6e3f] dark:text-[#9fd8b5]">Live</Pill>;
-  if (row.waiting) return <Pill dot="bg-[#c9a35a]" className="bg-[#c9a35a]/20 text-[#7a5a22] dark:text-[#e4c98f]">Waiting room</Pill>;
+  if (row.live) return <span className="ops-status is-live"><i aria-hidden />Live</span>;
+  if (row.waiting) return <span className="ops-status is-waiting"><i aria-hidden />Waiting room</span>;
   return (
-    <span className="text-xs text-muted">{row.schedule || 'Not live'}</span>
-  );
-}
-
-function Pill({ dot, className, children }: { dot: string; className: string; children: React.ReactNode }) {
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold', className)}>
-      <span className={cn('h-2 w-2 rounded-full', dot)} />
-      {children}
+    <span className="inline-flex flex-col items-start gap-0.5">
+      <span className="ops-status is-scheduled"><i aria-hidden />{row.schedule ? 'Scheduled' : 'Not live'}</span>
+      {row.schedule ? <span className="whitespace-nowrap text-[11px] text-muted">{row.schedule}</span> : null}
     </span>
   );
 }
 
 function PeopleCount({ row }: { row: Row }) {
   if (row.people === null) {
-    return row.kind === 'main' ? (
-      <span className="text-xs text-muted">Up to {row.capacity}</span>
-    ) : (
-      <span className="text-muted">—</span>
-    );
+    return row.kind === 'main' ? <span className="text-xs text-muted">Up to {row.capacity}</span> : <span className="text-muted">—</span>;
   }
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums">
-      <Users className="h-4 w-4 text-muted" />
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[15px] tabular-nums">
+      <Users className="h-5 w-5" aria-hidden />
       {row.people}
-      {row.capacity ? <span className="text-muted">/ {row.capacity}</span> : null}
+      {row.kind === 'main' && row.capacity ? <span> / {row.capacity}</span> : null}
+    </span>
+  );
+}
+
+function HandsCount({ row }: { row: Row }) {
+  if (row.hands === null) return <span className="text-xs text-muted">{row.kind === 'main' ? 'In Jordan' : '—'}</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[15px]">
+      <Hand className="h-5 w-5 text-[#c9a35a]" aria-hidden />
+      {row.hands} {row.hands === 1 ? 'request' : 'requests'}
     </span>
   );
 }
 
 function RowControls({ row, full }: { row: Row; full?: boolean }) {
+  const [menu, setMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
   return (
-    <div className={cn('flex items-center gap-2', full ? 'w-full' : 'justify-end')}>
-      <button
-        type="button"
-        onClick={row.monitor}
-        className={cn(
-          'inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#1d372c] px-3.5 py-2 text-xs font-bold text-[#f6f1e6] transition hover:bg-[#12231c]',
-          full && 'flex-1'
-        )}
-      >
-        {row.kind === 'main' ? <ExternalLink className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-        {row.kind === 'main' ? (row.live ? 'Join in Jordan' : 'Open in Jordan') : 'Listen'}
+    <div className={cn('flex items-center gap-2', full ? 'w-full' : 'justify-center')}>
+      <button type="button" onClick={row.monitor} className={cn('ops-btn is-green', full && 'flex-1')}>
+        <Eye className="h-4 w-4" aria-hidden />
+        {row.kind === 'main' ? (row.live ? 'Join' : 'Monitor') : 'Monitor'}
       </button>
       {row.manage ? (
-        <button
-          type="button"
-          onClick={row.manage}
-          className={cn(
-            'inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#c9a35a] px-3.5 py-2 text-xs font-bold text-[#16251f] transition hover:bg-[#e4c98f]',
-            full && 'flex-1'
-          )}
-        >
-          <Settings2 className="h-3.5 w-3.5" />
+        <button type="button" onClick={row.manage} className={cn('ops-btn is-gold', full && 'flex-1')}>
+          <Settings2 className="h-4 w-4" aria-hidden />
           {row.manageLabel}
         </button>
-      ) : null}
+      ) : (
+        <span className={cn('ops-btn is-ghost', full && 'flex-1')} title="Jordan rooms are managed inside the huddle">
+          <Settings2 className="h-4 w-4" aria-hidden />
+          In Jordan
+        </span>
+      )}
+      <div className="relative">
+        <button type="button" onClick={() => setMenu((v) => !v)} className="ops-more" aria-label={`More for ${row.name}`} aria-expanded={menu}>
+          <MoreVertical className="h-5 w-5" aria-hidden />
+        </button>
+        {menu ? (
+          <div className="ops-more-menu" role="menu" onMouseLeave={() => setMenu(false)}>
+            {row.copyLink ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(row.copyLink!).then(() => setCopied(true));
+                  window.setTimeout(() => {
+                    setCopied(false);
+                    setMenu(false);
+                  }, 1200);
+                }}
+              >
+                <Copy className="h-4 w-4" aria-hidden /> {copied ? 'Link copied' : 'Copy room link'}
+              </button>
+            ) : null}
+            <button type="button" role="menuitem" onClick={() => { setMenu(false); row.monitor(); }}>
+              <ExternalLink className="h-4 w-4" aria-hidden /> Open in a new tab
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
 function Action({ icon: Icon, label, onClick }: { icon: React.ElementType; label: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-line bg-paper px-3.5 py-3 text-left text-sm font-semibold text-ink transition hover:-translate-y-0.5 hover:border-[#c9a35a] hover:shadow-sm"
-    >
-      <Icon className="h-5 w-5 shrink-0 text-[#8a6a2e] dark:text-[#e4c98f]" />
+    <button type="button" onClick={onClick} className="ops-action">
+      <Icon className="h-6 w-6 shrink-0" aria-hidden />
       {label}
     </button>
   );
 }
 
-function StatusLine({ label, state, downLabel = 'Unavailable' }: { label: string; state: 'ok' | 'down' | 'checking'; downLabel?: string }) {
+function StatusLine({
+  label,
+  state,
+  downLabel = 'Unavailable',
+  offLabel = 'Off',
+}: {
+  label: string;
+  state: 'ok' | 'down' | 'off' | 'checking';
+  downLabel?: string;
+  offLabel?: string;
+}) {
   return (
     <li className="flex items-center justify-between gap-3 py-2.5">
       <span className="flex items-center gap-2.5 text-ink">
-        <span
-          className={cn(
-            'h-2.5 w-2.5 rounded-full',
-            state === 'ok' ? 'bg-[#2f9d5c]' : state === 'down' ? 'bg-[#c4352d]' : 'bg-muted/40 animate-pulse'
-          )}
-        />
+        {state === 'ok' ? (
+          <CheckCircle2 className="h-5 w-5 shrink-0 fill-[#2f9d5c] text-white" aria-hidden />
+        ) : (
+          <span className={cn('h-3 w-3 shrink-0 rounded-full', state === 'down' ? 'bg-[#c4352d]' : state === 'off' ? 'bg-muted/40' : 'animate-pulse bg-muted/40')} />
+        )}
         {label}
       </span>
       <span
         className={cn(
-          'rounded-full px-2.5 py-0.5 text-[11px] font-bold',
-          state === 'ok' ? 'bg-[#2f9d5c]/12 text-[#1f6e3f] dark:text-[#9fd8b5]' : state === 'down' ? 'bg-[#c4352d]/10 text-[#9c2a23] dark:text-[#ffb4ad]' : 'text-muted'
+          'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold',
+          state === 'ok'
+            ? 'bg-[#2f9d5c]/15 text-[#1f6e3f] dark:text-[#9fd8b5]'
+            : state === 'down'
+              ? 'bg-[#c4352d]/10 text-[#9c2a23] dark:text-[#ffb4ad]'
+              : 'bg-black/5 text-muted'
         )}
       >
-        {state === 'ok' ? 'Working' : state === 'down' ? downLabel : 'Checking…'}
+        {state === 'ok' ? 'Operational' : state === 'down' ? downLabel : state === 'off' ? offLabel : 'Checking…'}
       </span>
     </li>
   );

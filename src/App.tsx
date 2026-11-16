@@ -5,6 +5,7 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { PrayerOperationsCenterPage } from './pages/PrayerOperationsCenterPage';
+import { AuditLogPage } from './pages/AuditLogPage';
 import { PrayerRoomsListPage } from './pages/PrayerRoomsListPage';
 import { PrayerRoomDetailsPage } from './pages/PrayerRoomDetailsPage';
 import { CreatePrayerRoomPage } from './pages/CreatePrayerRoomPage';
@@ -289,6 +290,14 @@ const RouterContent: React.FC = () => {
     return (
       <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
         <ParticipantsPage onNavigate={navigate} />
+      </DashboardLayout>
+    );
+  }
+
+  if (currentPath === '/dashboard/audit') {
+    return (
+      <DashboardLayout currentPath={currentPath} onNavigate={navigate}>
+        <AuditLogPage onNavigate={navigate} />
       </DashboardLayout>
     );
   }
