@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { ScreenShareStage } from '../realtime/ScreenShareStage';
 import { loadJoinSession } from '../../services/realtime/joinSessionStore';
-import { BrandLockup } from '@plcc/brand/BrandLockup';
-import { sanctumTheme } from './ChurchWordmark';
 import { churchSiteUrl } from '../../lib/appMode';
 import { ConnectionStatus } from '../common/ConnectionStatus';
-import { PrayerTimer } from '../common/PrayerTimer';
 import { PrayerRequestModal } from './PrayerRequestModal';
 import { InvitedSpeakerBanner } from './InvitedSpeakerBanner';
 import { PrayerChatPanel } from './PrayerChatPanel';
@@ -14,10 +11,7 @@ import { PostPrayerSummaryView } from './PostPrayerSummaryView';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { isClientMinister } from '../../lib/permissions';
-import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff, CircleHelp, Hand, Headphones, FileText, Check, Users, Info, ShieldCheck, Search, Megaphone, X } from 'lucide-react';
-import { DevelopmentPreviewBadge } from '../common/DevelopmentPreviewBadge';
-import { RealtimeEngineStatus } from '../common/RealtimeEngineStatus';
-import { LocalMicStatus } from '../common/LocalMicStatus';
+import { LogOut, Volume2, LayoutDashboard, Mic, MicOff, CircleHelp, Hand, Headphones, Check, Users, Info, ShieldCheck, Search, Megaphone, X, Radio, LayoutGrid, HandHeart, BookHeart, Crown } from 'lucide-react';
 import { sanctumApi } from '../../services/api/sanctumApi';
 import { livekitRealtimeProvider } from '../../services/realtime/livekitRealtimeProvider';
 import { connectionStateToQuality } from '../../services/domain/sessionSnapshot';
@@ -26,6 +20,8 @@ import { TOUR_IDS } from '../../tour/tourIds';
 import { listenerRoomTourSteps } from '../../tour/listenerRoomTour';
 import { ControlRoomLink } from './ControlRoomLink';
 import { resolveSermonLeader } from '../../../shared/joinDisplay.ts';
+import { PLCC_ONE_ORIGIN } from '../../lib/plccLinks';
+import { PrayerGuidelinesSheet } from './PrayerGuidelinesSheet';
 import { broadcastSender, isBroadcastName } from '../../../shared/broadcast.ts';
 
 interface ListenerRoomViewProps {
@@ -82,6 +78,9 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   const [micOn, setMicOn] = useState(false);
   const [pttActive, setPttActive] = useState(false);
   const [participantQuery, setParticipantQuery] = useState('');
+  const [peopleSearchOpen, setPeopleSearchOpen] = useState(false);
+  const [listenOnly, setListenOnly] = useState(false);
+  const [guidelinesOpen, setGuidelinesOpen] = useState(false);
   const [announcement, setAnnouncement] = useState<{ id: string; body: string; from: string; at: string } | null>(null);
   const [dismissedAnnouncement, setDismissedAnnouncement] = useState<string | null>(null);
   const { startTour } = useTour(TOUR_IDS.listenerRoom, listenerRoomTourSteps, { delayMs: 900 });
@@ -335,401 +334,415 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   }
 
   const people = participants.filter((person) => !person.leftAt);
-  const leaders = people.filter((person) => isClientMinister(person.role) || person.role === 'SPEAKER');
-  const others = people.filter((person) => !(isClientMinister(person.role) || person.role === 'SPEAKER'));
+  const isLeader = (role?: string) => isClientMinister(role) || role === 'SPEAKER';
   const peopleQuery = participantQuery.trim().toLowerCase();
-  const peopleShown = [...leaders, ...others].filter(
-    (person) => !peopleQuery || person.displayName.toLowerCase().includes(peopleQuery)
-  );
+  const peopleShown = [...people]
+    .sort(
+      (a, b) =>
+        Number(isClientMinister(b.role)) - Number(isClientMinister(a.role)) ||
+        Number(Boolean(b.isHandRaised)) - Number(Boolean(a.isHandRaised)) ||
+        a.displayName.localeCompare(b.displayName)
+    )
+    .filter((person) => !peopleQuery || person.displayName.toLowerCase().includes(peopleQuery));
+  const peopleCount = participantCount ?? people.length;
   const speakingName = liveSession?.activeSpeakerName?.trim() || '';
   const speaking = pttActive || (showLiveMic && !selfMuted) || privateWithMe;
-  const micState: 'speaking' | 'open' | 'muted' = speaking ? 'speaking' : canUseMic ? 'open' : 'muted';
+  const orbState: 'speaking' | 'open' | 'muted' = speaking ? 'speaking' : canUseMic && !listenOnly ? 'open' : 'muted';
   const statusLine = privateWithMe
     ? 'Private prayer with your pastor'
-    : speaking
-      ? 'You are speaking'
-      : canDiscuss
-        ? 'The floor is open'
-        : isMinister || isInvitedSpeaker
-          ? 'Your microphone is off'
-          : isHandRaised
-            ? 'Hand raised — waiting for a moderator'
-            : 'You are muted';
+    : listenOnly
+      ? 'Listening only'
+      : speaking
+        ? 'You are speaking'
+        : canDiscuss
+          ? 'The floor is open'
+          : isMinister || isInvitedSpeaker
+            ? 'Your microphone is off'
+            : isHandRaised
+              ? 'Hand raised — please wait'
+              : 'You are Muted';
+  const initials = (name: string) =>
+    name.split(/\s+/).map((part) => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'M';
+  const openNewTab = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
+  const nav: Array<{ key: string; label: string; Icon: React.ElementType; onClick: () => void; active?: boolean }> = [
+    { key: 'room', label: 'Prayer Room', Icon: Radio, active: true, onClick: () => undefined },
+    { key: 'rooms', label: 'All Rooms', Icon: LayoutGrid, onClick: () => openNewTab('/join') },
+    ...(prayerRequestsOn ? [{ key: 'request', label: 'Prayer Request', Icon: HandHeart, onClick: () => setIsPrayerRequestOpen(true) }] : []),
+    { key: 'wall', label: 'Prayer Wall', Icon: BookHeart, onClick: () => openNewTab(`${PLCC_ONE_ORIGIN}/#/community/prayer-wall`) },
+    { key: 'guide', label: 'Guidelines', Icon: CircleHelp, onClick: () => setGuidelinesOpen(true) },
+  ];
+
+  const handleToggleListenOnly = async () => {
+    if (listenOnly) {
+      setListenOnly(false);
+      return;
+    }
+    if (pttActive && localParticipantId) {
+      setPttActive(false);
+      await endPtt(localParticipantId);
+    }
+    if (micOn) {
+      try {
+        await livekitRealtimeProvider.disableMicrophone();
+      } catch {
+        /* already off */
+      }
+      setMicOn(false);
+      setSelfMuted(true);
+    }
+    setListenOnly(true);
+  };
 
   return (
-    <div data-theme={sanctumTheme(isDarkMode)} className="sanctum-screen sr-room flex min-h-screen select-none flex-col transition-colors">
-      {/* Banner */}
-      <header data-theme="dusk" className="sr-banner relative overflow-hidden">
-        <img src="/brand/room-banner.webp" alt="" aria-hidden className="sr-banner-art" />
-        <div className="relative mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <BrandLockup size="sm" href={churchSiteUrl()} className="min-w-0" />
-            <span className="sr-eyebrow hidden whitespace-nowrap lg:inline">Prayer overflow room</span>
+    <div className="pr-shell min-h-screen select-none" style={{ height: 'auto', minHeight: '100vh' }}>
+      <header className="pr-header">
+        <div className="pr-header-inner">
+          <a href={churchSiteUrl()} className="pr-brand" aria-label="Promised Land Christian Center">
+            <img src="/prayer-room/prayer-emblem.png" alt="" aria-hidden className="pr-emblem" />
+            <div className="min-w-0">
+              <p className="pr-brand-name">PLCC SANCTUM</p>
+              <p className="pr-brand-sub">Prayer Overflow Room</p>
+            </div>
+          </a>
+          <div className="pr-church">
+            <p className="pr-church-name">Promised Land Christian Center</p>
+            <p className="pr-church-tag">One family. Many nations. One purpose.</p>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
-            <LocalMicStatus locked={!canUseMic} compact className="sanctum-chip hidden sm:inline-flex" />
-            <ConnectionStatus
-              status={connectionStateToQuality(connectionState)}
-              showLabel={false}
-              preview={!liveConnected}
-              live={liveConnected}
-              className="sanctum-chip"
-            />
-            <button onClick={toggleDarkMode} aria-label="Toggle theme" className="sanctum-icon cursor-pointer rounded-xl p-2">
-              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          <div className="pr-header-actions">
+            <span data-theme="light" className="pr-desktop-only">
+              <ConnectionStatus
+                status={connectionStateToQuality(connectionState)}
+                showLabel={false}
+                preview={!liveConnected}
+                live={liveConnected}
+                className="sanctum-chip"
+              />
+            </span>
+            <button type="button" onClick={() => setGuidelinesOpen(true)} className="pr-icon-btn pr-desktop-only cursor-pointer" aria-label="Guidelines">
+              <CircleHelp size={24} aria-hidden />
+            </button>
+            <button type="button" onClick={() => startTour()} className="pr-icon-btn cursor-pointer" aria-label="Show prayer room tutorial">
+              <Info size={22} aria-hidden />
             </button>
             <button
               type="button"
-              onClick={() => startTour()}
-              aria-label="Show prayer room tutorial"
-              className="sanctum-icon cursor-pointer rounded-xl p-2"
+              onClick={onLeave}
+              className="pr-icon-btn is-solid cursor-pointer"
+              aria-label={isAuthenticated ? 'Back to dashboard' : 'Leave prayer room'}
             >
-              <CircleHelp className="h-4 w-4" />
+              {isAuthenticated ? <LayoutDashboard size={22} aria-hidden /> : <X size={22} aria-hidden />}
             </button>
-            {isAuthenticated ? (
-              <button
-                onClick={onLeave}
-                aria-label="Back to dashboard"
-                className="sanctum-outline hidden cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold sm:flex"
-              >
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                <span>Dashboard</span>
-              </button>
-            ) : null}
           </div>
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-6xl flex-1 gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
-        {/* Main room card */}
-        <main className="sanctum-surface sr-card flex min-w-0 flex-col gap-5 rounded-3xl p-4 sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" data-tour="listener-welcome">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="sr-orb-sm flex h-12 w-12 shrink-0 items-center justify-center rounded-full sm:h-14 sm:w-14">
-                <Headphones className="h-6 w-6" />
-              </span>
-              <div className="min-w-0">
-                <h1 className="font-display text-xl leading-tight sm:text-3xl">{gatheringName}</h1>
-                <p className="sanctum-muted mt-1 text-xs sm:text-sm">
-                  Audio prayer room · Overflow
-                  {sermonLeader ? <> · Led by <strong>{sermonLeader}</strong></> : null}
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end">
-              {prayerHasStarted ? (
-                <span className="sr-live inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold">
-                  <span className="sr-live-dot h-2 w-2 rounded-full" /> LIVE
-                </span>
-              ) : (
-                <span className="sanctum-chip rounded-lg px-3 py-1 text-xs font-bold">Waiting to begin</span>
-              )}
-              <span className="sanctum-muted inline-flex items-center gap-1.5 text-xs font-semibold sm:text-sm">
-                <Users className="h-4 w-4" />
-                {participantCount ?? people.length} {(participantCount ?? people.length) === 1 ? 'person' : 'people'}
-                <span aria-hidden>·</span>
-                <PrayerTimer seconds={liveSession?.durationSeconds || 0} size="sm" />
-              </span>
-            </div>
-          </div>
-
-          {announcement && dismissedAnnouncement !== announcement.id ? (
-            <div role="status" aria-live="polite" className="sr-announce flex items-start gap-3 rounded-2xl p-4">
-              <span className="sr-announce-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
-                <Megaphone className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="sr-announce-from text-[11px] font-extrabold uppercase tracking-wider">
-                  Message from {announcement.from}
-                </p>
-                <p className="sr-announce-body mt-0.5 whitespace-pre-line break-words text-sm font-semibold sm:text-base">
-                  {announcement.body}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDismissedAnnouncement(announcement.id)}
-                aria-label="Dismiss message"
-                className="sr-announce-x shrink-0 cursor-pointer rounded-full p-1.5"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ) : null}
-
-          <ScreenShareStage />
-
-          {connectionState === 'RECONNECTING' && (
-            <div className="sanctum-chip rounded-full px-3 py-2 text-center text-sm font-semibold">Reconnecting…</div>
-          )}
-          {(connectionState === 'FAILED' || connectionState === 'DISCONNECTED') && (localParticipantId || loadJoinSession()) && (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => void reconnectToPrayer()}
-                className="sanctum-accent cursor-pointer rounded-xl px-4 py-2 text-xs font-bold"
-              >
-                Reconnect
-              </button>
-            </div>
-          )}
-          {audioBlocked && (
-            <button
-              type="button"
-              onClick={() => void enablePrayerAudio()}
-              data-tour="listener-enable-audio"
-              className="sanctum-accent mx-auto inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold"
-            >
-              <Volume2 className="h-4 w-4" />
-              Tap to hear the prayer
-            </button>
-          )}
-
-          {showLiveMic && (isMinister || isInvitedSpeaker) ? (
-            <SpeakerLiveView
-              participantName={participantName}
-              participantCount={participantCount}
-              selfMuted={selfMuted}
-              onToggleSelfMute={() => void handleToggleLeadMic()}
-              onFinishPrayer={handleFinishPrayer}
-            />
-          ) : (
-            <div className="flex flex-col items-center py-2 text-center sm:py-4">
-              <div className={`sr-stage ${floorHeld || speaking ? 'is-active' : ''}`}>
-                <span className="sr-wave sr-wave-l" aria-hidden>
-                  {Array.from({ length: 9 }).map((_, n) => <i key={n} style={{ animationDelay: `${n * 0.11}s` }} />)}
-                </span>
-                <span className={`sr-orb sr-orb-${micState}`}>
-                  {micState === 'muted' ? <MicOff className="h-12 w-12 sm:h-16 sm:w-16" /> : <Mic className="h-12 w-12 sm:h-16 sm:w-16" />}
-                </span>
-                <span className="sr-wave sr-wave-r" aria-hidden>
-                  {Array.from({ length: 9 }).map((_, n) => <i key={n} style={{ animationDelay: `${n * 0.11}s` }} />)}
-                </span>
-              </div>
-              <p className={`sr-status mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold sm:text-base sr-status-${micState}`}>
-                {micState === 'muted' ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                {statusLine}
-              </p>
-              <p className="sanctum-muted mt-2 max-w-md text-sm">
-                {floorHeld && speakingName
-                  ? <>Now praying: <strong>{speakingName}</strong></>
-                  : privateWithMe
-                    ? 'Only you and the host can hear each other.'
-                    : congregationMuted
-                      ? sermonLeader
-                        ? `Audio only · Listen as ${sermonLeader} leads`
-                        : 'Audio only · Speaking by moderator approval'
-                      : 'Audio only · The floor is open — tap to speak'}
-              </p>
-            </div>
-          )}
-
-          {/* Action tiles */}
-          {!showLiveMic && (
-            <div className="grid grid-cols-3 gap-2.5 sm:gap-3" data-tour="listener-reactions">
-              {!leadersOnly ? (
-                <button
-                  type="button"
-                  onClick={() => void handleToggleRaiseHand()}
-                  aria-pressed={isHandRaised}
-                  className={`sr-tile ${isHandRaised ? 'is-on' : 'is-gold'}`}
-                >
-                  <span className="sr-tile-icon">{isHandRaised ? <Check className="h-5 w-5" /> : <Hand className="h-5 w-5" />}</span>
-                  <span className="sr-tile-title">{isHandRaised ? 'Hand raised' : 'Raise hand'}</span>
-                  <span className="sr-tile-sub">{isHandRaised ? 'Tap to lower' : 'Ask to pray aloud'}</span>
-                </button>
-              ) : (
-                <div className="sr-tile is-off">
-                  <span className="sr-tile-icon"><Hand className="h-5 w-5" /></span>
-                  <span className="sr-tile-title">Leaders only</span>
-                  <span className="sr-tile-sub">Prayer leaders speak</span>
-                </div>
-              )}
-
-              {(isMinister || isInvitedSpeaker) && canUseMic ? (
-                <button type="button" onClick={() => void handleToggleLeadMic()} data-tour="listener-mic" className="sr-tile is-gold">
-                  <span className="sr-tile-icon"><Mic className="h-5 w-5" /></span>
-                  <span className="sr-tile-title">Unmute</span>
-                  <span className="sr-tile-sub">Lead in prayer</span>
-                </button>
-              ) : canDiscuss && !privateWithMe ? (
-                <button
-                  type="button"
-                  onClick={() => void handleTogglePtt()}
-                  data-tour="listener-mic"
-                  className={`sr-tile ${pttActive ? 'is-on' : 'is-gold'}`}
-                >
-                  <span className="sr-tile-icon">{pttActive ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}</span>
-                  <span className="sr-tile-title">{pttActive ? 'Stop' : 'Speak'}</span>
-                  <span className="sr-tile-sub">{pttActive ? 'Tap to stop' : 'The floor is open'}</span>
-                </button>
-              ) : (
-                <div className="sr-tile is-off" data-tour="listener-mic-locked" aria-disabled>
-                  <span className="sr-tile-icon"><Mic className="h-5 w-5" /></span>
-                  <span className="sr-tile-title">Unmute</span>
-                  <span className="sr-tile-sub">When approved</span>
-                </div>
-              )}
-
-              {prayerRequestsOn ? (
-                <button type="button" onClick={() => setIsPrayerRequestOpen(true)} className="sr-tile">
-                  <span className="sr-tile-icon"><FileText className="h-5 w-5" /></span>
-                  <span className="sr-tile-title">Prayer request</span>
-                  <span className="sr-tile-sub">Send to the pastors</span>
-                </button>
-              ) : (
-                <div className="sr-tile">
-                  <span className="sr-tile-icon"><Volume2 className="h-5 w-5" /></span>
-                  <span className="sr-tile-title">Listening</span>
-                  <span className="sr-tile-sub">Audio only</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {!showLiveMic && (
-            <div className="flex items-center justify-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => sendReactionAttendee('AMEN')}
-                aria-label="Say Amen"
-                className="sanctum-outline cursor-pointer rounded-full px-4 py-2 text-sm font-semibold active:scale-95"
-              >
-                🙏 Amen
-              </button>
-              <button
-                type="button"
-                onClick={() => sendReactionAttendee('PRAISE_GOD')}
-                aria-label="Praise God"
-                className="sanctum-outline cursor-pointer rounded-full px-4 py-2 text-sm font-semibold active:scale-95"
-              >
-                ❤️ Praise God
-              </button>
-            </div>
-          )}
-
-          {canControl && altarFlags?.id ? (
-            <div className="flex justify-center">
-              <ControlRoomLink roomId={altarFlags.id} />
-            </div>
-          ) : null}
-
-          <button
-            onClick={onLeave}
-            data-tour="listener-leave"
-            className="sr-leave mx-auto mt-2 inline-flex cursor-pointer items-center gap-2 rounded-full px-8 py-3 text-sm font-bold"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Leave room</span>
+      <nav className="pr-chips" aria-label="Prayer room">
+        {nav.map(({ key, label, Icon, onClick, active }) => (
+          <button key={key} type="button" onClick={onClick} className={`pr-chip cursor-pointer ${active ? 'is-active' : ''}`} aria-current={active ? 'page' : undefined}>
+            <Icon size={16} aria-hidden />
+            {label}
           </button>
-        </main>
+        ))}
+      </nav>
 
-        {/* Right rail */}
-        <aside className="flex min-w-0 flex-col gap-5">
-          <section className="sanctum-surface sr-card rounded-3xl p-5">
-            <h2 className="flex items-center gap-2 text-base font-bold">
-              <Info className="sr-gold h-5 w-5" />
-              About this room
-            </h2>
-            <p className="sanctum-muted mt-2 text-sm">
-              The overflow for our worldwide family when the main prayer room in Jordan is full.
-            </p>
-            <ul className="mt-4 space-y-2.5 text-sm">
-              <li className="flex items-center gap-2.5"><Headphones className="sr-gold h-4 w-4 shrink-0" />Audio only — no video</li>
-              <li className="flex items-center gap-2.5"><MicOff className="sr-gold h-4 w-4 shrink-0" />Everyone joins muted</li>
-              {!leadersOnly ? (
-                <li className="flex items-center gap-2.5"><Hand className="sr-gold h-4 w-4 shrink-0" />Raise your hand to pray aloud</li>
-              ) : null}
-              <li className="flex items-center gap-2.5"><ShieldCheck className="sr-gold h-4 w-4 shrink-0" />Keep every prayer respectful and focused</li>
-            </ul>
-          </section>
-
-          <section className="sanctum-surface sr-card rounded-3xl p-5">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-base font-bold">
-                <Users className="sr-gold h-5 w-5" />
-                In the room ({participantCount ?? people.length})
-              </h2>
-            </div>
-            {people.length > 6 ? (
-              <label className="sanctum-raised mt-3 flex items-center gap-2 rounded-xl px-3 py-2">
-                <Search className="h-4 w-4 shrink-0" />
-                <input
-                  value={participantQuery}
-                  onChange={(e) => setParticipantQuery(e.target.value)}
-                  placeholder="Find someone"
-                  className="w-full bg-transparent text-sm outline-none"
-                />
-              </label>
-            ) : null}
-            {peopleShown.length ? (
-              <ul className="mt-3 max-h-80 space-y-1 overflow-y-auto pr-1">
-                {peopleShown.slice(0, 80).map((person) => {
-                  const leader = isClientMinister(person.role) || person.role === 'SPEAKER';
-                  const isMe = person.id === localParticipantId;
-                  return (
-                    <li key={person.id} className="flex items-center gap-3 rounded-xl px-1.5 py-1.5">
-                      <span className={`sr-avatar ${leader ? 'is-leader' : ''}`}>
-                        {person.displayName.split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                        {person.displayName}{isMe ? ' (you)' : ''}
-                      </span>
-                      {leader ? (
-                        <span className="sr-badge shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold">
-                          {person.role === 'SPEAKER' ? 'Praying' : 'Moderator'}
-                        </span>
-                      ) : null}
-                      {person.isHandRaised ? <Hand className="sr-gold h-4 w-4 shrink-0" aria-label="Hand raised" /> : null}
-                      {person.isMuted === false || (person.role === 'SPEAKER') ? (
-                        <Mic className="sr-ok h-4 w-4 shrink-0" aria-label="Can speak" />
-                      ) : (
-                        <MicOff className="sr-mute h-4 w-4 shrink-0" aria-label="Muted" />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <p className="sanctum-muted mt-3 text-sm">
-                {people.length ? 'No one matches that name.' : 'People appear here as they join.'}
-              </p>
-            )}
-          </section>
-
-          <div data-tour="listener-chat">
-            {chatOn && (
-              <PrayerChatPanel sessionId={liveSession?.id || loadJoinSession()?.sessionId} senderName={participantName} compact />
-            )}
-          </div>
+      <div className="pr-body">
+        <aside className="pr-sidebar" aria-label="Prayer room">
+          <nav className="pr-nav">
+            {nav.map(({ key, label, Icon, onClick, active }) => (
+              <button key={key} type="button" onClick={onClick} className={`pr-nav-item cursor-pointer ${active ? 'is-active' : ''}`} aria-current={active ? 'page' : undefined}>
+                <Icon size={22} aria-hidden />
+                {label}
+              </button>
+            ))}
+          </nav>
         </aside>
+
+        <div className="pr-content">
+          <div className="pr-panel">
+            <main className="pr-room">
+              <div className="pr-titlebar" data-tour="listener-welcome">
+                <div className="flex min-w-0 items-center gap-3 lg:gap-4">
+                  <span className="pr-room-icon"><Headphones className="h-6 w-6 lg:h-9 lg:w-9" aria-hidden /></span>
+                  <div className="min-w-0">
+                    <p className="pr-room-title line-clamp-2">{gatheringName}</p>
+                    <p className="pr-room-sub">
+                      Audio Prayer Room • Overflow (Additional Capacity)
+                      <Info size={16} aria-hidden className="opacity-70" />
+                    </p>
+                  </div>
+                </div>
+                <div className="pr-titlebar-meta flex shrink-0 flex-col items-end gap-2">
+                  {prayerHasStarted ? (
+                    <span className="pr-live"><i aria-hidden /> LIVE</span>
+                  ) : (
+                    <span className="pr-live" style={{ background: '#6b7a72' }}>WAITING</span>
+                  )}
+                  <span className="pr-count">
+                    <Users className="h-4 w-4 lg:h-6 lg:w-6" aria-hidden /> {peopleCount} {peopleCount === 1 ? 'Participant' : 'Participants'}
+                  </span>
+                </div>
+              </div>
+
+              {announcement && dismissedAnnouncement !== announcement.id ? (
+                <div role="status" aria-live="polite" className="pr-announce">
+                  <span className="pr-info-icon" style={{ width: 40, height: 40 }}><Megaphone className="h-5 w-5" aria-hidden /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#7a5a1c]">Message from {announcement.from}</p>
+                    <p className="mt-0.5 whitespace-pre-line break-words text-sm font-semibold sm:text-base">{announcement.body}</p>
+                  </div>
+                  <button type="button" onClick={() => setDismissedAnnouncement(announcement.id)} aria-label="Dismiss message" className="shrink-0 cursor-pointer rounded-full p-1.5 hover:bg-black/10">
+                    <X className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+              ) : null}
+
+              <div data-theme="light"><ScreenShareStage /></div>
+
+              {connectionState === 'RECONNECTING' ? <p className="pr-notice text-center font-semibold">Reconnecting…</p> : null}
+              {(connectionState === 'FAILED' || connectionState === 'DISCONNECTED') && (localParticipantId || loadJoinSession()) ? (
+                <button type="button" onClick={() => void reconnectToPrayer()} className="pr-tool mx-auto cursor-pointer">
+                  Reconnect
+                </button>
+              ) : null}
+              {audioBlocked ? (
+                <button
+                  type="button"
+                  onClick={() => void enablePrayerAudio()}
+                  data-tour="listener-enable-audio"
+                  className="mx-auto inline-flex min-h-[48px] cursor-pointer items-center gap-2 rounded-full bg-[#d9b45e] px-6 text-base font-bold text-[#1d2414]"
+                >
+                  <Volume2 className="h-5 w-5" aria-hidden />
+                  Tap to hear the prayer
+                </button>
+              ) : null}
+              {privateWithMe ? (
+                <p className="pr-notice is-strong text-center">
+                  Private prayer with your pastor — only you and the host can hear each other.
+                </p>
+              ) : null}
+
+              {showLiveMic && (isMinister || isInvitedSpeaker) ? (
+                <div data-theme="light">
+                  <SpeakerLiveView
+                    participantName={participantName}
+                    participantCount={participantCount}
+                    selfMuted={selfMuted}
+                    onToggleSelfMute={() => void handleToggleLeadMic()}
+                    onFinishPrayer={handleFinishPrayer}
+                  />
+                </div>
+              ) : (
+                <div className="pr-stage">
+                  <div className="pr-orb-row">
+                    <span className={`pr-wave is-left ${floorHeld || speaking ? 'is-active' : ''}`} aria-hidden>
+                      {Array.from({ length: 9 }).map((_, n) => <i key={n} style={{ animationDelay: `${n * 0.11}s` }} />)}
+                    </span>
+                    <span className={`pr-orb ${orbState === 'open' ? 'is-open' : ''} ${orbState === 'speaking' ? 'is-open is-speaking' : ''}`}>
+                      {orbState === 'muted' ? <MicOff aria-hidden /> : <Mic aria-hidden />}
+                    </span>
+                    <span className={`pr-wave ${floorHeld || speaking ? 'is-active' : ''}`} aria-hidden>
+                      {Array.from({ length: 9 }).map((_, n) => <i key={n} style={{ animationDelay: `${n * 0.11}s` }} />)}
+                    </span>
+                  </div>
+                  <p className={`pr-status ${orbState !== 'muted' ? 'is-open' : ''}`}>
+                    {orbState === 'muted' ? (listenOnly ? <Volume2 size={20} aria-hidden /> : <MicOff size={20} aria-hidden />) : <Mic size={20} aria-hidden />}
+                    {statusLine}
+                  </p>
+                  <p className="pr-hint">
+                    {floorHeld && speakingName ? (
+                      <>Now praying: <strong>{speakingName}</strong></>
+                    ) : congregationMuted ? (
+                      'Audio Only • By Moderator Approval'
+                    ) : (
+                      'Audio Only • The floor is open'
+                    )}
+                  </p>
+                  {/* The audio bridge from Jordan is not built yet: say so honestly. */}
+                  <span className="pr-bridge">
+                    <Radio size={14} aria-hidden />
+                    {sermonLeader ? `Overflow room led by ${sermonLeader}` : 'Overflow room with its own prayer leaders'}
+                  </span>
+                </div>
+              )}
+
+              {!showLiveMic ? (
+                <div className="pr-tiles" data-tour="listener-reactions">
+                  {!leadersOnly ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleToggleRaiseHand()}
+                      aria-pressed={isHandRaised}
+                      className={`pr-tile cursor-pointer ${isHandRaised ? 'is-on' : 'is-gold'}`}
+                    >
+                      <span className="pr-tile-icon">{isHandRaised ? <Check className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden /> : <Hand className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden />}</span>
+                      <span className="pr-tile-title">{isHandRaised ? 'Hand Raised' : 'Raise Hand'}</span>
+                      <span className="pr-tile-sub">{isHandRaised ? 'Tap to lower' : 'Request to Speak'}</span>
+                    </button>
+                  ) : (
+                    <div className="pr-tile is-off">
+                      <span className="pr-tile-icon"><Hand className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden /></span>
+                      <span className="pr-tile-title">Leaders only</span>
+                      <span className="pr-tile-sub">Prayer leaders speak</span>
+                    </div>
+                  )}
+
+                  {listenOnly ? (
+                    <div className="pr-tile is-off" aria-disabled>
+                      <span className="pr-tile-icon"><Mic className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden /></span>
+                      <span className="pr-tile-title">Unmute</span>
+                      <span className="pr-tile-sub">(Listen only is on)</span>
+                    </div>
+                  ) : (isMinister || isInvitedSpeaker) && canUseMic ? (
+                    <button type="button" onClick={() => void handleToggleLeadMic()} data-tour="listener-mic" className="pr-tile is-live cursor-pointer">
+                      <span className="pr-tile-icon"><Mic className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden /></span>
+                      <span className="pr-tile-title">Unmute</span>
+                      <span className="pr-tile-sub">Lead in prayer</span>
+                    </button>
+                  ) : canDiscuss && !privateWithMe ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleTogglePtt()}
+                      data-tour="listener-mic"
+                      className={`pr-tile cursor-pointer ${pttActive ? 'is-on' : 'is-live'}`}
+                    >
+                      <span className="pr-tile-icon">{pttActive ? <MicOff className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden /> : <Mic className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden />}</span>
+                      <span className="pr-tile-title">{pttActive ? 'Stop' : 'Speak'}</span>
+                      <span className="pr-tile-sub">{pttActive ? 'Tap to stop' : 'The floor is open'}</span>
+                    </button>
+                  ) : (
+                    <div className="pr-tile is-off" data-tour="listener-mic-locked" aria-disabled>
+                      <span className="pr-tile-icon"><Mic className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden /></span>
+                      <span className="pr-tile-title">Unmute</span>
+                      <span className="pr-tile-sub">(When Approved)</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleListenOnly()}
+                    aria-pressed={listenOnly}
+                    className={`pr-tile cursor-pointer ${listenOnly ? 'is-on' : ''}`}
+                  >
+                    <span className="pr-tile-icon"><Volume2 className="h-6 w-6 lg:h-7 lg:w-7" aria-hidden /></span>
+                    <span className="pr-tile-title">Listen Only</span>
+                    <span className="pr-tile-sub">{listenOnly ? 'On — tap to turn off' : 'Keep my mic off'}</span>
+                  </button>
+                </div>
+              ) : null}
+
+              {!showLiveMic ? (
+                <div className="pr-tools">
+                  {prayerRequestsOn ? (
+                    <button type="button" onClick={() => setIsPrayerRequestOpen(true)} className="pr-tool cursor-pointer">
+                      <HandHeart size={18} aria-hidden /> Prayer Request
+                    </button>
+                  ) : null}
+                  <button type="button" onClick={() => sendReactionAttendee('AMEN')} aria-label="Say Amen" className="pr-tool cursor-pointer">
+                    🙏 Amen
+                  </button>
+                  <button type="button" onClick={() => sendReactionAttendee('PRAISE_GOD')} aria-label="Praise God" className="pr-tool cursor-pointer">
+                    ❤️ Praise God
+                  </button>
+                  {canControl && altarFlags?.id ? (
+                    <span data-theme="light"><ControlRoomLink roomId={altarFlags.id} /></span>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <button type="button" onClick={onLeave} data-tour="listener-leave" className="pr-leave cursor-pointer">
+                <LogOut className="h-5 w-5 lg:h-6 lg:w-6" aria-hidden />
+                Leave Room
+              </button>
+            </main>
+
+            <aside className="pr-side">
+              <section className="pr-card">
+                <h3 className="pr-card-title">
+                  <span className="pr-info-icon"><Info size={16} aria-hidden /></span>
+                  Prayer Room Information
+                </h3>
+                <p className="pr-card-text">Overflow prayer room for our worldwide family when the main room reaches capacity.</p>
+                <ul className="pr-rules">
+                  <li><Headphones size={22} aria-hidden />Audio only (no video)</li>
+                  <li><MicOff size={22} aria-hidden />All participants are muted by default</li>
+                  {!leadersOnly ? <li><Hand size={22} aria-hidden />Use Raise Hand to request to speak</li> : null}
+                  <li><ShieldCheck size={22} aria-hidden />Please keep all prayers respectful and focused</li>
+                </ul>
+              </section>
+
+              <section className="pr-card">
+                <div className="pr-people-head">
+                  <h3 className="pr-card-title">
+                    <Users className="h-6 w-6" aria-hidden />
+                    Participants ({peopleCount})
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setPeopleSearchOpen((v) => !v)}
+                    className="pr-search-btn cursor-pointer"
+                    aria-label="Search participants"
+                    aria-expanded={peopleSearchOpen}
+                  >
+                    <Search size={20} aria-hidden />
+                  </button>
+                </div>
+                {peopleSearchOpen ? (
+                  <label className="pr-search">
+                    <Search size={16} aria-hidden className="opacity-60" />
+                    <input autoFocus value={participantQuery} onChange={(e) => setParticipantQuery(e.target.value)} placeholder="Find someone" aria-label="Find someone" />
+                  </label>
+                ) : null}
+                <ul className="pr-people">
+                  {peopleShown.slice(0, 120).map((person) => {
+                    const isMe = person.id === localParticipantId;
+                    const prayingNow = person.role === 'SPEAKER' || (speakingName && person.displayName === speakingName);
+                    const canSpeak = person.isMuted === false || person.role === 'SPEAKER';
+                    return (
+                      <li key={person.id} className="pr-person">
+                        <span className={`pr-avatar ${prayingNow ? 'is-speaking' : ''}`}>{initials(person.displayName)}</span>
+                        <span className="pr-person-name">{person.displayName}{isMe ? ' (you)' : ''}</span>
+                        {person.isHandRaised ? <Hand size={18} className="pr-hand" aria-label="Hand raised" /> : null}
+                        {prayingNow ? (
+                          <span className="pr-role is-speaking">Praying</span>
+                        ) : isLeader(person.role) ? (
+                          <span className="pr-role is-mod"><Crown size={13} aria-hidden /> Moderator</span>
+                        ) : (
+                          <span className="pr-role is-member">Participant</span>
+                        )}
+                        {canSpeak ? <Mic size={20} className="pr-mic-on" aria-label="Can speak" /> : <MicOff size={20} className="pr-mic-off" aria-label="Muted" />}
+                      </li>
+                    );
+                  })}
+                  {!peopleShown.length ? (
+                    <li className="py-4 text-center text-sm text-[#4a5a52]">{people.length ? 'No one matches that name.' : 'People appear here as they join.'}</li>
+                  ) : null}
+                </ul>
+              </section>
+
+              <div data-tour="listener-chat" data-theme="light">
+                {chatOn ? <PrayerChatPanel sessionId={liveSession?.id || loadJoinSession()?.sessionId} senderName={participantName} compact /> : null}
+              </div>
+            </aside>
+          </div>
+        </div>
       </div>
 
-      <footer
-        className="sanctum-muted mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 border-t px-4 py-4 text-[11px] sm:px-6"
-        style={{ borderColor: 'var(--border)' }}
-      >
-        <span>Promised Land Christian Center · One family. Many nations. One purpose.</span>
-        <span className="inline-flex items-center gap-2">
-          <RealtimeEngineStatus />
-          {!liveConnected ? <DevelopmentPreviewBadge /> : <span>Connected</span>}
-        </span>
-      </footer>
-
-      <PrayerRequestModal
-        isOpen={isPrayerRequestOpen && prayerRequestsOn}
-        onClose={() => setIsPrayerRequestOpen(false)}
-        defaultName={participantName}
-        roomName={liveSession?.roomName}
-        allowAnonymous={anonymousRequestsOn}
-      />
-
-      <InvitedSpeakerBanner
-        isOpen={Boolean(pendingSpeakerInvite)}
-        onAccept={() => void acceptSpeakerInvite()}
-        onDecline={() => void declineSpeakerInvite()}
-        canAccept={liveSession?.status === 'LIVE'}
-      />
+      <div data-theme="light">
+        <PrayerRequestModal
+          isOpen={isPrayerRequestOpen && prayerRequestsOn}
+          onClose={() => setIsPrayerRequestOpen(false)}
+          defaultName={participantName}
+          roomName={liveSession?.roomName}
+          allowAnonymous={anonymousRequestsOn}
+        />
+        <InvitedSpeakerBanner
+          isOpen={Boolean(pendingSpeakerInvite)}
+          onAccept={() => void acceptSpeakerInvite()}
+          onDecline={() => void declineSpeakerInvite()}
+          canAccept={liveSession?.status === 'LIVE'}
+        />
+      </div>
+      {guidelinesOpen ? <PrayerGuidelinesSheet onClose={() => setGuidelinesOpen(false)} /> : null}
     </div>
   );
 };
