@@ -14,7 +14,7 @@ import { PostPrayerSummaryView } from './PostPrayerSummaryView';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { isClientMinister } from '../../lib/permissions';
-import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff, CircleHelp, Hand, Headphones, FileText, Check, Users, Info, ShieldCheck, Search } from 'lucide-react';
+import { LogOut, Sun, Moon, Volume2, LayoutDashboard, Mic, MicOff, CircleHelp, Hand, Headphones, FileText, Check, Users, Info, ShieldCheck, Search, Megaphone, X } from 'lucide-react';
 import { DevelopmentPreviewBadge } from '../common/DevelopmentPreviewBadge';
 import { RealtimeEngineStatus } from '../common/RealtimeEngineStatus';
 import { LocalMicStatus } from '../common/LocalMicStatus';
@@ -26,6 +26,7 @@ import { TOUR_IDS } from '../../tour/tourIds';
 import { listenerRoomTourSteps } from '../../tour/listenerRoomTour';
 import { ControlRoomLink } from './ControlRoomLink';
 import { resolveSermonLeader } from '../../../shared/joinDisplay.ts';
+import { broadcastSender, isBroadcastName } from '../../../shared/broadcast.ts';
 
 interface ListenerRoomViewProps {
   participantName: string;
@@ -81,6 +82,8 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
   const [micOn, setMicOn] = useState(false);
   const [pttActive, setPttActive] = useState(false);
   const [participantQuery, setParticipantQuery] = useState('');
+  const [announcement, setAnnouncement] = useState<{ id: string; body: string; from: string; at: string } | null>(null);
+  const [dismissedAnnouncement, setDismissedAnnouncement] = useState<string | null>(null);
   const { startTour } = useTour(TOUR_IDS.listenerRoom, listenerRoomTourSteps, { delayMs: 900 });
 
   useEffect(() => {
@@ -93,6 +96,55 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
     if (connectionState !== 'DISCONNECTED' && connectionState !== 'FAILED') return;
     void reconnectToPrayer({ silent: true });
   }, [user?.id]);
+
+  // Moderator broadcasts: live, plus the latest one from the last 30 minutes for late joiners.
+  const announcementSessionId = liveSession?.id || loadJoinSession()?.sessionId || '';
+  useEffect(() => {
+    if (!announcementSessionId) return;
+    let cancelled = false;
+    sanctumApi
+      .getSession(announcementSessionId)
+      .then((snapshot) => {
+        if (cancelled) return;
+        const recent = (snapshot.chatMessages || [])
+          .filter((m: any) => isBroadcastName(m.displayName))
+          .filter((m: any) => Date.now() - new Date(m.createdAt || m.timestamp || 0).getTime() < 30 * 60_000)
+          .pop() as any;
+        if (recent) {
+          setAnnouncement((current) =>
+            current ?? {
+              id: String(recent.id),
+              body: String(recent.body),
+              from: broadcastSender(String(recent.displayName)),
+              at: String(recent.createdAt || recent.timestamp || ''),
+            }
+          );
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [announcementSessionId]);
+
+  useEffect(() => {
+    return livekitRealtimeProvider.subscribe((event) => {
+      if (event.type !== 'BROADCAST_MESSAGE') return;
+      const body = typeof event.metadata?.body === 'string' ? event.metadata.body.trim() : '';
+      if (!body) return;
+      setAnnouncement({
+        id: String(event.metadata?.messageId || event.timestamp),
+        body,
+        from: event.displayName || 'Moderator',
+        at: event.timestamp,
+      });
+      try {
+        navigator.vibrate?.(80);
+      } catch {
+        /* not supported */
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const onOnline = () => {
@@ -312,7 +364,7 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
         <div className="relative mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex min-w-0 items-center gap-3">
             <BrandLockup size="sm" href={churchSiteUrl()} className="min-w-0" />
-            <span className="sr-eyebrow hidden sm:inline">Prayer overflow room</span>
+            <span className="sr-eyebrow hidden whitespace-nowrap lg:inline">Prayer overflow room</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2.5">
             <LocalMicStatus locked={!canUseMic} compact className="sanctum-chip hidden sm:inline-flex" />
@@ -380,6 +432,30 @@ export const ListenerRoomView: React.FC<ListenerRoomViewProps> = ({
               </span>
             </div>
           </div>
+
+          {announcement && dismissedAnnouncement !== announcement.id ? (
+            <div role="status" aria-live="polite" className="sr-announce flex items-start gap-3 rounded-2xl p-4">
+              <span className="sr-announce-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
+                <Megaphone className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="sr-announce-from text-[11px] font-extrabold uppercase tracking-wider">
+                  Message from {announcement.from}
+                </p>
+                <p className="sr-announce-body mt-0.5 whitespace-pre-line break-words text-sm font-semibold sm:text-base">
+                  {announcement.body}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDismissedAnnouncement(announcement.id)}
+                aria-label="Dismiss message"
+                className="sr-announce-x shrink-0 cursor-pointer rounded-full p-1.5"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
 
           <ScreenShareStage />
 

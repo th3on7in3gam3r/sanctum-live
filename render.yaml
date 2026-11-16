@@ -31,6 +31,9 @@ services:
         value: church
       - key: PUBLIC_SITE_URL
         sync: false
+      # Same value as SANCTUM_SERVICE_KEY on PLCC Canaan (Vercel). Unlocks Jordan headcounts.
+      - key: SANCTUM_SERVICE_KEY
+        sync: false
       - key: PUBLIC_SITE_ORIGINS
         sync: false
       - key: APP_URL

@@ -273,6 +273,17 @@ export const sanctumApi = {
       method: 'POST',
       body: JSON.stringify({}),
     }, staff(actor)),
+  broadcast: (sessionId: string, message: string, actor: Actor) =>
+    apiFetch<{ sent: boolean; roomName: string; timestamp: string }>(`/api/sessions/${sessionId}/broadcast`, {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }, staff(actor)),
+  jordanRooms: (actor: Actor) =>
+    apiFetch<{
+      rooms: Array<{ id: string; name: string; live: boolean; count: number | null; capacity: number | null }>;
+      counts: boolean;
+      keyConfigured: boolean;
+    }>('/api/plcc/jordan-rooms', undefined, staff(actor)),
   openPrayerSession: (sessionId: string, sermonLeaderName: string, actor: Actor) =>
     apiFetch<{ session: Record<string, unknown> }>(`/api/prayer-sessions/${sessionId}/open`, {
       method: 'POST',

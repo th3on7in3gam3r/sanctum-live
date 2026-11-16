@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Activity,
   ArrowRight,
@@ -11,7 +12,9 @@ import {
   Headphones,
   History,
   Lock,
+  Megaphone,
   MessageCircle,
+  Send,
   Plus,
   Radio,
   RefreshCw,
@@ -24,7 +27,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { ROLE_CAPABILITIES } from '../lib/permissions';
-import { fetchHealth, type ApiHealth } from '../services/api/sanctumApi';
+import { fetchHealth, sanctumApi, type ApiHealth } from '../services/api/sanctumApi';
+import { BROADCAST_MAX } from '../../shared/broadcast.ts';
 import { fetchJordanRooms, JORDAN_ORIGIN, jordanRoomUrl, PLCC_ONE_URL, type JordanRoom } from '../lib/plccLinks';
 import { cn } from '../lib/utils';
 import type { PrayerRoom } from '../types';
@@ -93,7 +97,7 @@ function scheduleLabel(room: PrayerRoom) {
 }
 
 export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
-  const { user } = useAuth();
+  const { user, organization } = useAuth();
   const {
     prayerRooms = [],
     liveSession,
@@ -101,6 +105,8 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
     raisedHands = [],
     prayerRequests = [],
     connectedNow,
+    addToast,
+    isDarkMode,
   } = useApp();
 
   const [filter, setFilter] = useState<Filter>('all');
@@ -108,15 +114,28 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
   const [jordanLoaded, setJordanLoaded] = useState(false);
   const [health, setHealth] = useState<ApiHealth | null | undefined>(undefined);
   const [refreshing, setRefreshing] = useState(false);
+  const [jordanCounts, setJordanCounts] = useState(false);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastText, setBroadcastText] = useState('');
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [lastBroadcast, setLastBroadcast] = useState<{ text: string; at: string; room: string } | null>(null);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
-    const [rooms, h] = await Promise.all([fetchJordanRooms(), fetchHealth()]);
-    setJordan(rooms);
+    const actor = { userId: user?.id, organizationId: organization?.id };
+    const staffRooms = sanctumApi.jordanRooms(actor).catch(() => null);
+    const [fromStaff, h] = await Promise.all([staffRooms, fetchHealth()]);
+    if (fromStaff && fromStaff.rooms.length) {
+      setJordan(fromStaff.rooms);
+      setJordanCounts(fromStaff.counts);
+    } else {
+      setJordan(await fetchJordanRooms());
+      setJordanCounts(false);
+    }
     setJordanLoaded(true);
     setHealth(h);
     setRefreshing(false);
-  }, []);
+  }, [user?.id, organization?.id]);
 
   useEffect(() => {
     void refresh();
@@ -147,8 +166,8 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
       kind: 'main',
       live: room.live,
       waiting: false,
-      people: null,
-      capacity: 50,
+      people: typeof room.count === 'number' ? room.count : null,
+      capacity: room.capacity || 50,
       hands: null,
       monitor: () => window.open(jordanRoomUrl(room.id, room.live), '_blank', 'noopener,noreferrer'),
     }));
@@ -176,6 +195,25 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
   }, [jordan, activeRooms, liveRoomId, sessionLive, sessionWaiting, listenerCount, waitingHands.length, onNavigate]);
 
   const liveCount = rows.filter((r) => r.live).length;
+  const jordanPeople = jordanCounts ? jordan.reduce((sum, r) => sum + (r.count || 0), 0) : 0;
+  const sanctumSessionId = sessionLive || sessionWaiting ? liveSession?.id : undefined;
+
+  const sendBroadcast = async () => {
+    const text = broadcastText.trim();
+    if (!text || !sanctumSessionId || broadcastSending) return;
+    setBroadcastSending(true);
+    try {
+      const result = await sanctumApi.broadcast(sanctumSessionId, text, { userId: user?.id, organizationId: organization?.id });
+      setLastBroadcast({ text, at: result.timestamp, room: result.roomName });
+      setBroadcastText('');
+      setBroadcastOpen(false);
+      addToast(`Sent to everyone in ${result.roomName}.`, 'success');
+    } catch (error: any) {
+      addToast(error?.message || 'Could not send the message.', 'error');
+    } finally {
+      setBroadcastSending(false);
+    }
+  };
   const scheduledCount = rows.filter((r) => !r.live && !r.waiting).length;
   const shown = rows.filter((r) => (filter === 'live' ? r.live || r.waiting : filter === 'scheduled' ? !r.live && !r.waiting : true));
 
@@ -274,9 +312,17 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
         <Stat
           tone="gold"
           icon={Headphones}
-          label="Listening in Sanctum"
-          value={listenerCount}
-          note={sessionLive ? `in ${liveRoom?.name || 'the live room'}` : sessionWaiting ? 'in the waiting room' : 'No overflow open'}
+          label="Praying now"
+          value={listenerCount + jordanPeople}
+          note={
+            jordanCounts
+              ? `${jordanPeople} in Jordan · ${listenerCount} in Sanctum`
+              : sessionLive
+                ? `in ${liveRoom?.name || 'the Sanctum room'}`
+                : sessionWaiting
+                  ? 'in the Sanctum waiting room'
+                  : 'No overflow open'
+          }
         />
         <Stat
           tone="plain"
@@ -412,6 +458,7 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
             )}
             <p className="border-t border-line px-5 py-3 text-[11px] text-muted">
               Jordan rooms hold up to 50 people. When one fills, start the Sanctum overflow and members are sent here.
+              {jordan.length && !jordanCounts ? ' Headcounts for Jordan rooms need SANCTUM_SERVICE_KEY on both servers.' : ''}
             </p>
           </section>
 
@@ -421,13 +468,14 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
               <Activity className="h-4 w-4 text-[#c9a35a]" />
               Quick actions
             </h2>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
               <Action icon={Plus} label="Create room" onClick={() => onNavigate('/dashboard/prayer-rooms/new')} />
               <Action
                 icon={Radio}
                 label="Open overflow"
                 onClick={() => (overflowRoom ? onNavigate(`/dashboard/prayer-rooms/${overflowRoom.id}/control`) : onNavigate('/dashboard/prayer-rooms/new'))}
               />
+              <Action icon={Megaphone} label="Broadcast message" onClick={() => setBroadcastOpen(true)} />
               <Action icon={FileText} label="Prayer requests" onClick={() => onNavigate('/dashboard/prayer-requests')} />
               <Action icon={Users} label="Participants" onClick={() => onNavigate('/dashboard/participants')} />
               <Action icon={History} label="Session history" onClick={() => onNavigate('/dashboard/history')} />
@@ -559,6 +607,91 @@ export const PrayerOperationsCenterPage: React.FC<Props> = ({ onNavigate }) => {
           </a>
         </aside>
       </div>
+
+      {broadcastOpen && createPortal(
+        <div style={{ background: "rgba(8, 18, 13, 0.6)" }} className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4" onClick={() => setBroadcastOpen(false)}>
+          <div
+            role="dialog"
+            data-staff
+            data-staff-theme={isDarkMode ? 'dusk' : 'light'}
+            aria-modal="true"
+            aria-labelledby="broadcast-title"
+            className="w-full max-w-lg rounded-t-3xl border border-line bg-card p-5 shadow-2xl sm:rounded-3xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1d372c]">
+                  <Megaphone className="h-5 w-5 text-[#e4c98f]" />
+                </span>
+                <div>
+                  <h2 id="broadcast-title" className="text-lg font-bold text-ink">Broadcast message</h2>
+                  <p className="text-xs text-muted">
+                    {sanctumSessionId ? `To everyone in ${liveRoom?.name || liveSession?.roomName || 'the live room'}` : 'No Sanctum room is open'}
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setBroadcastOpen(false)} aria-label="Close" className="cursor-pointer rounded-full p-2 text-muted hover:bg-black/5">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {sanctumSessionId ? (
+              <>
+                <textarea
+                  autoFocus
+                  rows={4}
+                  maxLength={BROADCAST_MAX}
+                  value={broadcastText}
+                  onChange={(e) => setBroadcastText(e.target.value)}
+                  placeholder="e.g. We will begin praying for the nations in 2 minutes. Stay with us."
+                  className="mt-4 w-full resize-none rounded-2xl border border-line bg-paper px-4 py-3 text-sm text-ink outline-none focus:border-[#c9a35a]"
+                />
+                <div className="mt-1 flex justify-between text-[11px] text-muted">
+                  <span>Shows as a banner in the room and stays in the room chat.</span>
+                  <span>{broadcastText.length}/{BROADCAST_MAX}</span>
+                </div>
+                <div className="mt-4 flex gap-2.5">
+                  <button type="button" onClick={() => setBroadcastOpen(false)} className="flex-1 cursor-pointer rounded-xl border border-line px-4 py-2.5 text-sm font-semibold text-ink">
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void sendBroadcast()}
+                    disabled={!broadcastText.trim() || broadcastSending}
+                    className="inline-flex flex-[2] cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#1d372c] px-4 py-2.5 text-sm font-bold text-[#f6f1e6] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Send className="h-4 w-4" />
+                    {broadcastSending ? 'Sending…' : 'Send to everyone'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-ink">
+                  Broadcasts go to people in a live Sanctum room. Open the overflow first, then send your message.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBroadcastOpen(false);
+                    if (overflowRoom) onNavigate(`/dashboard/prayer-rooms/${overflowRoom.id}/control`);
+                  }}
+                  className="w-full cursor-pointer rounded-xl bg-[#c9a35a] px-4 py-2.5 text-sm font-bold text-[#16251f]"
+                >
+                  Open the overflow room
+                </button>
+              </div>
+            )}
+            {lastBroadcast ? (
+              <p className="mt-4 border-t border-line pt-3 text-xs text-muted">
+                Last sent {timeAgo(lastBroadcast.at)} to {lastBroadcast.room}: “{lastBroadcast.text}”
+              </p>
+            ) : null}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

@@ -479,3 +479,13 @@ button.sr-tile:active { transform: scale(.97); }
 @keyframes sr-glow { 0%, 100% { box-shadow: 0 0 0 6px rgba(201,163,90,.9), 0 0 0 18px rgba(201,163,90,.16), 0 0 0 34px rgba(201,163,90,.07); } 50% { box-shadow: 0 0 0 6px rgba(201,163,90,1), 0 0 0 24px rgba(201,163,90,.24), 0 0 0 46px rgba(201,163,90,.1); } }
 @media (prefers-reduced-motion: reduce) { .sr-stage.is-active .sr-wave i, .sr-orb-speaking, .sr-live-dot { animation: none !important; } }
 @media (max-width: 420px) { .sr-wave { height: 60px; gap: 3px; } .sr-wave i:nth-child(n+7) { display: none; } }
+
+/* Moderator broadcast banner in the room */
+.sr-announce { background: linear-gradient(135deg, #f6e7c4, #e4c98f); border: 1px solid #c9a35a; box-shadow: 0 10px 24px -16px rgba(122,90,34,.7); animation: sr-drop .35s ease-out; }
+[data-theme] .sr-announce :where(p, span, svg, button) { color: #16251f; }
+[data-theme] .sr-announce .sr-announce-from { color: #7a5a22; }
+.sr-announce-icon { background: #1d372c; }
+[data-theme] .sr-announce .sr-announce-icon :where(svg) { color: #e4c98f; }
+.sr-announce-x:hover { background: rgba(0,0,0,.08); }
+@keyframes sr-drop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sr-announce { animation: none; } }

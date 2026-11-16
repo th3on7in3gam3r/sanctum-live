@@ -17,6 +17,9 @@ export interface JordanRoom {
   id: string;
   name: string;
   live: boolean;
+  /** People in the room now — only for signed-in staff, via Sanctum's server. */
+  count?: number | null;
+  capacity?: number | null;
 }
 
 /** Open (everyone) Jordan prayer rooms from PLCC Canaan. Empty when Canaan can't be reached. */

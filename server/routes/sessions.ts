@@ -1171,8 +1171,11 @@ export async function postChatHandler(req: Request, res: Response): Promise<void
     }
 
     const body = typeof req.body?.body === 'string' ? req.body.body.trim().slice(0, 240) : '';
+    // Only /broadcast may use the announcement marker; strip it from ordinary chat names.
     const displayName =
-      typeof req.body?.displayName === 'string' ? req.body.displayName.trim().slice(0, 80) : '';
+      typeof req.body?.displayName === 'string'
+        ? req.body.displayName.replace(/^(\s*📣)+/u, '').trim().slice(0, 80)
+        : '';
     if (!body || !displayName) {
       throw Unauthorized('A name and message are required to chat');
     }
