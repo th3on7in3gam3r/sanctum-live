@@ -70,8 +70,11 @@ export default async function BiblePage({ searchParams }: Search) {
           all.findIndex((x) => x.label === lang.label) === index
       ).map((lang) => ({ code: lang.code, label: languageLabel(lang.code) }))
     : [];
-  const parsedVerse = Number.parseInt(params.v || '', 10);
-  const verse = Number.isFinite(parsedVerse) && parsedVerse > 0 && parsedVerse < 200 ? parsedVerse : undefined;
+  // ?v=16 or a range ?v=16-18 (links from Sermon Notes)
+  const [vFrom, vTo] = String(params.v || '').split('-').map((n) => Number.parseInt(n, 10));
+  const verseStart = Number.isFinite(vFrom) && vFrom > 0 && vFrom < 200 ? vFrom : undefined;
+  const verseEnd = verseStart && Number.isFinite(vTo) && vTo > verseStart && vTo < 200 ? Math.min(vTo, verseStart + 40) : verseStart;
+  const verses = verseStart && verseEnd ? Array.from({ length: verseEnd - verseStart + 1 }, (_, i) => verseStart + i) : undefined;
 
   return (
     <>
@@ -116,7 +119,7 @@ export default async function BiblePage({ searchParams }: Search) {
                 chapter: t.bible.chapter,
               }}
               usedDefaults={data.usedDefaults}
-              initialVerse={verse}
+              initialVerses={verses}
             />
           ) : (
             <div className="mx-auto max-w-xl rounded-3xl border border-ink/10 bg-white p-8 text-center">

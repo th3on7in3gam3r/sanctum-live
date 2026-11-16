@@ -231,7 +231,7 @@ export function BibleReader({
   languages,
   labels,
   usedDefaults,
-  initialVerse,
+  initialVerses,
 }: {
   chapter: ReaderChapter;
   books: ReaderBook[];
@@ -239,7 +239,7 @@ export function BibleReader({
   languages: { code: string; label: string }[];
   labels: Labels;
   usedDefaults: boolean;
-  initialVerse?: number;
+  initialVerses?: number[];
 }) {
   const router = useRouter();
   const t = chapter.translation;
@@ -260,7 +260,8 @@ export function BibleReader({
   /* Reader state */
   const [sizeIdx, setSizeIdx] = useState(2);
   const [sizeOpen, setSizeOpen] = useState(false);
-  const [selected, setSelected] = useState<number[]>(initialVerse ? [initialVerse] : []);
+  const verseKey = (initialVerses ?? []).join(',');
+  const [selected, setSelected] = useState<number[]>(initialVerses ?? []);
   const [query, setQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [searchNote, setSearchNote] = useState('');
@@ -312,13 +313,15 @@ export function BibleReader({
 
   /* New chapter → reset per-chapter state; jump to a linked verse */
   useEffect(() => {
-    setSelected(initialVerse ? [initialVerse] : []);
+    const first = initialVerses?.[0];
+    setSelected(initialVerses ?? []);
     setQuery('');
     setSearchNote('');
-    if (initialVerse) {
-      window.setTimeout(() => document.getElementById(`v${initialVerse}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
+    if (first) {
+      window.setTimeout(() => document.getElementById(`v${first}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
     }
-  }, [t.id, book.id, chapter.chapter, initialVerse]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t.id, book.id, chapter.chapter, verseKey]);
 
   /* Compare languages: fetch the same chapter in a second translation */
   useEffect(() => {
