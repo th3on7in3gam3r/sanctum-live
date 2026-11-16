@@ -76,17 +76,16 @@ body {
 }
 
 /* Bible banner while Bayibuli Entukuvu (Luganda) is open: flag, open Bible, crowned crane.
-   Phones zoom in on the Bible under the title; computers show the whole picture. */
+   Phones get the tall picture (art below the words); tablets and computers the wide one. */
 .bible-hero-luganda {
-  min-height: 420px;
-  background:
-    linear-gradient(#01341b 0, #01341b calc(100% - 270px), rgba(1, 52, 27, 0) calc(100% - 170px)),
-    url('/bible-hero-luganda.webp') center bottom / auto 270px no-repeat,
-    #01341b;
+  /* the art fills the lower ~85% of the picture's width in height; keep the words above it */
+  padding-bottom: calc(100vw * 0.86);
+  background: url('/bible-hero-luganda-phone.webp') center bottom / 100% auto no-repeat, #002d19;
 }
-@media (min-width: 900px) {
+@media (min-width: 640px) {
   .bible-hero-luganda {
-    min-height: clamp(470px, 37.5vw, 640px);
+    padding-bottom: 0;
+    min-height: clamp(420px, 37.5vw, 640px);
     background: url('/bible-hero-luganda.webp') center bottom / cover no-repeat, #01341b;
   }
 }
