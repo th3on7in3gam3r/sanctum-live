@@ -5,7 +5,7 @@ import { unstable_cache } from 'next/cache';
  * public-domain and openly licensed translations, no key, no usage limits.
  * Each translation carries its own license notice, which the page shows.
  */
-const API = 'https://bible.helloao.org';
+const API = (process.env.BIBLE_API_ORIGIN || 'https://bible.helloao.org').replace(/\/+$/, '');
 
 /** Languages offered, in display order: Uganda first, then the wider church family. */
 export const BIBLE_LANGUAGES: { code: string; label: string; english: string }[] = [
@@ -71,6 +71,8 @@ export type BibleChapter = {
   footnotes: { noteId: number; text: string; caller: string | null; verse?: number }[];
   previous: { book: string; chapter: number } | null;
   next: { book: string; chapter: number } | null;
+  /** Narrated audio for this chapter, when the translation has it (e.g. BSB). */
+  audio: { name: string; url: string }[];
 };
 
 type RawTranslation = {
@@ -150,6 +152,7 @@ export async function getBibleChapter(
     };
     previousChapterReference: { book: string; chapter: number } | null;
     nextChapterReference: { book: string; chapter: number } | null;
+    thisChapterAudioLinks?: Record<string, string>;
   }>(`/api/${encodeURIComponent(translation.id)}/${book.id}/${chapter}.json`, 604800);
   return {
     translation,
@@ -168,7 +171,26 @@ export async function getBibleChapter(
     next: data.nextChapterReference
       ? { book: data.nextChapterReference.book, chapter: data.nextChapterReference.chapter }
       : null,
+    audio: Object.entries(data.thisChapterAudioLinks || {})
+      .filter(([, url]) => typeof url === 'string' && url.startsWith('https://'))
+      .map(([name, url]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), url })),
   };
+}
+
+/** Plain text of each verse (for compare, copy and share). Drops the KJV's ¶ paragraph marks. */
+export function versesAsText(content: ChapterItem[]): Record<number, string> {
+  const out: Record<number, string> = {};
+  for (const item of content) {
+    if (item.type !== 'verse') continue;
+    const text = item.content
+      .map((part) => (typeof part === 'string' ? part : 'text' in part ? part.text : ''))
+      .join(' ')
+      .replace(/¶\s*/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    out[item.number] = out[item.number] ? `${out[item.number]} ${text}` : text;
+  }
+  return out;
 }
 
 /** English KJV first (what the church reads aloud), then BSB, then the first English. */

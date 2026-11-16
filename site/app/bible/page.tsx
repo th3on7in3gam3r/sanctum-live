@@ -1,13 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { BiblePicker } from '@/components/bible/BiblePicker';
-import { ChapterText } from '@/components/bible/ChapterText';
+import { BibleReader } from '@/components/bible/BibleReader';
 import { PageHero } from '@/components/page/PageHero';
 import { getDictionary } from '@/lib/locale';
-import { fill, LOCALE_BIBLE_LANGUAGE, type Locale } from '@/lib/i18n';
+import { LOCALE_BIBLE_LANGUAGE, type Locale } from '@/lib/i18n';
 import {
   BIBLE_LANGUAGES,
-  bibleHref,
   defaultTranslation,
   getBibleChapter,
   languageLabel,
@@ -17,7 +15,7 @@ import {
   type BibleChapter,
 } from '@/lib/bible';
 
-type Search = { searchParams: Promise<{ t?: string; b?: string; c?: string }> };
+type Search = { searchParams: Promise<{ t?: string; b?: string; c?: string; v?: string }> };
 
 export async function generateMetadata({ searchParams }: Search): Promise<Metadata> {
   const { b, c } = await searchParams;
@@ -55,28 +53,6 @@ async function resolve(params: { t?: string; b?: string; c?: string }, locale: L
   return { chapter, books, translations, usedDefaults: !params.t && !params.b };
 }
 
-function chapterLink(
-  target: { book: string; chapter: number } | null,
-  books: BibleBook[],
-  translationId: string,
-  dir: 'prev' | 'next'
-) {
-  if (!target) return <span />;
-  const name = books.find((b) => b.id === target.book)?.name ?? target.book;
-  return (
-    <Link
-      href={bibleHref(translationId, target.book, target.chapter)}
-      className={`inline-flex min-h-[48px] items-center gap-2 rounded-full border border-ink/15 bg-white px-5 text-[15px] font-bold text-ink hover:border-forest-800 ${dir === 'next' ? 'justify-self-end' : ''}`}
-    >
-      {dir === 'prev' ? <span aria-hidden="true">←</span> : null}
-      <span>
-        {name} {target.chapter}
-      </span>
-      {dir === 'next' ? <span aria-hidden="true">→</span> : null}
-    </Link>
-  );
-}
-
 export default async function BiblePage({ searchParams }: Search) {
   const params = await searchParams;
   const { locale, t } = await getDictionary();
@@ -95,7 +71,8 @@ export default async function BiblePage({ searchParams }: Search) {
           all.findIndex((x) => x.label === lang.label) === index
       ).map((lang) => ({ code: lang.code, label: languageLabel(lang.code) }))
     : [];
-  const languageNames = presentLanguages.map((l) => l.label.split(' · ')[0]).slice(0, 5).join(', ');
+  const parsedVerse = Number.parseInt(params.v || '', 10);
+  const verse = Number.isFinite(parsedVerse) && parsedVerse > 0 && parsedVerse < 200 ? parsedVerse : undefined;
 
   return (
     <>
@@ -103,89 +80,32 @@ export default async function BiblePage({ searchParams }: Search) {
         variant="centered"
         eyebrow={t.bible.eyebrow}
         title={t.bible.title}
-        lede={languageNames ? fill(t.bible.lede, { langs: languageNames }) : t.bible.ledeShort}
+        lede={locale === 'en' ? 'One Word. Many languages. A daily walk with God.' : t.bible.ledeShort}
       />
-      <section className="bg-cream px-4 pb-20 pt-10 text-ink sm:px-6">
-        <div className="mx-auto max-w-5xl">
+      <section className="bg-cream px-4 pb-24 pt-8 text-ink sm:px-6 min-[900px]:-mt-10">
+        <div className="relative">
           {data ? (
-            <>
-              <div className="rounded-3xl border border-ink/10 bg-cream-50 p-4 sm:p-5">
-                <BiblePicker
-                  languages={presentLanguages}
-                  translations={data.translations.map((t) => ({
-                    id: t.id,
-                    name: t.name,
-                    shortName: t.shortName,
-                    language: t.language,
-                  }))}
-                  books={data.books}
-                  translationId={data.chapter.translation.id}
-                  bookId={data.chapter.book.id}
-                  chapter={data.chapter.chapter}
-                  usedDefaults={data.usedDefaults}
-                  labels={{
-                    language: t.bible.language,
-                    translation: t.bible.translation,
-                    book: t.bible.book,
-                    chapter: t.bible.chapter,
-                  }}
-                />
-              </div>
-
-              <article
-                className="mx-auto mt-10 max-w-2xl"
-                dir={data.chapter.translation.textDirection}
-                lang={data.chapter.translation.language}
-              >
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-gold-text">{data.chapter.translation.name}</p>
-                <h2 className="font-display mt-2 text-[44px] leading-tight text-forest-800">
-                  {data.chapter.book.name} {data.chapter.chapter}
-                </h2>
-                <div className="mt-6">
-                  <ChapterText
-                    content={data.chapter.content}
-                    footnoteCallers={
-                      new Map(
-                        data.chapter.footnotes.map((note, i) => [
-                          note.noteId,
-                          note.caller && note.caller !== '+' ? note.caller : String.fromCharCode(97 + (i % 26)),
-                        ])
-                      )
-                    }
-                  />
-                </div>
-
-                {data.chapter.footnotes.length ? (
-                  <aside className="mt-8 border-t border-ink/10 pt-5" aria-label="Footnotes">
-                    <ol className="space-y-1.5 text-sm text-ink/70">
-                      {data.chapter.footnotes.map((note, i) => (
-                        <li key={note.noteId} id={`note-${note.noteId}`} className="scroll-mt-28">
-                          <span className="mr-1.5 font-bold text-gold-text">
-                            {note.caller && note.caller !== '+' ? note.caller : String.fromCharCode(97 + (i % 26))}
-                          </span>
-                          {note.verse ? <span className="mr-1">{note.verse}:</span> : null}
-                          {note.text}
-                        </li>
-                      ))}
-                    </ol>
-                  </aside>
-                ) : null}
-              </article>
-
-              <nav className="mx-auto mt-10 grid max-w-2xl grid-cols-2 gap-3" aria-label="Chapters">
-                {chapterLink(data.chapter.previous, data.books, data.chapter.translation.id, 'prev')}
-                {chapterLink(data.chapter.next, data.books, data.chapter.translation.id, 'next')}
-              </nav>
-
-              <p className="mx-auto mt-10 max-w-2xl text-center text-xs leading-relaxed text-ink/55">
-                {data.chapter.translation.licenseNotice ? `${data.chapter.translation.licenseNotice} ` : ''}
-                {t.bible.courtesy}{' '}
-                <a href="https://bible.helloao.org" className="underline" rel="noopener" target="_blank">
-                  Free Use Bible API
-                </a>
-                .
-              </p>
-            </>
+            <BibleReader
+              chapter={data.chapter}
+              books={data.books}
+              translations={data.translations.map((x) => ({
+                id: x.id,
+                name: x.name,
+                englishName: x.englishName,
+                shortName: x.shortName,
+                language: x.language,
+                textDirection: x.textDirection,
+              }))}
+              languages={presentLanguages}
+              labels={{
+                language: t.bible.language,
+                translation: t.bible.translation,
+                book: t.bible.book,
+                chapter: t.bible.chapter,
+              }}
+              usedDefaults={data.usedDefaults}
+              initialVerse={verse}
+            />
           ) : (
             <div className="mx-auto max-w-xl rounded-3xl border border-ink/10 bg-white p-8 text-center">
               <p className="font-display text-2xl text-forest-800">{t.bible.resting}</p>
