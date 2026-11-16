@@ -1003,38 +1003,68 @@ export function BibleReader({
         </section>
       </div>
 
-      {/* Selected verses: actions */}
-      {selected.length ? (
-        <div className="fixed inset-x-0 bottom-[136px] z-40 flex justify-center px-3 min-[900px]:bottom-6" role="region" aria-label="Selected verses">
+      {/* Selected verses: actions. Phone: a docked bar with five labelled buttons. Computer: a floating pill. */}
+      {selected.length && selectionPassage ? (
+        <>
+          <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-40 border-t border-white/10 bg-forest-900 px-2 pb-2 pt-1.5 text-cream shadow-[0_-12px_30px_rgba(13,26,20,0.25)] min-[900px]:hidden" role="region" aria-label="Selected verses">
+            <div className="flex items-center justify-between px-2">
+              <span className="truncate text-sm font-semibold">
+                {ref}:{rangeLabel(selected)} · {tLabel}
+              </span>
+              <button type="button" onClick={() => setSelected([])} aria-label="Clear selection" className={`-mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-white/10 ${focusRing}`}>
+                <I.close className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-1 grid grid-cols-5 gap-1">
+              {[
+                { label: selectionSaved ? 'Saved' : 'Save', icon: <I.bookmark className={`h-5 w-5 ${selectionSaved ? 'text-gold' : ''}`} filled={selectionSaved} />, onClick: toggleSavedVerse, pressed: selectionSaved },
+                { label: 'Copy', icon: <I.copy className="h-5 w-5" />, onClick: () => void copySelection() },
+                { label: 'Jordan', icon: <I.chat className="h-5 w-5" />, onClick: () => openOut(jordanShareUrl(selectionPassage)), accent: 'gold' as const },
+                { label: 'WhatsApp', icon: <I.whatsapp className="h-5 w-5" />, onClick: whatsappSelection, accent: 'wa' as const },
+                { label: 'Tribes', icon: <I.people className="h-5 w-5" />, onClick: () => openOut(tribesShareUrl(selectionPassage)) },
+              ].map((b) => (
+                <button
+                  key={b.label}
+                  type="button"
+                  onClick={b.onClick}
+                  aria-pressed={b.pressed}
+                  aria-label={b.label === 'Jordan' ? 'Share to Jordan' : b.label === 'Tribes' ? 'Post to Tribes' : b.label}
+                  className={`flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-semibold ${focusRing} ${
+                    b.accent === 'gold' ? 'bg-gold text-forest-950' : b.accent === 'wa' ? 'bg-[#25d366] text-[#0b2b17]' : 'hover:bg-white/10'
+                  }`}
+                >
+                  {b.icon}
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="fixed inset-x-0 bottom-6 z-40 hidden justify-center px-3 min-[900px]:flex" role="region" aria-label="Selected verses">
           <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-forest-900 p-1.5 pl-4 text-cream shadow-[0_18px_40px_rgba(13,26,20,0.35)]">
             <span className="whitespace-nowrap pr-2 text-sm font-semibold">
               {ref}:{rangeLabel(selected)}
             </span>
             <button type="button" onClick={toggleSavedVerse} aria-pressed={selectionSaved} aria-label={selectionSaved ? 'Remove bookmark' : 'Bookmark'} title={selectionSaved ? 'Remove bookmark' : 'Bookmark'} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
-              <I.bookmark className={`h-4 w-4 ${selectionSaved ? 'text-gold' : ''}`} filled={selectionSaved} /> <span className="hidden sm:inline">{selectionSaved ? 'Saved' : 'Bookmark'}</span>
+              <I.bookmark className={`h-4 w-4 ${selectionSaved ? 'text-gold' : ''}`} filled={selectionSaved} /> {selectionSaved ? 'Saved' : 'Bookmark'}
             </button>
-            <button type="button" onClick={copySelection} aria-label="Copy" className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
-              <I.copy className="h-4 w-4" /> <span className="hidden sm:inline">Copy</span>
+            <button type="button" onClick={copySelection} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
+              <I.copy className="h-4 w-4" /> Copy
             </button>
-            <button type="button" onClick={() => selectionPassage && openOut(jordanShareUrl(selectionPassage))} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-gold px-3.5 text-sm font-bold text-forest-950 hover:brightness-105 ${focusRing}`}>
+            <button type="button" onClick={() => openOut(jordanShareUrl(selectionPassage))} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-gold px-3.5 text-sm font-bold text-forest-950 hover:brightness-105 ${focusRing}`}>
               <I.chat className="h-4 w-4" /> Share to Jordan
             </button>
-            <button type="button" onClick={whatsappSelection} aria-label={compareOn && compare ? 'Share both languages on WhatsApp' : 'WhatsApp'} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#25d366] px-3.5 text-sm font-bold text-[#0b2b17] hover:brightness-105 ${focusRing}`}>
-              <I.whatsapp className="h-4 w-4" /> <span className="hidden sm:inline">{compareOn && compare ? 'Both languages' : 'WhatsApp'}</span>
+            <button type="button" onClick={whatsappSelection} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#25d366] px-3.5 text-sm font-bold text-[#0b2b17] hover:brightness-105 ${focusRing}`}>
+              <I.whatsapp className="h-4 w-4" /> {compareOn && compare ? 'Both languages' : 'WhatsApp'}
             </button>
-            <button type="button" onClick={() => selectionPassage && openOut(tribesShareUrl(selectionPassage))} aria-label="Post to Tribes" className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
-              <I.people className="h-4 w-4" /> <span className="hidden md:inline">Post to Tribes</span>
+            <button type="button" onClick={() => openOut(tribesShareUrl(selectionPassage))} className={`inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 ${focusRing}`}>
+              <I.people className="h-4 w-4" /> Post to Tribes
             </button>
-            {!compareOn ? (
-              <button type="button" onClick={openCompare} className={`hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-semibold hover:bg-white/10 xl:inline-flex ${focusRing}`}>
-                <I.layers className="h-4 w-4" /> Add a language
-              </button>
-            ) : null}
             <button type="button" onClick={() => setSelected([])} aria-label="Clear selection" className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full hover:bg-white/10 ${focusRing}`}>
               <I.close className="h-4 w-4" />
             </button>
           </div>
-        </div>
+          </div>
+        </>
       ) : null}
 
       {/* Focus mode */}

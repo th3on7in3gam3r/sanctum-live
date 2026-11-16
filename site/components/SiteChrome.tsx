@@ -151,14 +151,14 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
           <p>{t.footer.times}</p>
         </div>
       </footer>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-white/10 bg-forest-950 text-on-dark min-[900px]:hidden" aria-label="Quick actions">
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-flow-col auto-cols-fr border-t border-white/10 bg-forest-950 pb-[env(safe-area-inset-bottom)] text-on-dark min-[900px]:hidden" aria-label="Quick actions">
         {sticky.map((link) => (
           <NavAnchor
             key={link.label}
             link={link}
             className={link.label === 'Give'
-              ? 'min-h-14 bg-gold text-center text-sm font-semibold leading-[3.5rem] text-ink'
-              : 'min-h-14 text-center text-sm font-semibold leading-[3.5rem]'}
+              ? 'flex min-h-14 items-center justify-center gap-1.5 bg-gold px-1 text-center text-[13px] font-semibold leading-tight text-ink sm:text-sm'
+              : 'flex min-h-14 items-center justify-center gap-1.5 px-1 text-center text-[13px] font-semibold leading-tight sm:text-sm'}
           >
             {link.label === 'Live prayer' ? <LiveDot pulse={liveNow} /> : null} {link.label === 'Live prayer' && liveNow ? t.liveNow : label(t, link.label)}
           </NavAnchor>
