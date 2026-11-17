@@ -35,7 +35,7 @@ export function MinistryRow({ group, index, href = '/visit', huddleHref, labels 
         {group.publicDescription ? <p className="mt-4 text-lg leading-relaxed">{group.publicDescription}</p> : null}
         {group.meetingTime ? <p className="mt-4 font-semibold">{group.meetingTime}</p> : null}
         <a href={href} className="mt-4 inline-block font-semibold text-gold-ink">{labels?.learnMore ?? 'Learn more'}</a>
-        {huddleHref ? <a href={huddleHref} className="mt-3 block font-semibold text-gold-ink">{labels?.joinHuddle ?? 'Join the live huddle'}</a> : null}
+        {huddleHref ? <a href={huddleHref} className="mt-3 block font-semibold text-gold-ink">{labels?.joinHuddle ?? 'Join the live Ka Link'}</a> : null}
       </div>
     </article>
   );

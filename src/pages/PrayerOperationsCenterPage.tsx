@@ -734,7 +734,7 @@ function RowControls({ row, full }: { row: Row; full?: boolean }) {
           {row.manageLabel}
         </button>
       ) : (
-        <span className={cn('ops-btn is-ghost', full && 'flex-1')} title="Jordan rooms are managed inside the huddle">
+        <span className={cn('ops-btn is-ghost', full && 'flex-1')} title="Jordan rooms are managed inside the Ka Link">
           <Settings2 className="h-4 w-4" aria-hidden />
           In Jordan
         </span>

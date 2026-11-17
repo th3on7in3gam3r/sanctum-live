@@ -8,8 +8,8 @@ import {
   scheduleFromMeetingTime,
 } from '../shared/huddle.ts';
 
-describe('huddle rooms', () => {
-  it('stops a prayer leader from starting a huddle for another group', () => {
+describe('Ka Link rooms', () => {
+  it('stops a prayer leader from starting a Ka Link for another group', () => {
     expect(huddleAccess({
       orgRole: 'PRAYER_LEADER',
       actorUserId: 'user_leader',
@@ -45,7 +45,7 @@ describe('huddle rooms', () => {
   it('returns live rooms without personal data', () => {
     const rooms = publicLiveRooms([
       {
-        name: 'Youth Huddle',
+        name: 'Youth Ka Link',
         slug: 'youth-huddle',
         kind: 'HUDDLE',
         groupName: 'Youth',
@@ -69,7 +69,7 @@ describe('huddle rooms', () => {
     const encoded = JSON.stringify(rooms);
     expect(rooms).toEqual([
       {
-        name: 'Youth Huddle',
+        name: 'Youth Ka Link',
         slug: 'youth-huddle',
         kind: 'HUDDLE',
         groupName: 'Youth',

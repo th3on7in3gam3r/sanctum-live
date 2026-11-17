@@ -22,7 +22,7 @@ describe('control room access payload', () => {
     expect(canControlRoom({ orgRole: 'PRAYER_LEADER', actorUserId: 'user_leader' })).toBe(true);
   });
 
-  it('lets a huddle group leader open that huddle', () => {
+  it('lets a Ka Link group leader open that Ka Link', () => {
     expect(
       canControlRoom({
         orgRole: 'TECHNICAL_ADMIN',

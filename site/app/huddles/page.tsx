@@ -7,7 +7,7 @@ import { getDictionary } from '@/lib/locale';
 import { fill, type Dict } from '@/lib/i18n';
 
 export const metadata: Metadata = {
-  title: 'Live huddles',
+  title: 'Live Ka Links',
   description: 'Small gatherings through the week at Promised Land Christian Center.',
 };
 

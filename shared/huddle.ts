@@ -1,6 +1,6 @@
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
-export const LEADER_UNLINKED_MESSAGE = 'Link this leader to a staff account to let them run huddles';
+export const LEADER_UNLINKED_MESSAGE = 'Link this leader to a staff account to let them run Ka Links';
 
 export type HuddleAccess = 'allow' | 'unlinked' | 'deny';
 

@@ -56,7 +56,7 @@ export const GroupsPage: React.FC = () => {
                   }
                 }}
               >
-                Start a huddle room
+                Start a Ka Link room
               </button>
             ) : null}
           </div>

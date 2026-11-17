@@ -54,7 +54,7 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
   const footer = footerNav(prayerUrl, oneUrl);
   const livePrayer = footer.gather.find((link) => link.label === 'Live prayer');
   const give = footer.gather.find((link) => link.label === 'Give');
-  const sticky = footer.gather.filter((link) => link.label !== 'Events' && link.label !== 'Huddles');
+  const sticky = footer.gather.filter((link) => link.label !== 'Events' && link.label !== 'Ka Links');
 
   return (
     <div className={home ? 'bg-forest-900 text-on-dark' : 'bg-cream text-ink'}>

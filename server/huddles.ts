@@ -26,7 +26,7 @@ export function huddleDecision(actor: ActorContext, leaderUserId: string | null 
 export function assertHuddleDecision(access: HuddleAccess): void {
   if (access === 'allow') return;
   if (access === 'unlinked') throw Unauthorized(LEADER_UNLINKED_MESSAGE);
-  throw Unauthorized('You can run huddles only for groups you lead.');
+  throw Unauthorized('You can run Ka Links only for groups you lead.');
 }
 
 export async function assertHuddleOperator(
@@ -49,7 +49,7 @@ export async function assertHuddleOperator(
 export async function createHuddleRoom(actor: ActorContext, groupId: string) {
   if (!actor.organizationId || !actor.userId) throw Unauthorized('Sign in with a church staff account.');
   const group = await cmsRepository.groupInOrg(actor.organizationId, groupId);
-  if (!group) throw Unauthorized('You can run huddles only for groups you lead.');
+  if (!group) throw Unauthorized('You can run Ka Links only for groups you lead.');
   assertHuddleDecision(huddleDecision(actor, group.leader?.userId ?? null));
   const leaderUserId = group.leader?.userId;
   if (!leaderUserId) throw Unauthorized(LEADER_UNLINKED_MESSAGE);
@@ -65,7 +65,7 @@ export async function createHuddleRoom(actor: ActorContext, groupId: string) {
   const schedule = scheduleFromMeetingTime(group.meetingTime);
   const room = await prayerRoomRepository.create({
     organizationId: actor.organizationId,
-    name: `${group.name} Huddle`,
+    name: `${group.name} Ka Link`,
     slug,
     description: group.publicDescription || group.meetingTime || undefined,
     roomType: 'AUDIO_PRAYER',
