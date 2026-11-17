@@ -40,6 +40,8 @@ const STORAGE = {
   days: 'plcc_bible_days_v1',
   journal: 'plcc_bible_journal_v1',
   compare: 'plcc_bible_compare_v1',
+  /** Second language under each verse: on/off, remembered. */
+  compareOn: 'plcc_bible_compare_on_v1',
   verses: 'plcc_bible_verses_v1',
 };
 /** The church's chat (Jordan) and community feed (Tribes). */
@@ -309,6 +311,9 @@ export function BibleReader({
         : translations.find((x) => x.language === 'eng' && /king james/i.test(x.englishName)) ?? translations.find((x) => x.language === 'eng');
     const pick = translations.find((x) => x.id === savedCompare && x.id !== t.id) ?? fallback;
     setCompareId(pick?.id ?? '');
+    // English and Luganda readers see the other language under each verse unless they turned it off.
+    const bilingualByDefault = t.language === 'eng' || t.language === 'lug';
+    setCompareOn(Boolean(pick) && readJson<boolean>(STORAGE.compareOn, bilingualByDefault));
   }, [t.id, t.language, translations]);
 
   useEffect(() => {
@@ -537,6 +542,7 @@ export function BibleReader({
 
   const openCompare = () => {
     setCompareOn(true);
+    writeJson(STORAGE.compareOn, true);
     readerTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -636,7 +642,7 @@ export function BibleReader({
       <span className="text-sm text-ink/60" role="status">
         {compareState === 'loading' ? 'Loading…' : compareState === 'missing' ? `That translation doesn’t include ${book.name} yet.` : compareState === 'error' ? 'Couldn’t load it. Try again shortly.' : ''}
       </span>
-      <button type="button" onClick={() => setCompareOn(false)} className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold text-ink/70 hover:text-ink ${focusRing}`}>
+      <button type="button" onClick={() => { setCompareOn(false); writeJson(STORAGE.compareOn, false); }} className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold text-ink/70 hover:text-ink ${focusRing}`}>
         <I.close className="h-4 w-4" /> Close
       </button>
     </div>
