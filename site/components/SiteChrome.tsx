@@ -123,48 +123,70 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
       <LanguageOffer offer={offer} />
       <footer className="bg-footer text-on-dark">
         <BookingBand t={t} />
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 min-[900px]:grid-cols-[1.3fr_2fr_1fr] min-[900px]:gap-12">
-          <div>
-            <BrandLockup size="lg" />
-            <p className="brand-tagline">{BRAND.tagline}</p>
-            <p className="eyebrow mt-8">{t.footer.reachUs}</p>
-            <ul className="mt-4 space-y-3 text-sm text-sand">
-              <li className="flex gap-3">
-                <FooterIcon d="M12 21s-7-6.2-7-11.2A7 7 0 0 1 19 9.8C19 14.8 12 21 12 21zm0-8.7a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
-                <span className="text-muted-dark">{church.address}</span>
-              </li>
-              <li className="flex gap-3">
-                <FooterIcon d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" />
-                <span className="flex flex-col gap-1">
-                  {church.phones.map((phone) => (
-                    <a key={phone.href} href={phone.href} className="hover:text-gold-light">{phone.label}</a>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          {/* Brand + follow / language: one tidy row on desktop */}
+          <div className="flex flex-col gap-6 border-b border-white/10 py-10 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <BrandLockup size="md" />
+              <p className="mt-3 font-display text-base italic text-sand/80">{BRAND.tagline}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 lg:gap-6">
+              <SocialIcons />
+              <span className="hidden h-8 w-px bg-white/10 lg:block" aria-hidden="true" />
+              <LanguageSwitcher locale={locale} label={t.language} variant="segmented" />
+            </div>
+          </div>
+
+          {/* Four even columns on desktop; Gather + Explore side by side on phones */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 py-12 lg:grid-cols-12 lg:gap-x-10">
+            <div className="col-span-2 lg:col-span-4">
+              <p className="eyebrow">{t.footer.reachUs}</p>
+              <ul className="mt-5 space-y-4 text-[15px] leading-relaxed">
+                <li className="flex gap-3">
+                  <FooterIcon d="M12 21s-7-6.2-7-11.2A7 7 0 0 1 19 9.8C19 14.8 12 21 12 21zm0-8.7a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+                  <span className="text-sand/80">{church.address}</span>
+                </li>
+                <li className="flex gap-3">
+                  <FooterIcon d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" />
+                  <span className="flex flex-col">
+                    {church.phones.map((phone) => (
+                      <a key={phone.href} href={phone.href} className="text-sand/80 transition-colors hover:text-gold-light">{phone.label}</a>
+                    ))}
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <FooterIcon d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 1.5V7l8 5.5L20 7v-.5" />
+                  <a href={`mailto:${church.email}`} className="break-all text-sand/80 transition-colors hover:text-gold-light">{church.email}</a>
+                </li>
+              </ul>
+            </div>
+            <div className="lg:col-span-2">
+              <FooterColumn title={t.footer.gather} links={footer.gather} t={t} />
+            </div>
+            <div className="lg:col-span-2">
+              <FooterColumn title={t.footer.explore} links={footer.explore} t={t} />
+            </div>
+            {serviceStrip.length ? (
+              <div className="col-span-2 lg:col-span-4">
+                <p className="eyebrow">{t.footer.gatherings}</p>
+                <ul className="mt-5 space-y-2.5 text-[15px]">
+                  {serviceStrip.map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sand/80">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gold" aria-hidden="true" />
+                      {item}
+                    </li>
                   ))}
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <FooterIcon d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 1.5V7l8 5.5L20 7v-.5" />
-                <a href={`mailto:${church.email}`} className="break-all hover:text-gold-light">{church.email}</a>
-              </li>
-            </ul>
-            {serviceStrip.length ? <p className="mt-5 text-sm text-muted-dark">{serviceStrip.join(' · ')}</p> : null}
-          </div>
-          <div className="grid grid-cols-2 gap-8">
-            <FooterColumn title={t.footer.gather} links={footer.gather} t={t} />
-            <FooterColumn title={t.footer.explore} links={footer.explore} t={t} />
-          </div>
-          <div>
-            <p className="eyebrow">{t.footer.follow}</p>
-            <SocialIcons className="mt-4" />
-            <LanguageSwitcher locale={locale} label={t.language} variant="list" className="mt-8" />
+                </ul>
+                <p className="mt-4 text-[13px] text-muted-dark">{t.footer.times}</p>
+              </div>
+            ) : null}
           </div>
         </div>
-        <div className="border-t border-white/10 px-4 pb-24 pt-6 sm:px-6 min-[900px]:pb-8">
-          <div className="mx-auto flex max-w-6xl flex-col gap-2 text-sm text-muted-dark min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
+
+        <div className="border-t border-white/10">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 pb-24 pt-6 text-[13px] text-muted-dark sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:pb-6">
             <p>© {new Date().getFullYear()} {church.name}. {t.footer.rights}</p>
-            <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              <span>{t.footer.times}</span>
-              <a href={staffLoginUrl} className="text-xs text-on-dark/40 hover:text-on-dark/70">{t.footer.staffSignIn}</a>
-            </p>
+            <a href={staffLoginUrl} className="text-on-dark/40 transition-colors hover:text-on-dark/70">{t.footer.staffSignIn}</a>
           </div>
         </div>
       </footer>
@@ -264,10 +286,10 @@ function FooterColumn({ title, links, t }: { title: string; links: NavLink[]; t:
   return (
     <div>
       <p className="eyebrow">{title}</p>
-      <ul className="mt-4 space-y-2.5 text-sand">
+      <ul className="mt-5 space-y-2.5 text-[15px]">
         {links.map((link) => (
           <li key={link.label}>
-            <NavAnchor link={link} className="hover:text-gold-light">{label(t, link.label)}</NavAnchor>
+            <NavAnchor link={link} className="text-sand/80 transition-colors hover:text-gold-light">{label(t, link.label)}</NavAnchor>
           </li>
         ))}
       </ul>

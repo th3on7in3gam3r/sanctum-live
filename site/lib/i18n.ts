@@ -67,6 +67,7 @@ const en = {
     bookRole: 'Pastoral care team',
     bookMessage: 'Hello {church}, I would like to book: {service}. My name is ',
     reachUs: 'Reach us',
+    gatherings: 'Weekly gatherings',
     rights: 'All rights reserved.',
   },
   hero: {
@@ -336,6 +337,7 @@ const lg: Dict = {
     bookRole: "Ttiimu y'obusumba",
     bookMessage: 'Nkulamusizza, {church}! Njagala okusaba: {service}. Erinnya lyange nze ',
     reachUs: 'Tutuukeko',
+    gatherings: 'Enkuŋŋaana za buli wiiki',
     rights: 'Eddembe lyonna literekeddwa.',
   },
   hero: {
@@ -603,6 +605,7 @@ const sw: Dict = {
     bookRole: 'Timu ya huduma ya kichungaji',
     bookMessage: 'Habari {church}, ningependa kuweka nafasi ya: {service}. Jina langu ni ',
     reachUs: 'Wasiliana nasi',
+    gatherings: 'Mikusanyiko ya kila wiki',
     rights: 'Haki zote zimehifadhiwa.',
   },
   hero: {

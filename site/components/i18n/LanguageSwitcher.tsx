@@ -14,7 +14,7 @@ export function LanguageSwitcher({
   locale: Locale;
   label: string;
   className?: string;
-  variant?: 'compact' | 'short' | 'list';
+  variant?: 'compact' | 'short' | 'list' | 'segmented';
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -24,6 +24,29 @@ export function LanguageSwitcher({
     document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
     startTransition(() => router.refresh());
   };
+
+  if (variant === 'segmented') {
+    // Footer: English · Luganda · Kiswahili on one line, in a single pill.
+    return (
+      <div className={`inline-flex rounded-full border border-sand/25 p-1 ${className}`} role="group" aria-label={label}>
+        {LOCALES.map((code) => (
+          <button
+            key={code}
+            type="button"
+            lang={code}
+            onClick={() => choose(code)}
+            aria-pressed={code === locale}
+            disabled={pending}
+            className={`min-h-9 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition-colors ${
+              code === locale ? 'bg-gold text-ink' : 'text-sand hover:text-on-dark'
+            }`}
+          >
+            {LOCALE_NAMES[code]}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   if (variant === 'list') {
     return (
