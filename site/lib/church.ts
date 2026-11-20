@@ -23,4 +23,14 @@ export const church = {
   facebook: '',
   instagram: '',
   pastor: 'Pastor GraceLove Hiire, Senior Pastor',
+  /**
+   * Baptisms, child dedications, weddings and counselling: who members contact (footer "Book" card).
+   * PLACEHOLDER: put the person's name here once the church confirms it. While `name` is empty the
+   * footer shows "Name coming soon". Phone and WhatsApp use the church line until then.
+   */
+  bookingContact: {
+    name: '',
+    phone: { label: '+256 780 914 274', href: 'tel:+256780914274' },
+    whatsappNumber: '256780914274',
+  },
 };

@@ -7,10 +7,10 @@ import { BrandLockup } from '@plcc/brand/BrandLockup';
 import { BRAND } from '@plcc/brand/brand';
 import { church } from '@/lib/church';
 import { footerNav, MAIN_NAV, type NavLink } from '@/lib/nav';
-import { SocialList } from '@/components/SocialIcons';
+import { SocialIcons } from '@/components/SocialIcons';
 import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
 import { LanguageOffer } from '@/components/i18n/LanguageOffer';
-import { label, type Dict, type Locale } from '@/lib/i18n';
+import { fill, label, type Dict, type Locale } from '@/lib/i18n';
 
 function LiveDot({ pulse = false }: { pulse?: boolean }) {
   return <span className={`inline-block h-2 w-2 rounded-full bg-live ${pulse ? 'live-pulse' : ''}`} aria-hidden="true" />;
@@ -121,34 +121,51 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
       ) : null}
       <main id="content">{children}</main>
       <LanguageOffer offer={offer} />
-      <footer className="bg-footer px-4 pb-24 pt-14 text-on-dark sm:px-6 min-[900px]:pb-14">
-        <div className="mx-auto grid max-w-6xl gap-10 min-[900px]:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <footer className="bg-footer text-on-dark">
+        <BookingBand t={t} />
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 min-[900px]:grid-cols-[1.3fr_2fr_1fr] min-[900px]:gap-12">
           <div>
             <BrandLockup size="lg" />
             <p className="brand-tagline">{BRAND.tagline}</p>
-            <p className="mt-3 text-muted-dark">{church.address}</p>
-            {serviceStrip.length ? <p className="mt-3 text-sm text-sand">{serviceStrip.join(' · ')}</p> : null}
-            <p className="mt-3">
-              {church.phones.map((phone) => (
-                <a key={phone.href} href={phone.href} className="mr-3 block hover:text-gold-light sm:inline">{phone.label}</a>
-              ))}
-            </p>
-            <a href={`mailto:${church.email}`} className="mt-2 inline-block hover:text-gold-light">{church.email}</a>
+            <p className="eyebrow mt-8">{t.footer.reachUs}</p>
+            <ul className="mt-4 space-y-3 text-sm text-sand">
+              <li className="flex gap-3">
+                <FooterIcon d="M12 21s-7-6.2-7-11.2A7 7 0 0 1 19 9.8C19 14.8 12 21 12 21zm0-8.7a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+                <span className="text-muted-dark">{church.address}</span>
+              </li>
+              <li className="flex gap-3">
+                <FooterIcon d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z" />
+                <span className="flex flex-col gap-1">
+                  {church.phones.map((phone) => (
+                    <a key={phone.href} href={phone.href} className="hover:text-gold-light">{phone.label}</a>
+                  ))}
+                </span>
+              </li>
+              <li className="flex gap-3">
+                <FooterIcon d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm0 1.5V7l8 5.5L20 7v-.5" />
+                <a href={`mailto:${church.email}`} className="break-all hover:text-gold-light">{church.email}</a>
+              </li>
+            </ul>
+            {serviceStrip.length ? <p className="mt-5 text-sm text-muted-dark">{serviceStrip.join(' · ')}</p> : null}
           </div>
-          <FooterColumn title={t.footer.gather} links={footer.gather} t={t} />
-          <FooterColumn title={t.footer.explore} links={footer.explore} t={t} />
+          <div className="grid grid-cols-2 gap-8">
+            <FooterColumn title={t.footer.gather} links={footer.gather} t={t} />
+            <FooterColumn title={t.footer.explore} links={footer.explore} t={t} />
+          </div>
           <div>
             <p className="eyebrow">{t.footer.follow}</p>
-            <SocialList className="mt-4" />
+            <SocialIcons className="mt-4" />
             <LanguageSwitcher locale={locale} label={t.language} variant="list" className="mt-8" />
           </div>
         </div>
-        <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-2 border-t border-white/10 pt-6 text-sm text-muted-dark min-[900px]:flex-row min-[900px]:justify-between">
-          <p className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <span>© {new Date().getFullYear()} {church.name}</span>
-            <a href={staffLoginUrl} className="text-xs text-on-dark/40 hover:text-on-dark/70">{t.footer.staffSignIn}</a>
-          </p>
-          <p>{t.footer.times}</p>
+        <div className="border-t border-white/10 px-4 pb-24 pt-6 sm:px-6 min-[900px]:pb-8">
+          <div className="mx-auto flex max-w-6xl flex-col gap-2 text-sm text-muted-dark min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
+            <p>© {new Date().getFullYear()} {church.name}. {t.footer.rights}</p>
+            <p className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>{t.footer.times}</span>
+              <a href={staffLoginUrl} className="text-xs text-on-dark/40 hover:text-on-dark/70">{t.footer.staffSignIn}</a>
+            </p>
+          </div>
         </div>
       </footer>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-flow-col auto-cols-fr border-t border-white/10 bg-forest-950 pb-[env(safe-area-inset-bottom)] text-on-dark min-[900px]:hidden" aria-label="Quick actions">
@@ -168,11 +185,86 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
   );
 }
 
+function FooterIcon({ d }: { d: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-gold">
+      <path d={d} />
+    </svg>
+  );
+}
+
+/**
+ * "Book a baptism, dedication or wedding": pick what you need, then WhatsApp (message ready to send)
+ * or call. The contact person's name is a placeholder in lib/church.ts (bookingContact.name).
+ */
+function BookingBand({ t }: { t: Dict }) {
+  const services = t.footer.services;
+  const [pick, setPick] = useState(0);
+  const contact = church.bookingContact;
+  const message = fill(t.footer.bookMessage, { church: church.name, service: services[pick] || services[0] });
+  const whatsapp = `https://wa.me/${contact.whatsappNumber}?text=${encodeURIComponent(message)}`;
+  const initials = contact.name
+    ? contact.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+    : null;
+  return (
+    <section aria-labelledby="book-title" className="border-b border-white/10 px-4 py-12 sm:px-6" id="book">
+      <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-gold/25 bg-forest-900 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:p-10 min-[900px]:grid-cols-[1.45fr_1fr] min-[900px]:items-center min-[900px]:gap-12">
+        <div>
+          <p className="eyebrow">{t.footer.bookEyebrow}</p>
+          <h2 id="book-title" className="mt-3 font-display text-3xl leading-tight text-on-dark sm:text-4xl">{t.footer.bookTitle}</h2>
+          <p className="mt-3 max-w-xl text-muted-dark">{t.footer.bookLead}</p>
+          <p className="mt-6 text-sm font-semibold text-sand" id="book-pick">{t.footer.bookPick}</p>
+          <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-labelledby="book-pick">
+            {services.map((service, i) => (
+              <button
+                key={service}
+                type="button"
+                role="radio"
+                aria-checked={pick === i}
+                onClick={() => setPick(i)}
+                className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors ${
+                  pick === i ? 'border-gold bg-gold text-ink' : 'border-sand/30 text-on-dark hover:border-gold/70'
+                }`}
+              >
+                {service}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+          <p className="eyebrow">{t.footer.bookContact}</p>
+          <div className="mt-4 flex items-center gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-gold/50 bg-footer font-display text-lg text-gold-light" aria-hidden="true">
+              {initials || '✦'}
+            </span>
+            <div className="min-w-0">
+              {contact.name ? (
+                <p className="truncate text-lg font-semibold text-on-dark">{contact.name}</p>
+              ) : (
+                <p className="text-lg font-semibold italic text-on-dark/70" data-placeholder="booking-contact-name">{t.footer.bookNamePending}</p>
+              )}
+              <p className="text-sm text-muted-dark">{t.footer.bookRole}</p>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col gap-3">
+            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="site-button justify-center whitespace-nowrap bg-gold px-5 text-ink">
+              {t.footer.bookWhatsApp}
+            </a>
+            <a href={contact.phone.href} className="site-button justify-center whitespace-nowrap border border-sand/40 px-5 text-on-dark">
+              {t.footer.bookCall} {contact.phone.label}
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function FooterColumn({ title, links, t }: { title: string; links: NavLink[]; t: Dict }) {
   return (
     <div>
       <p className="eyebrow">{title}</p>
-      <ul className="mt-4 space-y-2 text-sand">
+      <ul className="mt-4 space-y-2.5 text-sand">
         {links.map((link) => (
           <li key={link.label}>
             <NavAnchor link={link} className="hover:text-gold-light">{label(t, link.label)}</NavAnchor>

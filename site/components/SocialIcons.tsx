@@ -83,37 +83,3 @@ export function SocialIcons({ className = '' }: { className?: string }) {
     </ul>
   );
 }
-
-/** Footer "Follow" column: each account as an icon with its handle beside it. */
-export function SocialList({ className = '' }: { className?: string }) {
-  return (
-    <ul className={`flex flex-col gap-3 ${className}`}>
-      {socials().map((s) => (
-        <li key={s.label}>
-          <a
-            href={s.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={s.label}
-            className="group inline-flex items-center gap-3 text-sand hover:text-gold-light"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold/40 text-gold-light transition-colors group-hover:bg-gold group-hover:text-ink">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                fill={s.fill ? 'currentColor' : 'none'}
-                stroke={s.fill ? 'none' : 'currentColor'}
-                strokeWidth="1.8"
-              >
-                {s.path}
-              </svg>
-            </span>
-            <span>{s.text}</span>
-          </a>
-        </li>
-      ))}
-    </ul>
-  );
-}
