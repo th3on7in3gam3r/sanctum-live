@@ -225,6 +225,9 @@ function BookingBand({ t }: { t: Dict }) {
   const contact = church.bookingContact;
   const message = fill(t.footer.bookMessage, { church: church.name, service: services[pick] || services[0] });
   const whatsapp = `https://wa.me/${contact.whatsappNumber}?text=${encodeURIComponent(message)}`;
+  const serviceKeys = ['baptism', 'dedication', 'wedding', 'counseling', 'other'];
+  const tribesOrigin = (process.env.NEXT_PUBLIC_TRIBES_ORIGIN || 'https://plcc-connect.vercel.app').replace(/\/$/, '');
+  const officeUrl = `${tribesOrigin}/pastors-office?service=${serviceKeys[pick] || 'other'}`;
   const initials = contact.name
     ? contact.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
     : null;
@@ -269,7 +272,11 @@ function BookingBand({ t }: { t: Dict }) {
             </div>
           </div>
           <div className="mt-6 flex flex-col gap-3">
-            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="site-button justify-center whitespace-nowrap bg-gold px-5 text-ink">
+            <a href={officeUrl} className="site-button justify-center whitespace-nowrap bg-gold px-5 text-ink">
+              {t.footer.bookOffice}
+            </a>
+            <p className="text-center text-xs text-muted-dark">{t.footer.bookOfficeSignIn}</p>
+            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="site-button justify-center whitespace-nowrap border border-sand/40 px-5 text-on-dark">
               {t.footer.bookWhatsApp}
             </a>
             <a href={contact.phone.href} className="site-button justify-center whitespace-nowrap border border-sand/40 px-5 text-on-dark">
