@@ -75,11 +75,39 @@ export const listYouVersionTranslations = unstable_cache(
         /* license not accepted yet, or YouVersion down: leave this Bible out */
       }
     }
+    // Don't remember "none": throwing skips the cache, so the next visit asks again.
+    if (!out.length) throw new Error('No YouVersion Bibles available yet.');
     return out;
   },
-  ['plcc-bible-youversion-v1'],
-  { revalidate: 86400 }
+  ['plcc-bible-youversion-v2'],
+  { revalidate: 3600 }
 );
+
+/** What YouVersion says about each Bible, for /api/bible/youversion-status. No secrets. */
+export async function youVersionStatus(): Promise<
+  { id: string; yvId: number; status: number | null; ok: boolean; title: string | null; message: string | null }[]
+> {
+  const out = [];
+  for (const b of YOUVERSION_BIBLES) {
+    try {
+      const res = await fetch(`${YVP_API}/v1/bibles/${b.yvId}`, {
+        headers: { 'X-YVP-App-Key': YVP_APP_KEY, Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      const text = await res.text();
+      let title: string | null = null;
+      try {
+        title = (JSON.parse(text) as YvVersion).title ?? null;
+      } catch {
+        /* not JSON */
+      }
+      out.push({ id: b.id, yvId: b.yvId, status: res.status, ok: res.ok, title, message: res.ok ? null : text.slice(0, 300) });
+    } catch (err) {
+      out.push({ id: b.id, yvId: b.yvId, status: null, ok: false, title: null, message: err instanceof Error ? err.message : 'request failed' });
+    }
+  }
+  return out;
+}
 
 type YvBook = { id: string; title: string; canon?: string; chapters?: { id: string; title: string }[] };
 
