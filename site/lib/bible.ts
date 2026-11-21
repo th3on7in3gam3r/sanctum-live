@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { LCB_TRANSLATION, getLocalChapter, isLocalTranslation, listLocalBooks } from './bibleLocal';
+import { getYouVersionChapter, isYouVersionTranslation, listYouVersionBooks, listYouVersionTranslations } from './bibleYouVersion';
 
 /**
  * Bible text from the Free Use Bible API (bible.helloao.org, AO Lab):
@@ -137,13 +138,20 @@ const listApiTranslations = unstable_cache(
  * If the API is down, Bayibuli Entukuvu is still offered.
  */
 export async function listBibleTranslations(): Promise<BibleTranslation[]> {
-  const fromApi = await listApiTranslations().catch(() => [] as BibleTranslation[]);
+  const [fromApi, licensed] = await Promise.all([
+    listApiTranslations().catch(() => [] as BibleTranslation[]),
+    listYouVersionTranslations().catch(() => [] as BibleTranslation[]),
+  ]);
   const others = fromApi.filter((t) => t.language !== LCB_TRANSLATION.language);
-  return [{ ...LCB_TRANSLATION }, ...others];
+  // NIV / NKJV (YouVersion) sit at the top of the English Bibles.
+  const firstEnglish = others.findIndex((t) => t.language === 'eng');
+  const at = firstEnglish < 0 ? others.length : firstEnglish;
+  return [{ ...LCB_TRANSLATION }, ...others.slice(0, at), ...licensed, ...others.slice(at)];
 }
 
 export async function listBibleBooks(translationId: string): Promise<BibleBook[]> {
   if (isLocalTranslation(translationId)) return listLocalBooks();
+  if (isYouVersionTranslation(translationId)) return listYouVersionBooks(translationId);
   const data = await getJson<{ books: BibleBook[] }>(
     `/api/${encodeURIComponent(translationId)}/books.json`,
     604800
@@ -160,6 +168,9 @@ export async function getBibleChapter(
   chapter: number
 ): Promise<BibleChapter> {
   if (isLocalTranslation(translation.id)) return getLocalChapter(book, chapter);
+  if (isYouVersionTranslation(translation.id)) {
+    return getYouVersionChapter(translation, book, chapter, await listBibleBooks(translation.id));
+  }
   const data = await getJson<{
     chapter: {
       number: number;
