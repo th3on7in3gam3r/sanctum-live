@@ -33,6 +33,7 @@ export default async function VisitPage() {
         photo={home?.heroImageUrl || '/visit-welcome.jpg'}
       >
         <p className="mt-4 text-sand">{church.address}</p>
+        <a href="#book" className="site-button mt-5 border border-sand/40 text-on-dark">{t.footer.bookTitle}</a>
       </PageHero>
       <section className="bg-cream px-4 py-20 text-ink sm:px-6">
         <div className="mx-auto max-w-6xl">
