@@ -17,7 +17,7 @@ function contentSecurityPolicy() {
     "font-src 'self' data: https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://i.ytimg.com https://res.cloudinary.com https://*.tiktokcdn.com https://*.tiktokcdn-us.com",
     "media-src 'self' https://res.cloudinary.com https://www.youtube-nocookie.com",
-    "frame-src https://www.youtube-nocookie.com https://www.tiktok.com",
+    "frame-src https://www.youtube-nocookie.com https://www.tiktok.com https://maps.google.com https://www.google.com",
     ['connect-src', "'self'", api, 'https://www.tiktok.com', 'https://*.tiktok.com', 'https://*.sentry.io', 'https://*.ingest.sentry.io'].filter(Boolean).join(' '),
   ].join('; ');
 }

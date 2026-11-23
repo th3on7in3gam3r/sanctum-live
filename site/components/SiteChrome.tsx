@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { BrandLockup } from '@plcc/brand/BrandLockup';
 import { BRAND } from '@plcc/brand/brand';
@@ -47,10 +47,41 @@ function NavAnchor({
   );
 }
 
-export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl, staffLoginUrl, serviceStrip = [], liveNow = false }: { children: React.ReactNode; locale: Locale; t: Dict; offer?: Locale[]; prayerUrl: string; oneUrl?: string; staffLoginUrl: string; serviceStrip?: string[]; liveNow?: boolean }) {
+export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl, staffLoginUrl, serviceStrip = [], liveNow: initialLive = false }: { children: React.ReactNode; locale: Locale; t: Dict; offer?: Locale[]; prayerUrl: string; oneUrl?: string; staffLoginUrl: string; serviceStrip?: string[]; liveNow?: boolean }) {
   const path = usePathname();
   const home = path === '/';
   const [open, setOpen] = useState(false);
+  const [liveNow, setLiveNow] = useState(initialLive);
+
+  useEffect(() => {
+    let request: AbortController | undefined;
+
+    async function refreshLiveStatus() {
+      if (document.visibilityState !== 'visible' || request) return;
+      const controller = new AbortController();
+      request = controller;
+      try {
+        const response = await fetch('/api/live-status', { signal: controller.signal });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted && typeof data.live === 'boolean') setLiveNow(data.live);
+      } catch {
+        // Keep the last known status while the network is unavailable.
+      } finally {
+        request = undefined;
+      }
+    }
+
+    void refreshLiveStatus();
+    const interval = window.setInterval(refreshLiveStatus, 20_000);
+    document.addEventListener('visibilitychange', refreshLiveStatus);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refreshLiveStatus);
+      request?.abort();
+    };
+  }, []);
+
   const footer = footerNav(prayerUrl, oneUrl);
   const livePrayer = footer.gather.find((link) => link.label === 'Live prayer');
   const give = footer.gather.find((link) => link.label === 'Give');
@@ -73,13 +104,17 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
                 </NavAnchor>
               );
             })}
-            {oneUrl ? (
+            {liveNow && livePrayer ? (
+              <NavAnchor link={{ ...livePrayer, href: '/huddles' }} className="site-button border border-sand/40 px-4 text-on-dark">
+                <LiveDot pulse /> {t.liveNow}
+              </NavAnchor>
+            ) : oneUrl ? (
               <NavAnchor link={{ label: 'Sign in', href: oneUrl }} className="site-button border border-sand/40 px-4 text-on-dark">
-                {liveNow ? <LiveDot pulse /> : null} {liveNow ? t.liveNow : t.signIn}
+                {t.signIn}
               </NavAnchor>
             ) : livePrayer ? (
               <NavAnchor link={livePrayer} className="site-button border border-sand/40 px-4 text-on-dark">
-                <LiveDot pulse={liveNow} /> {liveNow ? t.liveNow : label(t, livePrayer.label)}
+                {label(t, livePrayer.label)}
               </NavAnchor>
             ) : null}
             {give ? (
@@ -87,6 +122,11 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
             ) : null}
             <LanguageSwitcher locale={locale} label={t.language} variant="short" />
           </nav>
+          {liveNow ? (
+            <Link href="/huddles" className="ml-auto shrink-0 text-sm font-semibold text-on-dark min-[1300px]:hidden">
+              <LiveDot pulse /> {t.liveNow}
+            </Link>
+          ) : null}
           <button
             type="button"
             className="site-button mobile-only border border-sand/40 px-4 text-sm text-on-dark"
@@ -119,6 +159,7 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
           <LanguageSwitcher locale={locale} label={t.language} variant="list" className="mt-auto pt-10" />
         </div>
       ) : null}
+      <span className="sr-only" role="status">{liveNow ? t.liveNow : ''}</span>
       <main id="content">{children}</main>
       <LanguageOffer offer={offer} />
       <footer className="bg-footer text-on-dark">
@@ -194,7 +235,7 @@ export function SiteChrome({ children, locale, t, offer = [], prayerUrl, oneUrl,
         {sticky.map((link) => (
           <NavAnchor
             key={link.label}
-            link={link}
+            link={link.label === 'Live prayer' && liveNow ? { ...link, href: '/huddles' } : link}
             className={link.label === 'Give'
               ? 'flex min-h-14 items-center justify-center gap-1.5 bg-gold px-1 text-center text-[13px] font-semibold leading-tight text-ink sm:text-sm'
               : 'flex min-h-14 items-center justify-center gap-1.5 px-1 text-center text-[13px] font-semibold leading-tight sm:text-sm'}

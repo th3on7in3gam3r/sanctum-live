@@ -29,11 +29,6 @@ export function churchJsonLd(
       addressLocality: 'Wakiso District',
       addressCountry: 'UG',
     },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: 0.438,
-      longitude: 32.653,
-    },
     openingHoursSpecification: hours,
   };
 }

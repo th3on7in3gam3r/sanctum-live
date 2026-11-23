@@ -7,7 +7,7 @@ export type NavLink = {
 
 export const MAIN_NAV = [
   { label: 'About', href: '/about' },
-  { label: 'Ministries', href: '/ministries' },
+  { label: 'Join a Ministry', href: '/ministries' },
   { label: 'Messages', href: '/sermons' },
   { label: 'Bible', href: '/bible' },
   { label: 'Events', href: '/events' },
@@ -32,7 +32,7 @@ export function footerNav(prayerUrl: string, oneUrl?: string) {
     ],
     explore: [
       { label: 'About', href: '/about' },
-      { label: 'Ministries', href: '/ministries' },
+      { label: 'Join a Ministry', href: '/ministries' },
       { label: 'Messages', href: '/sermons' },
       { label: 'Bible', href: '/bible' },
       { label: 'Gallery', href: '/gallery' },
