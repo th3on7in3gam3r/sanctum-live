@@ -25,18 +25,19 @@ async function checkContrast(page: import('@playwright/test').Page, pageName: st
 }
 
 async function dismissToasts(page: import('@playwright/test').Page) {
-  const closes = page.getByRole('button', { name: /dismiss|close/i });
-  const count = await closes.count();
-  for (let index = 0; index < count; index += 1) {
-    const button = closes.nth(index);
-    if (await button.isVisible().catch(() => false)) await button.click().catch(() => undefined);
+  const close = page.getByRole('button', { name: 'Dismiss notification', exact: true }).first();
+  if (await close.isVisible()) {
+    const dismissed = await close.click({ timeout: 1_000 }).then(() => true, () => false);
+    if (!dismissed) return;
+    // Let the exit animation finish before looking for another toast.
+    await close.waitFor({ state: 'hidden', timeout: 1_000 }).catch(() => undefined);
   }
 }
 
 async function shot(page: import('@playwright/test').Page, name: string) {
   await dismissToasts(page);
   mkdirSync(outDir, { recursive: true });
-  await page.screenshot({ path: `${outDir}/${name}.png`, fullPage: true });
+  await test.step(`Capture ${name}`, () => page.screenshot({ path: `${outDir}/${name}.png`, fullPage: true, timeout: 10_000 }));
 }
 
 test.beforeEach(async ({ page }) => {

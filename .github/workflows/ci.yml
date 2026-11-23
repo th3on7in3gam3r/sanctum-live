@@ -104,3 +104,13 @@ jobs:
             exit 1
           fi
           npx playwright test tests/e2e/public-theme.spec.ts
+      - name: Upload browser failure context
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sanctum-contrast-failure
+          path: |
+            test-results/
+            /tmp/sanctum-theme/
+            /tmp/sanctum-api.log
+            /tmp/sanctum-vite.log
