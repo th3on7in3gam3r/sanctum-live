@@ -60,7 +60,9 @@ test('join and listener rooms pass contrast in dusk and light', async ({ page })
   await checkContrast(page, 'join', 'dusk');
 
   await page.locator('#attendeeName').fill('Theme Contrast');
-  await page.getByRole('button', { name: 'Enter the sanctuary' }).click();
+  const enter = page.getByRole('button', { name: 'Enter the sanctuary' });
+  await expect(enter).toBeEnabled();
+  await enter.click();
   await expect(page.getByRole('button', { name: 'Leave prayer session' })).toBeVisible();
   await expect(page.getByText('Gathering chat')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Promised Land Christian Center' })).toBeVisible();

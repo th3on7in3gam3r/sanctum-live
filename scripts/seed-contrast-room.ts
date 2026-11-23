@@ -1,4 +1,6 @@
 import { getPrisma } from '../server/prisma.ts';
+import { ensureLiveKitRoom } from '../server/realtime/ensureLiveKitRoom.ts';
+import { sessionRepository } from '../server/repositories/index.ts';
 
 const prisma = getPrisma();
 if (!prisma) throw new Error('DATABASE_URL is not configured');
@@ -18,7 +20,7 @@ const organization = await prisma.organization.upsert({
   },
 });
 
-await prisma.prayerRoom.upsert({
+const room = await prisma.prayerRoom.upsert({
   where: { organizationId_slug: { organizationId: organization.id, slug: 'promised-land-christian-center' } },
   update: {
     name: 'Promised Land Christian Center',
@@ -37,6 +39,22 @@ await prisma.prayerRoom.upsert({
     timezone: 'Africa/Kampala',
   },
 });
+
+// The listener contrast check must be able to join at any time of day.
+const session = await prisma.prayerSession.upsert({
+  where: { id: 'sanctum-contrast-session' },
+  create: {
+    id: 'sanctum-contrast-session',
+    prayerRoomId: room.id,
+    status: 'WAITING',
+    sermonLeaderName: 'Pastor GraceLove Hiire',
+  },
+  update: {
+    status: 'WAITING',
+    sermonLeaderName: 'Pastor GraceLove Hiire',
+  },
+});
+await ensureLiveKitRoom(await sessionRepository.requireById(session.id));
 
 console.log('Contrast room is ready');
 await prisma.$disconnect();
