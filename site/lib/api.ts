@@ -1,3 +1,4 @@
+import { publicServiceTimeSchema } from './serviceTime';
 import { z } from 'zod';
 import {
   announcementSchema,
@@ -228,22 +229,6 @@ export const publicGroupSchema = z.object({
   }).nullable().optional(),
 });
 
-export const publicServiceTimeSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  homeLabel: z.string().nullable(),
-  cadence: z.string(),
-  weekday: z.string().nullable(),
-  opens: z.string(),
-  closes: z.string(),
-  startLabel: z.string(),
-  endLabel: z.string(),
-  place: z.string().nullable(),
-  note: z.string().nullable(),
-  showOnHome: z.boolean(),
-  sortOrder: z.number(),
-});
-
 export const publicFaqSchema = z.object({
   id: z.string(),
   question: z.string(),
@@ -254,7 +239,7 @@ export const publicFaqSchema = z.object({
 export type PublicLeader = z.infer<typeof publicLeaderSchema>;
 export type PublicGroup = z.infer<typeof publicGroupSchema>;
 export type PublicFaq = z.infer<typeof publicFaqSchema>;
-export type PublicServiceTime = z.infer<typeof publicServiceTimeSchema>;
+export type { PublicServiceTime } from './serviceTime';
 
 async function publicList<T>(path: string, key: string, tag: ContentTag, schema: z.ZodType<T>): Promise<T[]> {
   const payload = await publicGet(path, tag);

@@ -1,9 +1,9 @@
+import type { ServiceTime } from './serviceTime';
 import type { PageBlock } from '@shared/validations/cms.ts';
 import type { PublicPage } from './api';
 
 type Paragraph = Extract<PageBlock, { type: 'paragraph' }>;
 
-export type ServiceTime = { day: string; time: string; name: string; line: string };
 export type Scripture = { reference: string; text: string };
 
 function between(page: PublicPage, start: string, stops: string[]) {

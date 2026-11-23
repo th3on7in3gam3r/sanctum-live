@@ -7,9 +7,9 @@ const outDir = process.env.THEME_SHOTS || '/tmp/sanctum-theme';
 const summary: Record<string, { count: number; detail: string }> = {};
 const failures: string[] = [];
 
-async function checkContrast(page: import('@playwright/test').Page, pageName: string, theme: string) {
+async function checkContrast(page: import('@playwright/test').Page, pageName: string, theme: string, selector = '.sanctum-screen') {
   const results = await new AxeBuilder({ page })
-    .include('.sanctum-screen')
+    .include(selector)
     .withRules(['color-contrast'])
     .analyze();
   const detail = results.violations.length
@@ -25,18 +25,19 @@ async function checkContrast(page: import('@playwright/test').Page, pageName: st
 }
 
 async function dismissToasts(page: import('@playwright/test').Page) {
-  const closes = page.getByRole('button', { name: /dismiss|close/i });
-  const count = await closes.count();
-  for (let index = 0; index < count; index += 1) {
-    const button = closes.nth(index);
-    if (await button.isVisible().catch(() => false)) await button.click().catch(() => undefined);
+  const close = page.getByRole('button', { name: 'Dismiss notification', exact: true }).first();
+  if (await close.isVisible()) {
+    const dismissed = await close.click({ timeout: 1_000 }).then(() => true, () => false);
+    if (!dismissed) return;
+    // Let the exit animation finish before looking for another toast.
+    await close.waitFor({ state: 'hidden', timeout: 1_000 }).catch(() => undefined);
   }
 }
 
 async function shot(page: import('@playwright/test').Page, name: string) {
   await dismissToasts(page);
   mkdirSync(outDir, { recursive: true });
-  await page.screenshot({ path: `${outDir}/${name}.png`, fullPage: true });
+  await test.step(`Capture ${name}`, () => page.screenshot({ path: `${outDir}/${name}.png`, fullPage: true, timeout: 10_000 }));
 }
 
 test.beforeEach(async ({ page }) => {
@@ -47,7 +48,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('join and listener rooms pass contrast in dusk and light', async ({ page }) => {
+test('join screen themes and the listener room pass contrast', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('sanctum_theme', 'dusk');
   });
@@ -59,62 +60,22 @@ test('join and listener rooms pass contrast in dusk and light', async ({ page })
   await checkContrast(page, 'join', 'dusk');
 
   await page.locator('#attendeeName').fill('Theme Contrast');
-  await page.getByRole('button', { name: 'Enter the sanctuary' }).click();
-  await expect(page.getByRole('button', { name: 'Leave prayer session' })).toBeVisible();
-  await expect(page.getByText('Gathering chat')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Promised Land Christian Center' })).toBeVisible();
-  await expect(page.getByText('Sermon leader: Pastor GraceLove Hiire')).toBeVisible();
-  await expect(page.getByText('Waiting for the next prayer leader.')).toBeVisible();
-  await expect(page.getByText('Waiting', { exact: true })).toBeVisible();
-  await expect(page.getByText('until the pastor opens the floor for prayer')).toBeVisible();
-  await expect(page.getByText('the sermon leader')).toHaveCount(0);
-  await expect(page.getByText('Morning Prayer')).toHaveCount(0);
-  await expect(page.getByText(/PTT/)).toHaveCount(0);
-  await expect(
-    page.locator('.sanctum-chip').filter({ hasText: /Mic (locked|offline|ready)|Your mic is live/ })
-  ).toHaveCount(1);
-  const raiseHand = page.getByRole('button', { name: 'Raise Hand' });
-  await expect(raiseHand).toHaveClass(/sanctum-raise/);
-  const raiseBorder = await raiseHand.evaluate((el) => {
-    const view = el.ownerDocument.defaultView;
-    if (!view) return '';
-    const declared: string[] = [];
-    const visit = (rules: CSSRuleList) => {
-      for (const rule of rules) {
-        if (
-          rule instanceof view.CSSStyleRule &&
-          rule.selectorText.includes('.sanctum-raise') &&
-          !rule.selectorText.includes(':') &&
-          rule.cssText.includes('1.5px')
-        ) {
-          declared.push('1.5px');
-        } else if (rule instanceof view.CSSGroupingRule) {
-          visit(rule.cssRules);
-        }
-      }
-    };
-    for (const sheet of view.document.styleSheets) {
-      try {
-        visit(sheet.cssRules);
-      } catch {
-        /* Cross-origin sheets are skipped. */
-      }
-    }
-    return declared.join(' ');
-  });
-  expect(raiseBorder).toBe('1.5px');
-  await expect(page.locator('.sanctum-screen')).toHaveAttribute('data-theme', 'dusk');
-  await shot(page, 'listener-dusk');
-  await checkContrast(page, 'listener', 'dusk');
+  const enter = page.getByRole('button', { name: 'Enter the sanctuary' });
+  await expect(enter).toBeEnabled();
+  await enter.click();
+  const room = page.locator('.pr-shell');
+  const leave = room.getByRole('button', { name: 'Leave Room', exact: true });
+  await expect(leave).toBeVisible();
+  await expect(room.getByText('WAITING', { exact: true })).toBeVisible();
+  await expect(room.getByText('Overflow room led by Pastor GraceLove Hiire')).toBeVisible();
+  await expect(room.getByRole('button', { name: 'Raise Hand' })).toBeEnabled();
+  await shot(page, 'listener');
+  await checkContrast(page, 'listener', 'room', '.pr-shell');
 
-  await page.getByRole('button', { name: 'Toggle theme' }).click();
-  await expect(page.locator('.sanctum-screen')).toHaveAttribute('data-theme', 'light');
-  await shot(page, 'listener-light');
-  await checkContrast(page, 'listener', 'light');
-
-  await page.getByRole('button', { name: 'Leave prayer session' }).click();
+  await leave.click();
   await expect(page.getByRole('button', { name: 'Enter the sanctuary' })).toBeVisible();
   await expect(page.getByText('Sermon leader:')).toBeVisible();
+  await page.getByRole('button', { name: 'Toggle theme' }).click();
   await expect(page.locator('.sanctum-screen')).toHaveAttribute('data-theme', 'light');
   await shot(page, 'join-light');
   await checkContrast(page, 'join', 'light');
