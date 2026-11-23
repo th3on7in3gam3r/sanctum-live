@@ -6,7 +6,8 @@ import type { Dict } from '@/lib/i18n';
 
 export function FindUs({ t }: { t: Dict }) {
   const [open, setOpen] = useState(false);
-  const query = encodeURIComponent(church.mapsQuery);
+  const { latitude, longitude } = church.coordinates;
+  const query = encodeURIComponent(`${latitude},${longitude}`);
   return (
     <div className="grid gap-4">
       <div className="overflow-hidden rounded-[26px] bg-sand">
@@ -29,7 +30,7 @@ export function FindUs({ t }: { t: Dict }) {
         <p className="font-display mt-3 text-3xl">{church.address}</p>
         {church.landmark ? <p className="mt-2 text-muted-dark">{church.landmark}</p> : null}
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <a className="site-button bg-gold text-ink" href={`https://www.google.com/maps/search/?api=1&query=${query}`}>{t.hero.directions}</a>
+          <a className="site-button bg-gold text-ink" href={church.mapsUrl}>{t.hero.directions}</a>
           <a className="site-button border border-sand text-on-dark" href={church.whatsapp}>WhatsApp</a>
         </div>
       </div>

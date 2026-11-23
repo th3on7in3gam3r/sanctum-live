@@ -15,7 +15,7 @@ function LiveDot({ on }: { on: boolean }) {
 }
 
 export function directionsUrl() {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(church.mapsQuery)}`;
+  return church.mapsUrl;
 }
 
 function Arrow() {
