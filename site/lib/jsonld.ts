@@ -1,4 +1,5 @@
 import { formatKampala } from './format';
+import { church } from './church';
 import type { PublicEvent, PublicSermon } from './api';
 
 export function churchJsonLd(
@@ -29,6 +30,8 @@ export function churchJsonLd(
       addressLocality: 'Wakiso District',
       addressCountry: 'UG',
     },
+    geo: { '@type': 'GeoCoordinates', ...church.coordinates },
+    hasMap: church.mapsUrl,
     openingHoursSpecification: hours,
   };
 }
