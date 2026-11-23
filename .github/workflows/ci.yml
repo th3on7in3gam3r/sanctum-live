@@ -55,9 +55,9 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://sanctum:sanctum@localhost:5432/sanctum_live?connection_limit=10&pool_timeout=20
-      LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
-      LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
-      LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+      LIVEKIT_URL: ws://127.0.0.1:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: secret
       SANCTUM_MODE: church
       PUBLIC_SITE_URL: http://127.0.0.1:3002
       API_PORT: "3001"
@@ -69,12 +69,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Require LiveKit secrets
+      - name: Start local LiveKit
         run: |
-          if [ -z "$LIVEKIT_URL" ] || [ -z "$LIVEKIT_API_KEY" ] || [ -z "$LIVEKIT_API_SECRET" ]; then
-            echo "Add LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET to the repository Actions secrets."
-            exit 1
-          fi
+          docker run --detach --name sanctum-livekit --network host livekit/livekit-server:v1.9.0 --dev
+          for attempt in {1..20}; do
+            if curl -fsS http://127.0.0.1:7880/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs sanctum-livekit
+          exit 1
       - run: npx playwright install --with-deps chromium
       - run: npx prisma migrate deploy
       - run: npx tsx scripts/seed-contrast-room.ts

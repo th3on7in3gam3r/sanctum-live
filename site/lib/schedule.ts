@@ -1,5 +1,4 @@
-import type { PublicServiceTime } from './api';
-import type { ServiceTime } from './home';
+import type { PublicServiceTime, ServiceTime } from './serviceTime';
 
 const HOME_STRIP = ['Sunday', 'Wednesday Upper Room', 'Friday Intercessors'];
 
