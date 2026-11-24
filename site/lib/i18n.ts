@@ -241,6 +241,8 @@ const en = {
       empty: 'Photos from our services will appear here soon.',
     },
     ministries: {
+      explore: 'Explore ministries',
+      coreDepartments: 'Core Departments',
       seeHuddles: 'See the Ka Links',
       learnMore: 'Learn more',
       joinHuddle: 'Join the live Ka Link',
@@ -514,6 +516,8 @@ const lg: Dict = {
       empty: "Ebifaananyi by'okusaba kwaffe bijja kulabika wano mangu.",
     },
     ministries: {
+      explore: 'Laba obuweereza',
+      coreDepartments: 'Ebitongole ebikulu',
       seeHuddles: 'Laba ebibinja',
       learnMore: 'Manya ebisingawo',
       joinHuddle: "Yingira mu kibinja eky'obutereevu",
@@ -785,6 +789,8 @@ const sw: Dict = {
       empty: 'Picha za ibada zetu zitaonekana hapa hivi karibuni.',
     },
     ministries: {
+      explore: 'Chunguza huduma',
+      coreDepartments: 'Idara kuu',
       seeHuddles: 'Tazama vikundi',
       learnMore: 'Jifunze zaidi',
       joinHuddle: 'Jiunge na kikundi mubashara',
