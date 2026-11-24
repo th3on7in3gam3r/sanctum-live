@@ -7,6 +7,7 @@ import { huddleJoinUrl } from '@/lib/env';
 import { firstParagraph } from '@/lib/pages';
 import { getDictionary } from '@/lib/locale';
 import { label } from '@/lib/i18n';
+import { coreDepartments } from '@/data/coreDepartments';
 
 export async function generateMetadata() {
   return cmsMetadata('ministries', 'Ministries at Promised Land Christian Center.');
@@ -22,7 +23,10 @@ export default async function MinistriesPage() {
         eyebrow={label(t, 'Ministries')}
         title={page.title}
         lede={firstParagraph(page)}
-        jumps={ministries.map((group) => ({ href: `#${groupAnchor(group.name)}`, label: group.name }))}
+        jumps={[
+          { href: '#core-departments', label: 'Core Departments' },
+          ...ministries.map((group) => ({ href: `#${groupAnchor(group.name)}`, label: group.name })),
+        ]}
       />
       <section className="bg-cream px-4 text-ink sm:px-6">
         <div className="mx-auto max-w-6xl divide-y divide-ink/10">
@@ -35,6 +39,24 @@ export default async function MinistriesPage() {
               labels={{ learnMore: t.pages.ministries.learnMore, joinHuddle: t.pages.ministries.joinHuddle }}
             />
           ))}
+        </div>
+      </section>
+      <section id="core-departments" aria-labelledby="core-departments-heading" lang="en" className="scroll-mt-28 bg-cream px-4 py-14 text-ink sm:px-6 sm:py-20">
+        <div className="mx-auto max-w-6xl border-t border-ink/10 pt-10">
+          <h2 id="core-departments-heading" className="font-display text-4xl font-light sm:text-5xl">Core Departments</h2>
+          <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {coreDepartments.map((department) => (
+              <li key={department.name} className="rounded-2xl border border-ink/10 bg-white/60 p-5">
+                <h3 className="text-lg font-semibold leading-snug">{department.name}</h3>
+                {department.leads?.length ? (
+                  <ul aria-label="Department leadership" className="mt-2 space-y-1 text-sm font-semibold">
+                    {department.leads.map((lead) => <li key={lead}>{lead}</li>)}
+                  </ul>
+                ) : null}
+                {department.description ? <p className="mt-3 text-sm leading-relaxed text-ink/80">{department.description}</p> : null}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
       <section className="bg-forest-900 px-4 py-16 text-on-dark sm:px-6">
