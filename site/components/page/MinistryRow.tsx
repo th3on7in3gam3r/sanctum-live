@@ -20,22 +20,27 @@ export function groupAnchor(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'group';
 }
 
-export function MinistryRow({ group, index, href = '/visit', huddleHref, labels }: { group: PublicGroup; index: number; href?: string; huddleHref?: string | null; labels?: { learnMore: string; joinHuddle: string } }) {
-  const flip = index % 2 === 1;
+export function MinistryRow({ group, href = '/visit', huddleHref, labels }: {
+  group: PublicGroup;
+  href?: string;
+  huddleHref?: string | null;
+  labels?: { learnMore: string; joinHuddle: string };
+}) {
+  const image = ministryImageUrl(group);
+
   return (
-    <article id={groupAnchor(group.name)} className="grid items-center gap-8 py-10 min-[900px]:grid-cols-2">
-      <PhotoTile
-        src={ministryImageUrl(group)}
-        sizes="(min-width: 900px) 40vw, 100vw"
-        className={`aspect-[4/3] rounded-[22px] ${flip ? 'min-[900px]:order-2' : ''}`}
-      />
-      <div>
-        <p className="font-display text-3xl text-gold">{String(index + 1).padStart(2, '0')}</p>
-        <h2 className="font-display mt-2 text-5xl font-light">{group.name}</h2>
-        {group.publicDescription ? <p className="mt-4 text-lg leading-relaxed">{group.publicDescription}</p> : null}
-        {group.meetingTime ? <p className="mt-4 font-semibold">{group.meetingTime}</p> : null}
-        <a href={href} className="mt-4 inline-block font-semibold text-gold-ink">{labels?.learnMore ?? 'Learn more'}</a>
-        {huddleHref ? <a href={huddleHref} className="mt-3 block font-semibold text-gold-ink">{labels?.joinHuddle ?? 'Join the live Ka Link'}</a> : null}
+    <article id={groupAnchor(group.name)} className="flex scroll-mt-28 flex-col overflow-hidden rounded-2xl border border-ink/10 bg-white/60">
+      {image ? (
+        <PhotoTile src={image} sizes="(min-width: 640px) 50vw, 100vw" className="aspect-[2/1] w-full" />
+      ) : null}
+      <div className="flex flex-1 flex-col p-5 sm:p-7">
+        <h3 className="font-display text-3xl font-light leading-tight sm:text-4xl">{group.name}</h3>
+        {group.publicDescription ? <p className="mt-3 leading-relaxed text-ink/80">{group.publicDescription}</p> : null}
+        {group.meetingTime ? <p className="mt-3 text-sm font-semibold">{group.meetingTime}</p> : null}
+        <div className="mt-auto flex flex-wrap gap-x-5 gap-y-2 pt-5 text-sm font-semibold text-gold-ink">
+          <a href={href} className="underline decoration-gold/70 underline-offset-4">{labels?.learnMore ?? 'Learn more'}</a>
+          {huddleHref ? <a href={huddleHref} className="underline decoration-gold/70 underline-offset-4">{labels?.joinHuddle ?? 'Join the live Ka Link'}</a> : null}
+        </div>
       </div>
     </article>
   );
