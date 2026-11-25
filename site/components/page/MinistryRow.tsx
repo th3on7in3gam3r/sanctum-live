@@ -29,17 +29,35 @@ export function MinistryRow({ group, href = '/visit', huddleHref, labels }: {
   const image = ministryImageUrl(group);
 
   return (
-    <article id={groupAnchor(group.name)} className="flex scroll-mt-28 flex-col overflow-hidden rounded-2xl border border-ink/10 bg-white/60">
+    <article
+      id={groupAnchor(group.name)}
+      className="group flex scroll-mt-28 flex-col overflow-hidden rounded-3xl border border-ink/10 bg-white shadow-[0_1px_2px_rgba(22,37,31,.05),0_12px_32px_-18px_rgba(22,37,31,.25)] transition-shadow hover:shadow-[0_1px_2px_rgba(22,37,31,.06),0_18px_40px_-16px_rgba(22,37,31,.32)]"
+    >
       {image ? (
-        <PhotoTile src={image} sizes="(min-width: 640px) 50vw, 100vw" className="aspect-[2/1] w-full" />
+        <PhotoTile src={image} sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" className="aspect-[4/3] w-full" />
       ) : null}
-      <div className="flex flex-1 flex-col p-5 sm:p-7">
-        <h3 className="font-display text-3xl font-light leading-tight sm:text-4xl">{group.name}</h3>
-        {group.publicDescription ? <p className="mt-3 leading-relaxed text-ink/80">{group.publicDescription}</p> : null}
-        {group.meetingTime ? <p className="mt-3 text-sm font-semibold">{group.meetingTime}</p> : null}
-        <div className="mt-auto flex flex-wrap gap-x-5 gap-y-2 pt-5 text-sm font-semibold text-gold-ink">
-          <a href={href} className="underline decoration-gold/70 underline-offset-4">{labels?.learnMore ?? 'Learn more'}</a>
-          {huddleHref ? <a href={huddleHref} className="underline decoration-gold/70 underline-offset-4">{labels?.joinHuddle ?? 'Join the live Ka Link'}</a> : null}
+      <div className="flex flex-1 flex-col p-5 sm:p-6">
+        <h3 className="font-display text-2xl font-normal leading-tight tracking-tight">{group.name}</h3>
+        {group.publicDescription ? <p className="mt-2 text-[15px] leading-relaxed text-ink/75">{group.publicDescription}</p> : null}
+        {group.meetingTime ? (
+          <p className="mt-4 inline-flex items-start gap-2 self-start rounded-xl bg-forest-900/[0.06] px-3 py-2 text-[13px] font-semibold text-ink/85">
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="mt-px h-4 w-4 shrink-0 text-gold-ink" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            {group.meetingTime}
+          </p>
+        ) : null}
+        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-5">
+          {huddleHref ? (
+            <a href={huddleHref} className="site-button min-h-[2.5rem] bg-forest-900 px-4 text-sm text-on-dark">
+              {labels?.joinHuddle ?? 'Join the live Ka Link'}
+            </a>
+          ) : null}
+          <a href={href} className="inline-flex min-h-[2.5rem] items-center gap-1 text-sm font-semibold text-gold-ink">
+            {labels?.learnMore ?? 'Learn more'}
+            <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span>
+          </a>
         </div>
       </div>
     </article>

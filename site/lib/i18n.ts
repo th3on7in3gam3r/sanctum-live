@@ -246,6 +246,9 @@ const en = {
       seeHuddles: 'See the Ka Links',
       learnMore: 'Learn more',
       joinHuddle: 'Join the live Ka Link',
+      eyebrow: 'Serve with us',
+      departmentsIntro: 'The teams that keep church life running. Each one has a leader you can speak to on Sunday.',
+      ledBy: 'Led by',
     },
     prayer: {
       p1: 'Prayer at Promised Land Christian Center continues beyond the Sunday gathering. When the room is open, you can listen, pray along, and raise a hand from your phone.',
@@ -521,6 +524,9 @@ const lg: Dict = {
       seeHuddles: 'Laba ebibinja',
       learnMore: 'Manya ebisingawo',
       joinHuddle: "Yingira mu kibinja eky'obutereevu",
+      eyebrow: 'Weereza naffe',
+      departmentsIntro: "Ebitongole ebiddukanya obulamu bw'ekkanisa. Buli kimu kirina omukulembeze gw'osobola okwogera naye ku Ssande.",
+      ledBy: 'Akulira',
     },
     prayer: {
       p1: "Okusaba e Promised Land Christian Center kugenda mu maaso n'oluvannyuma lw'okukuŋŋaana kwa Ssande. Ekisenge bwe kiba nga kiggule, osobola okuwuliriza, okusaba wamu, n'okuyimusa omukono ng'oyita ku ssimu yo.",
@@ -794,6 +800,9 @@ const sw: Dict = {
       seeHuddles: 'Tazama vikundi',
       learnMore: 'Jifunze zaidi',
       joinHuddle: 'Jiunge na kikundi mubashara',
+      eyebrow: 'Hudumu nasi',
+      departmentsIntro: 'Timu zinazoendesha maisha ya kanisa. Kila moja ina kiongozi unayeweza kuzungumza naye Jumapili.',
+      ledBy: 'Inaongozwa na',
     },
     prayer: {
       p1: 'Maombi katika Promised Land Christian Center yanaendelea zaidi ya mkusanyiko wa Jumapili. Chumba kikiwa wazi, unaweza kusikiliza, kuomba pamoja, na kuinua mkono kupitia simu yako.',
