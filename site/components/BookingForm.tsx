@@ -57,7 +57,7 @@ export function BookingForm({ t, pick, onPick }: { t: Dict; pick: number; onPick
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!phone.trim() && !email.trim()) {
+    if (fullName.trim().length < 2 || !phone.trim() || !email.trim()) {
       setError(f.needContact);
       setState('error');
       return;
@@ -154,11 +154,11 @@ export function BookingForm({ t, pick, onPick }: { t: Dict; pick: number; onPick
         </label>
         <label className={label}>
           {f.phone}
-          <input type="tel" inputMode="tel" autoComplete="tel" placeholder="0772 123456" maxLength={40} value={phone} onChange={(e) => setPhone(e.target.value)} className={field} />
+          <input required type="tel" inputMode="tel" autoComplete="tel" placeholder="0772 123456" maxLength={40} value={phone} onChange={(e) => setPhone(e.target.value)} className={field} />
         </label>
         <label className={label}>
           {f.email}
-          <input type="email" autoComplete="email" placeholder="you@example.com" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
+          <input required type="email" autoComplete="email" placeholder="you@example.com" maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
         </label>
         <p className="-mt-1.5 text-xs text-ink/55 sm:col-span-2">{f.contactHint}</p>
         <label className={`${label} ${offices.length > 1 ? '' : 'sm:col-span-2'}`}>
