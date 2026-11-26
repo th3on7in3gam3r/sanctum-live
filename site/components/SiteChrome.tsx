@@ -263,6 +263,7 @@ function FooterIcon({ d }: { d: string }) {
  */
 function BookingBand({ t }: { t: Dict }) {
   const services = t.footer.services;
+  const f = t.footer.bookForm;
   const [pick, setPick] = useState(0);
   const contact = church.bookingContact;
   const message = fill(t.footer.bookMessage, { church: church.name, service: services[pick] || services[0] });
@@ -270,63 +271,50 @@ function BookingBand({ t }: { t: Dict }) {
   const serviceKeys = ['baptism', 'dedication', 'wedding', 'counseling', 'other'];
   const tribesOrigin = (process.env.NEXT_PUBLIC_TRIBES_ORIGIN || 'https://plcc-connect.vercel.app').replace(/\/$/, '');
   const officeUrl = `${tribesOrigin}/pastors-office?service=${serviceKeys[pick] || 'other'}`;
-  const initials = contact.name
-    ? contact.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
-    : null;
   return (
-    <section aria-labelledby="book-title" className="border-b border-white/10 px-4 py-12 sm:px-6" id="book">
-      <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-gold/25 bg-forest-900 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:p-10 min-[900px]:grid-cols-[1.45fr_1fr] min-[900px]:items-start min-[900px]:gap-12">
-        <div>
+    <section aria-labelledby="book-title" className="border-b border-white/10 px-4 py-14 sm:px-6 sm:py-20" id="book">
+      <div className="mx-auto max-w-6xl">
+        <div className="max-w-2xl">
           <p className="eyebrow">{t.footer.bookEyebrow}</p>
-          <h2 id="book-title" className="mt-3 font-display text-3xl leading-tight text-on-dark sm:text-4xl">{t.footer.bookTitle}</h2>
-          <p className="mt-3 max-w-xl text-muted-dark">{t.footer.bookLead}</p>
-          <p className="mt-6 text-sm font-semibold text-sand" id="book-pick">{t.footer.bookPick}</p>
-          <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-labelledby="book-pick">
-            {services.map((service, i) => (
-              <button
-                key={service}
-                type="button"
-                role="radio"
-                aria-checked={pick === i}
-                onClick={() => setPick(i)}
-                className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors ${
-                  pick === i ? 'border-gold bg-gold text-ink' : 'border-sand/30 text-on-dark hover:border-gold/70'
-                }`}
-              >
-                {service}
-              </button>
-            ))}
-          </div>
-          <BookingForm t={t} pick={pick} />
+          <h2 id="book-title" className="mt-3 font-display text-3xl leading-tight text-on-dark sm:text-[2.6rem]">{t.footer.bookTitle}</h2>
+          <p className="mt-3 text-lg text-muted-dark">{t.footer.bookLead}</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
-          <p className="eyebrow">{t.footer.bookContact}</p>
-          <div className="mt-4 flex items-center gap-4">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-gold/50 bg-footer font-display text-lg text-gold-light" aria-hidden="true">
-              {initials || '✦'}
-            </span>
-            <div className="min-w-0">
-              {contact.name ? (
-                <p className="truncate text-lg font-semibold text-on-dark">{contact.name}</p>
-              ) : (
-                <p className="text-lg font-semibold italic text-on-dark/70" data-placeholder="booking-contact-name">{t.footer.bookNamePending}</p>
-              )}
-              <p className="text-sm text-muted-dark">{t.footer.bookRole}</p>
+
+        <div className="mt-10 grid gap-6 min-[960px]:grid-cols-[1.65fr_1fr] min-[960px]:items-start">
+          <div className="rounded-3xl bg-cream p-6 shadow-[0_30px_70px_rgba(0,0,0,0.35)] ring-1 ring-gold/30 sm:p-9">
+            <BookingForm t={t} pick={pick} onPick={setPick} />
+          </div>
+
+          <aside className="flex flex-col gap-5">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 sm:p-7">
+              <div className="flex items-center gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gold/50 bg-footer text-gold-light" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.3 7.4L3 20.5l1.6-5.2A8.4 8.4 0 1 1 21 11.5z" /></svg>
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-display text-xl text-on-dark">{f.talkTitle}</h3>
+                  <p className="text-sm text-muted-dark">{contact.name ? `${contact.name} · ${t.footer.bookRole}` : f.talkLead}</p>
+                </div>
+              </div>
+              <div className="mt-6 flex flex-col gap-3">
+                <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="site-button min-h-12 justify-center whitespace-nowrap bg-gold px-5 text-ink transition hover:bg-gold-light">
+                  {t.footer.bookWhatsApp}
+                </a>
+                <a href={contact.phone.href} className="site-button min-h-12 justify-center whitespace-nowrap border border-sand/30 px-5 text-on-dark transition hover:border-gold">
+                  {t.footer.bookCall} {contact.phone.label}
+                </a>
+              </div>
             </div>
-          </div>
-          <div className="mt-6 flex flex-col gap-3">
-            <p className="text-center text-sm font-semibold text-sand">{t.footer.bookForm.orMember}</p>
-            <a href={officeUrl} className="site-button justify-center whitespace-nowrap bg-gold px-5 text-ink">
-              {t.footer.bookOffice}
-            </a>
-            <p className="text-center text-xs text-muted-dark">{t.footer.bookOfficeSignIn}</p>
-            <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="site-button justify-center whitespace-nowrap border border-sand/40 px-5 text-on-dark">
-              {t.footer.bookWhatsApp}
-            </a>
-            <a href={contact.phone.href} className="site-button justify-center whitespace-nowrap border border-sand/40 px-5 text-on-dark">
-              {t.footer.bookCall} {contact.phone.label}
-            </a>
-          </div>
+
+            <div className="rounded-3xl border border-gold/25 bg-forest-900 p-6 sm:p-7">
+              <p className="eyebrow">{f.orMember}</p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-dark">{f.memberLead}</p>
+              <a href={officeUrl} className="mt-5 inline-flex min-h-11 items-center gap-2 font-semibold text-gold-light underline-offset-4 hover:underline">
+                {t.footer.bookOffice}
+                <span aria-hidden="true">→</span>
+              </a>
+            </div>
+          </aside>
         </div>
       </div>
     </section>
