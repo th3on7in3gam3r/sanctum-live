@@ -8,6 +8,7 @@ import { BRAND } from '@plcc/brand/brand';
 import { church } from '@/lib/church';
 import { footerNav, MAIN_NAV, type NavLink } from '@/lib/nav';
 import { SocialIcons } from '@/components/SocialIcons';
+import { BookingForm } from '@/components/BookingForm';
 import { LanguageSwitcher } from '@/components/i18n/LanguageSwitcher';
 import { LanguageOffer } from '@/components/i18n/LanguageOffer';
 import { fill, label, type Dict, type Locale } from '@/lib/i18n';
@@ -274,7 +275,7 @@ function BookingBand({ t }: { t: Dict }) {
     : null;
   return (
     <section aria-labelledby="book-title" className="border-b border-white/10 px-4 py-12 sm:px-6" id="book">
-      <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-gold/25 bg-forest-900 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:p-10 min-[900px]:grid-cols-[1.45fr_1fr] min-[900px]:items-center min-[900px]:gap-12">
+      <div className="mx-auto grid max-w-6xl gap-8 rounded-3xl border border-gold/25 bg-forest-900 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.35)] sm:p-10 min-[900px]:grid-cols-[1.45fr_1fr] min-[900px]:items-start min-[900px]:gap-12">
         <div>
           <p className="eyebrow">{t.footer.bookEyebrow}</p>
           <h2 id="book-title" className="mt-3 font-display text-3xl leading-tight text-on-dark sm:text-4xl">{t.footer.bookTitle}</h2>
@@ -296,6 +297,7 @@ function BookingBand({ t }: { t: Dict }) {
               </button>
             ))}
           </div>
+          <BookingForm t={t} pick={pick} />
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
           <p className="eyebrow">{t.footer.bookContact}</p>
@@ -313,6 +315,7 @@ function BookingBand({ t }: { t: Dict }) {
             </div>
           </div>
           <div className="mt-6 flex flex-col gap-3">
+            <p className="text-center text-sm font-semibold text-sand">{t.footer.bookForm.orMember}</p>
             <a href={officeUrl} className="site-button justify-center whitespace-nowrap bg-gold px-5 text-ink">
               {t.footer.bookOffice}
             </a>
