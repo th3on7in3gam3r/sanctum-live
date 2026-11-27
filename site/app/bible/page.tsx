@@ -86,9 +86,10 @@ export default async function BiblePage({ searchParams }: Search) {
   return (
     <>
       {banner ? (
-        <section className="relative isolate overflow-hidden bg-forest-900">
+        <section className="relative isolate overflow-hidden bg-[#0b2318]">
           <h1 className="sr-only">PLCC Bible: Read, Study, Reflect, Share</h1>
-          <picture>
+          {/* The whole picture, never cropped: its words are part of it. Centred and capped on very wide screens. */}
+          <picture className="mx-auto block max-w-[1500px]">
             <source media="(min-width: 768px)" srcSet="/bible-banner.webp" />
             <img
               src="/bible-banner-phone.webp"
@@ -96,10 +97,9 @@ export default async function BiblePage({ searchParams }: Search) {
               width={1920}
               height={640}
               fetchPriority="high"
-              className="block h-[200px] w-full object-cover object-[58%_18%] sm:h-[260px] min-[900px]:h-[330px] min-[1400px]:h-[380px]"
+              className="block h-auto w-full"
             />
           </picture>
-          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-forest-900/40" />
         </section>
       ) : (
       <section className={`relative isolate overflow-hidden text-on-dark ${luganda ? 'bible-hero-luganda' : 'bg-forest-900'}`}>
@@ -132,7 +132,7 @@ export default async function BiblePage({ searchParams }: Search) {
         </div>
       </section>
       )}
-      <section className="bg-cream px-4 pb-24 pt-6 text-ink sm:px-6 min-[900px]:-mt-12 min-[900px]:pt-0">
+      <section className={`bg-cream px-4 pb-24 pt-6 text-ink sm:px-6 ${banner ? 'min-[900px]:pt-8' : 'min-[900px]:-mt-12 min-[900px]:pt-0'}`}>
         <div className="relative">
           {data ? (
             <BibleReader

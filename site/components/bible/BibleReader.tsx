@@ -1071,14 +1071,7 @@ export function BibleReader({
               <p className="mt-2 text-[16px] font-medium text-ink/75 sm:text-[18px]">{subtitleName}</p>
               <span aria-hidden="true" className="mt-3 block h-[3px] w-16 rounded-full bg-gradient-to-r from-gold to-gold/30" />
             </div>
-            <button
-              type="button"
-              onClick={() => setFocusMode(true)}
-              className={`hidden h-10 shrink-0 items-center gap-2 rounded-full bg-ink/[0.05] px-4 text-[14px] font-semibold text-ink hover:bg-ink/[0.08] sm:inline-flex ${focusRing}`}
-            >
-              <I.focus className="h-4 w-4" /> Focus mode
-            </button>
-            {/* Phone: reading tools sit beside the title (the tab row keeps the feature tabs). */}
+            {/* Focus mode lives in the tool row above (one place, no duplicate). Phone: reading tools sit beside the title (the tab row keeps the feature tabs). */}
             <div className="flex shrink-0 items-center gap-0.5 sm:hidden">
               {sizeControl}
               <IconButton label={isSaved ? 'Remove from saved' : 'Save this chapter'} onClick={toggleSaved} pressed={isSaved}>
