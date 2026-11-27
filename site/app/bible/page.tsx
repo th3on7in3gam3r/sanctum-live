@@ -88,8 +88,8 @@ export default async function BiblePage({ searchParams }: Search) {
       {banner ? (
         <section className="relative isolate overflow-hidden bg-[#0b2318]">
           <h1 className="sr-only">PLCC Bible: Read, Study, Reflect, Share</h1>
-          {/* The whole picture, never cropped: its words are part of it. Centred and capped on very wide screens. */}
-          <picture className="mx-auto block max-w-[1500px]">
+          {/* Full-width, slim banner: cropped to the title band (the words sit in the upper middle of the picture). */}
+          <picture className="block">
             <source media="(min-width: 768px)" srcSet="/bible-banner.webp" />
             <img
               src="/bible-banner-phone.webp"
@@ -97,9 +97,13 @@ export default async function BiblePage({ searchParams }: Search) {
               width={1920}
               height={640}
               fetchPriority="high"
-              className="block h-auto w-full"
+              className="block w-full object-cover object-[56%_16%]"
+              style={{ height: 'clamp(190px, 22vw, 360px)' }}
             />
           </picture>
+          {/* Soft edges: a gentle vignette and a fade into the page below. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(6,22,15,0.35))]" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b from-transparent to-[#0b2318]/30" />
         </section>
       ) : (
       <section className={`relative isolate overflow-hidden text-on-dark ${luganda ? 'bible-hero-luganda' : 'bg-forest-900'}`}>
