@@ -2,7 +2,7 @@ import { PageHero } from '@/components/page/PageHero';
 import { PhotoTile } from '@/components/page/PhotoTile';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { listLeaders } from '@/lib/api';
-import { leaderBio, leaderPhotoUrl, withBuiltInLeaders } from '@/lib/leaders';
+import { hasPoster, leaderBio, leaderPhotoUrl, withBuiltInLeaders } from '@/lib/leaders';
 import { firstParagraph } from '@/lib/pages';
 import { getDictionary } from '@/lib/locale';
 import { label } from '@/lib/i18n';
@@ -26,7 +26,7 @@ export default async function LeadershipPage() {
                   src={leaderPhotoUrl(leader)}
                   alt={leader.name}
                   sizes="(min-width: 900px) 30vw, 100vw"
-                  className="aspect-[4/5] rounded-[22px]"
+                  className={`${hasPoster(leader) ? 'aspect-[1199/1312]' : 'aspect-[4/5]'} rounded-[22px]`}
                 />
                 <p className="font-display mt-4 text-3xl">{leader.name}</p>
                 <p className="text-gold-ink">{leader.role}</p>

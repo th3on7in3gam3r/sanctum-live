@@ -2,14 +2,14 @@ import type { PublicLeader } from '@/lib/api';
 import { church } from '@/lib/church';
 
 /**
- * Official portraits supplied by the church (cropped from their leadership posters).
+ * Official leadership posters supplied by the church (name and title are part of the artwork).
  * These win over a photo uploaded in Canaan, so the site always shows the approved picture.
  * To let Canaan's photo show again for someone, remove their line here.
  */
 const officialPortraits: Record<string, string> = {
-  Grace: '/leader-grace.jpg',
-  Kennedy: '/leader-kennedy.jpg',
-  Sandra: '/leader-sandra.jpg',
+  Grace: '/leader-grace-poster.jpg',
+  Kennedy: '/leader-kennedy-poster.jpg',
+  Sandra: '/leader-sandra-poster.jpg',
 };
 
 const bioFallbacks: Record<string, string> = {
@@ -50,6 +50,11 @@ function match<T>(name: string, table: Record<string, T>): T | undefined {
 
 export function leaderPhotoUrl(leader: Pick<PublicLeader, 'name' | 'photoUrl'>) {
   return match(leader.name, officialPortraits) || leader.photoUrl || null;
+}
+
+/** True when the photo is a church poster that already shows the name and title. */
+export function hasPoster(leader: Pick<PublicLeader, 'name'>) {
+  return Boolean(match(leader.name, officialPortraits));
 }
 
 export function leaderBio(leader: Pick<PublicLeader, 'name' | 'bio'>) {

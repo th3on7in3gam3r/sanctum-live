@@ -14,7 +14,7 @@ import {
 } from '@/components/page/AboutArt';
 import { getPage, listLeaders, type PublicLeader } from '@/lib/api';
 import { prayerJoinUrl } from '@/lib/env';
-import { isPastor, leaderBio, leaderPhotoUrl, leaderSocials, withBuiltInLeaders, type LeaderSocial } from '@/lib/leaders';
+import { hasPoster, isPastor, leaderBio, leaderPhotoUrl, leaderSocials, withBuiltInLeaders, type LeaderSocial } from '@/lib/leaders';
 import { firstParagraph, headingPairs } from '@/lib/pages';
 import { getDictionary } from '@/lib/locale';
 import { label } from '@/lib/i18n';
@@ -40,11 +40,11 @@ const socialPaths: Record<LeaderSocial['kind'], React.ReactNode> = {
   whatsapp: <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3a.5.5 0 0 0 0-.5c0-.1-.6-1.4-.8-1.9s-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.1 5.1 0 0 0 1.1 2.7 11.6 11.6 0 0 0 4.4 3.9c1.6.7 2.3.8 3.1.6a2.7 2.7 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.6-.3z" />,
 };
 
-function LeaderSocials({ leader }: { leader: PublicLeader }) {
+function LeaderSocials({ leader, center = false }: { leader: PublicLeader; center?: boolean }) {
   const links = leaderSocials(leader);
   if (!links.length) return null;
   return (
-    <ul className="mt-5 flex gap-2.5">
+    <ul className={`mt-5 flex gap-2.5 ${center ? 'justify-center' : ''}`}>
       {links.map((link) => (
         <li key={link.kind}>
           <a
@@ -66,6 +66,29 @@ function LeaderSocials({ leader }: { leader: PublicLeader }) {
 
 function LeaderCard({ leader, compact = false }: { leader: PublicLeader; compact?: boolean }) {
   const bio = leaderBio(leader);
+
+  // Church posters already show the name and title, so the whole poster is shown and the text below it
+  // keeps only the bio and links (name and role stay for screen readers and search).
+  if (hasPoster(leader)) {
+    return (
+      <article className={`mx-auto flex w-full flex-col items-center text-center ${compact ? 'max-w-[340px]' : 'max-w-[440px]'}`}>
+        <div className="relative aspect-[1199/1312] w-full overflow-hidden rounded-[22px] border-2 border-gold/80 shadow-[0_0_50px_rgba(201,163,90,0.28)]">
+          <Image
+            src={leaderPhotoUrl(leader) as string}
+            alt={`${leader.name}, ${leader.role}`}
+            fill
+            sizes={compact ? '340px' : '(min-width: 900px) 440px, 90vw'}
+            className="object-cover"
+          />
+        </div>
+        <h3 className="sr-only">{leader.name}</h3>
+        <p className="sr-only">{leader.role}</p>
+        {bio ? <p className="mt-6 max-w-sm text-[16px] leading-relaxed text-sand/85">{bio}</p> : null}
+        <LeaderSocials leader={leader} center />
+      </article>
+    );
+  }
+
   return (
     <article className="flex flex-col gap-6 sm:flex-row sm:items-center">
       <GlowPhoto
