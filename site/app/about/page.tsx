@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { GlowPhoto } from '@/components/GlowPhoto';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
@@ -110,11 +111,43 @@ export default async function AboutPage() {
   const missionText = translated ? t.story.missionText : mission?.text || t.story.missionText;
   const visionText = translated ? t.story.visionText : vision?.text || t.story.visionText;
   const storyText = translated ? t.story.body : origin?.text || t.story.body;
+  // The designed banner has its words painted in English, so it shows for English on tablets and computers.
+  // Phones (where painted words get too small) and Luganda/Kiswahili get the built hero underneath.
+  const showBanner = !translated;
 
   return (
     <>
-      {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-forest-900 text-on-dark">
+      {/* ── Hero banner (designed artwork) ───────────────────── */}
+      {showBanner ? (
+        <section className="hidden bg-forest-900 md:block">
+          <div className="relative mx-auto aspect-[2/1] w-full max-w-[1774px]">
+            <Image
+              src="/about-hero.webp"
+              alt="A church member warmly greets a visitor at the doors of Promised Land Christian Center"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+            <h1 className="sr-only">{a.titleA} {a.titleB}</h1>
+            <p className="sr-only">{firstParagraph(about)}</p>
+            {/* Clickable areas sit exactly over the two buttons painted in the artwork. */}
+            <Link
+              href="/visit"
+              aria-label={a.visitCta}
+              className="absolute left-[7.1%] top-[62.6%] h-[8.6%] w-[14.9%] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-light"
+            />
+            <Link
+              href="/ministries"
+              aria-label={label(t, 'Join a Ministry')}
+              className="absolute left-[23.9%] top-[62.6%] h-[8.6%] w-[15.5%] rounded-full transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-light"
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── Hero (built: phones and other languages) ─────────── */}
+      <section className={`relative overflow-hidden bg-forest-900 text-on-dark ${showBanner ? 'md:hidden' : ''}`}>
         <div
           className="pointer-events-none absolute inset-0"
           style={{ background: 'radial-gradient(circle at 12% 0%, rgba(201,163,90,0.18), transparent 40%), linear-gradient(180deg, #1d372c 0%, #12231c 60%, #0d1a14 100%)' }}
