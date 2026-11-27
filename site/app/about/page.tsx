@@ -111,7 +111,7 @@ export default async function AboutPage() {
   const missionText = translated ? t.story.missionText : mission?.text || t.story.missionText;
   const visionText = translated ? t.story.visionText : vision?.text || t.story.visionText;
   const storyText = translated ? t.story.body : origin?.text || t.story.body;
-  // The designed banner has its words painted in English, so it shows for English on tablets and computers.
+  // The designed banner has its words painted in English (buttons are real links on top), so it shows for English on tablets and computers.
   // Phones (where painted words get too small) and Luganda/Kiswahili get the built hero underneath.
   const showBanner = !translated;
 
@@ -122,7 +122,7 @@ export default async function AboutPage() {
         <section className="hidden bg-forest-900 md:block">
           <div className="relative mx-auto aspect-[2/1] w-full max-w-[1774px]">
             <Image
-              src="/about-hero.webp"
+              src="/about-hero-v2.webp"
               alt="A church member warmly greets a visitor at the doors of Promised Land Christian Center"
               fill
               priority
@@ -131,17 +131,21 @@ export default async function AboutPage() {
             />
             <h1 className="sr-only">{a.titleA} {a.titleB}</h1>
             <p className="sr-only">{firstParagraph(about)}</p>
-            {/* Clickable areas sit exactly over the two buttons painted in the artwork. */}
-            <Link
-              href="/visit"
-              aria-label={a.visitCta}
-              className="absolute left-[7.1%] top-[62.6%] h-[8.6%] w-[14.9%] rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-light"
-            />
-            <Link
-              href="/ministries"
-              aria-label={label(t, 'Join a Ministry')}
-              className="absolute left-[23.9%] top-[62.6%] h-[8.6%] w-[15.5%] rounded-full transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-light"
-            />
+            {/* Real buttons, placed under the words in the artwork and scaled with it. */}
+            <div className="absolute left-[7.2%] top-[62.5%] flex gap-[1.4vw] min-[1774px]:gap-6">
+              <Link
+                href="/visit"
+                className="inline-flex items-center gap-[0.6em] rounded-full bg-[#f0c043] px-[1.6em] py-[0.8em] text-[clamp(14px,1.3vw,22px)] font-semibold text-forest-900 shadow-[0_6px_20px_rgba(0,0,0,0.25)] transition hover:bg-gold-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-light"
+              >
+                {a.visitCta} <ArrowIcon className="h-[1.1em] w-[1.1em]" />
+              </Link>
+              <Link
+                href="/ministries"
+                className="inline-flex items-center rounded-full border-2 border-white/90 px-[1.6em] py-[0.8em] text-[clamp(14px,1.3vw,22px)] font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-light"
+              >
+                {label(t, 'Join a Ministry')}
+              </Link>
+            </div>
           </div>
         </section>
       ) : null}
