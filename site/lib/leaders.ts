@@ -8,7 +8,7 @@ import { church } from '@/lib/church';
  */
 const officialPortraits: Record<string, string> = {
   Grace: '/leader-grace-poster.jpg',
-  Kennedy: '/leader-kennedy-poster.jpg',
+  Kennedy: '/leader-kennedy-apostle-poster.jpg',
   Sandra: '/leader-sandra-poster.jpg',
 };
 
@@ -37,9 +37,17 @@ const socialLinks: Record<string, LeaderSocial[]> = {
 /** Shown when Canaan has no entry for them yet (or the leaders list can't be reached). */
 const builtInLeaders: PublicLeader[] = [
   { id: 'builtin-grace', name: 'Pastor Grace Hiire', role: 'Senior Pastor', photoUrl: null, bio: null, sortOrder: 1 },
-  { id: 'builtin-kennedy', name: 'Pastor Kennedy Hiire', role: 'Senior Pastor', photoUrl: null, bio: null, sortOrder: 2 },
+  { id: 'builtin-kennedy', name: 'Apostle Kennedy Hiire', role: 'Apostle', photoUrl: null, bio: null, sortOrder: 2 },
   { id: 'builtin-sandra', name: 'Sandra Namuswe', role: 'Finance & Treasury', photoUrl: null, bio: null, sortOrder: 50 },
 ];
+
+/**
+ * Correct titles the church has confirmed, applied over whatever Canaan has stored
+ * (so the site is right even before Canaan's leader entry is updated).
+ */
+const titleCorrections: Record<string, { name: string; role: string; fixBio: [RegExp, string] }> = {
+  Kennedy: { name: 'Apostle Kennedy Hiire', role: 'Apostle', fixBio: [/\bPastor Kennedy\b/g, 'Apostle Kennedy'] },
+};
 
 function match<T>(name: string, table: Record<string, T>): T | undefined {
   for (const [key, value] of Object.entries(table)) {
@@ -65,8 +73,15 @@ export function leaderSocials(leader: Pick<PublicLeader, 'name'>) {
   return match(leader.name, socialLinks) || [];
 }
 
+function correctTitle(leader: PublicLeader): PublicLeader {
+  const fix = match(leader.name, titleCorrections);
+  if (!fix) return leader;
+  return { ...leader, name: fix.name, role: fix.role, bio: leader.bio ? leader.bio.replace(fix.fixBio[0], fix.fixBio[1]) : leader.bio };
+}
+
 /** Canaan's list, plus any built-in leader it doesn't have yet (matched by first name). */
-export function withBuiltInLeaders(leaders: PublicLeader[]) {
+export function withBuiltInLeaders(cmsLeaders: PublicLeader[]) {
+  const leaders = cmsLeaders.map(correctTitle);
   const firstName = (name: string) => name.replace(/^(Pastor|Ps\.?|Pr\.?|Apostle)\s+/i, '').split(/\s+/)[0];
   const missing = builtInLeaders.filter(
     (fallback) => !leaders.some((leader) => leader.name.includes(firstName(fallback.name))),
