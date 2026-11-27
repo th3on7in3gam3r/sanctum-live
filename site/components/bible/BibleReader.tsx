@@ -116,6 +116,12 @@ const I = {
   chat: (p: IconProps) => <Svg {...p}><path d="M4 5h16v11H9l-5 4z" /></Svg>,
   people: (p: IconProps) => <Svg {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5" /><circle cx="17" cy="9" r="2.4" /><path d="M16.5 14c2.4.2 4 1.8 4.5 4.5" /></Svg>,
   trash: (p: IconProps) => <Svg {...p}><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" /></Svg>,
+  globe: (p: IconProps) => <Svg {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z" /></Svg>,
+  list: (p: IconProps) => <Svg {...p}><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></Svg>,
+  calendar: (p: IconProps) => <Svg {...p}><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M8 3v4M16 3v4M3.5 10h17M8 14h.01M12 14h.01M16 14h.01" /></Svg>,
+  bolt: (p: IconProps) => <Svg {...p}><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></Svg>,
+  share: (p: IconProps) => <Svg {...p}><circle cx="18" cy="5" r="2.5" /><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="19" r="2.5" /><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4" /></Svg>,
+  study: (p: IconProps) => <Svg {...p}><path d="M4 6h10a4 4 0 0 1 4 4v10H8a4 4 0 0 1-4-4z" /><path d="M8 10h6M8 14h4" /></Svg>,
   headphones: (p: IconProps) => <Svg {...p}><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><rect x="3" y="14" width="4" height="7" rx="1.5" /><rect x="17" y="14" width="4" height="7" rx="1.5" /></Svg>,
   whatsapp: ({ className = 'h-5 w-5' }: IconProps) => (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
@@ -208,7 +214,29 @@ const selectCls =
   'h-11 w-full appearance-none rounded-xl border border-ink/15 bg-white pl-3.5 pr-9 text-[15px] font-medium text-ink outline-none transition focus:border-forest-800 focus:ring-2 focus:ring-forest-800/15';
 const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold';
 
-function Select({ label, value, onChange, children, className = '' }: { label?: string; value: string | number; onChange: (v: string) => void; children: ReactNode; className?: string }) {
+function Select({ label, value, onChange, children, className = '', dark, icon }: { label?: string; value: string | number; onChange: (v: string) => void; children: ReactNode; className?: string; dark?: boolean; icon?: ReactNode }) {
+  if (dark) {
+    // PLCC Bible toolbar tile: deep green, small gold-tinted label above the choice.
+    return (
+      <label className={`flex min-w-0 items-center gap-2.5 rounded-2xl bg-forest-900 px-3 py-2 text-cream shadow-[0_6px_16px_rgba(13,26,20,0.18)] transition focus-within:ring-2 focus-within:ring-gold ${className}`}>
+        {icon ? <span className="shrink-0 text-gold">{icon}</span> : null}
+        <span className="min-w-0 flex-1">
+          {label ? <span className="block text-[12px] font-semibold text-cream/70">{label}</span> : null}
+          <span className="relative block">
+            <select
+              className="h-8 w-full min-w-0 cursor-pointer appearance-none truncate rounded-lg bg-white/[0.08] pl-2.5 pr-8 text-[15px] font-semibold text-cream outline-none [&>optgroup]:text-ink [&>option]:text-ink"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              aria-label={label}
+            >
+              {children}
+            </select>
+            <I.down className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-cream/80" />
+          </span>
+        </span>
+      </label>
+    );
+  }
   return (
     <label className={`block ${className}`}>
       {label ? <span className="mb-1.5 block text-[13px] font-medium text-ink/65">{label}</span> : null}
@@ -291,7 +319,10 @@ export function BibleReader({
   const [compareState, setCompareState] = useState<'idle' | 'loading' | 'error' | 'missing'>('idle');
   const [tab, setTab] = useState<'read' | 'understand' | 'live'>('live');
   const [panelOpen, setPanelOpen] = useState(false);
+  const [listenOpen, setListenOpen] = useState(false);
   const readerTop = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const panelPhoneRef = useRef<HTMLElement | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -545,6 +576,32 @@ export function BibleReader({
     writeJson(STORAGE.compareOn, true);
     readerTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  const toggleCompare = () => {
+    if (compareOn) {
+      setCompareOn(false);
+      writeJson(STORAGE.compareOn, false);
+    } else openCompare();
+  };
+  /** Open a Walk the Word tab and bring the panel into view (it sits beside the text on a computer, below it on a phone). */
+  const openPanel = (key: 'read' | 'understand' | 'live') => {
+    setTab(key);
+    setPanelOpen(true);
+    const target = window.matchMedia('(min-width: 1100px)').matches ? panelRef.current : panelPhoneRef.current;
+    window.setTimeout(() => target?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  };
+  const shareChapter = async () => {
+    const url = `${window.location.origin}${href(t.id, book.id, chapter.chapter)}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${ref} (${tLabel})`, text: `Read ${ref} at Promised Land Christian Center`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      showToast('Link copied');
+    } catch {
+      /* closed the share sheet */
+    }
+  };
 
   /* ── Pieces ── */
 
@@ -572,7 +629,7 @@ export function BibleReader({
                   }
                 }}
                 className={`grid cursor-pointer grid-cols-[1.7em_1fr] scroll-mt-32 rounded-2xl px-2 py-2 leading-[1.55] text-ink sm:grid-cols-[2.1em_1fr] transition-colors motion-reduce:transition-none sm:px-4 ${focusRing} ${
-                  isSel ? 'bg-[#f6eedc] shadow-[inset_3px_0_0_#c9a35a]' : 'hover:bg-ink/[0.025]'
+                  isSel ? 'bg-[#fbecc4] font-semibold shadow-[inset_3px_0_0_#c9a35a]' : 'hover:bg-[#fbf3df]'
                 }`}
               >
                 <span className="pt-[0.28em] font-sans text-[0.62em] font-bold text-gold-text">{v.number}</span>
@@ -592,20 +649,26 @@ export function BibleReader({
     </div>
   );
 
+  const pillCls = `inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-gold/60 bg-[#fbf3df] px-4 text-[15px] font-semibold text-ink shadow-[0_2px_6px_rgba(201,163,90,0.18)] transition hover:border-gold hover:bg-[#f8ebc9] sm:px-5 ${focusRing}`;
   const chapterNav = (compact = false) => (
-    <nav aria-label="Chapters" className="flex items-center justify-between gap-3">
+    <nav aria-label="Chapters" className="flex items-center justify-between gap-2 sm:gap-3">
       {prevHref ? (
-        <Link href={prevHref} className={`inline-flex h-11 items-center gap-2 rounded-xl border border-ink/15 bg-white px-4 text-[15px] font-semibold text-ink transition hover:border-forest-800 ${focusRing}`}>
-          <I.left className="h-4 w-4" /> Previous{compact ? null : <span className="hidden sm:inline">&nbsp;chapter</span>}
+        <Link href={prevHref} className={pillCls}>
+          <I.left className="h-4 w-4 text-gold-text" /> <span>{compact ? 'Prev' : <>Prev<span className="hidden sm:inline">ious chapter</span></>}</span>
         </Link>
       ) : (
-        <span />
+        <span className="w-[88px]" />
       )}
+      <div className="min-w-0 max-w-[220px] flex-1">
+        <PassagePicker pill books={books} bookId={book.id} chapter={chapter.chapter} onPick={(b, c) => router.push(href(t.id, b, c))} />
+      </div>
       {nextHref ? (
-        <Link href={nextHref} className={`inline-flex h-11 items-center gap-2 rounded-xl bg-forest-800 px-5 text-[15px] font-semibold text-cream transition hover:bg-forest-900 ${focusRing}`}>
-          Next{compact ? null : <span className="hidden sm:inline">&nbsp;chapter</span>} <I.right className="h-4 w-4" />
+        <Link href={nextHref} className={pillCls}>
+          <span>{compact ? 'Next' : <>Next<span className="hidden sm:inline">&nbsp;chapter</span></>}</span> <I.right className="h-4 w-4 text-gold-text" />
         </Link>
-      ) : null}
+      ) : (
+        <span className="w-[88px]" />
+      )}
     </nav>
   );
 
@@ -867,16 +930,44 @@ export function BibleReader({
     </>
   );
 
+  const quickActions = (
+    <div className={`${card} p-5`}>
+      <h2 className="flex items-center gap-2 font-display text-[22px] font-semibold text-forest-800"><I.bolt className="h-5 w-5 text-gold-text" filled /> Quick actions</h2>
+      <div className="mt-3 grid gap-2">
+        {[
+          { label: isSaved ? 'Chapter bookmarked' : 'Bookmark this chapter', icon: <I.bookmark className={`h-5 w-5 ${isSaved ? 'text-gold' : 'text-gold-text'}`} filled={isSaved} />, onClick: toggleSaved, pressed: isSaved },
+          { label: readToday ? 'Read today ✓' : 'Mark as read today', icon: <I.check className="h-5 w-5 text-gold-text" />, onClick: markRead, pressed: readToday },
+          { label: 'Write a reflection', icon: <I.pen className="h-5 w-5 text-gold-text" />, onClick: () => openPanel('live') },
+          { label: 'Share this chapter', icon: <I.share className="h-5 w-5 text-gold-text" />, onClick: () => void shareChapter() },
+        ].map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            onClick={a.onClick}
+            aria-pressed={a.pressed}
+            className={`flex h-11 items-center gap-3 rounded-xl border border-ink/[0.09] bg-white px-3.5 text-left text-[15px] font-semibold text-ink transition hover:border-gold/70 hover:bg-[#fbf8f1] ${focusRing}`}
+          >
+            {a.icon}
+            {a.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-3 text-[13px] text-ink/60">Tip: tap any verse to highlight it, then save or share it.</p>
+    </div>
+  );
+
   /* ── Layout ── */
 
   return (
     <div className="mx-auto max-w-6xl">
       {/* Toolbar — computer */}
-      <div className={`${card} hidden items-end gap-4 p-4 sm:p-5 min-[900px]:flex`}>
+      <div className={`${card} hidden items-stretch gap-3 p-3 min-[900px]:flex`}>
         <Select
+          dark
+          icon={<I.globe className="h-6 w-6" />}
           label={labels.language}
           value={t.language}
-          className="w-[150px] shrink-0"
+          className="w-[190px] shrink-0"
           onChange={(code) => {
             const next = translations.find((x) => x.language === code);
             if (next) router.push(href(next.id, book.id, chapter.chapter));
@@ -886,30 +977,29 @@ export function BibleReader({
             <option key={l.code} value={l.code}>{l.label}</option>
           ))}
         </Select>
-        <Select label={labels.translation} value={t.id} className="w-[260px] shrink-0 min-[1200px]:w-[300px]" onChange={(id) => router.push(href(id, book.id, chapter.chapter))}>
+        <Select dark icon={<I.book className="h-6 w-6" />} label={labels.translation} value={t.id} className="w-[280px] shrink-0 min-[1200px]:w-[330px]" onChange={(id) => router.push(href(id, book.id, chapter.chapter))}>
           {translations.filter((x) => x.language === t.language).map((x) => (
             <option key={x.id} value={x.id} title={x.name}>{fullLabel(x)}</option>
           ))}
         </Select>
-        <Select label={labels.book} value={book.id} className="w-[160px] shrink-0" onChange={(id) => router.push(href(t.id, id, 1))}>
+        <Select dark icon={<I.list className="h-6 w-6" />} label={labels.book} value={book.id} className="w-[190px] shrink-0" onChange={(id) => router.push(href(t.id, id, 1))}>
           {books.map((b) => (
             <option key={b.id} value={b.id}>{b.name}</option>
           ))}
         </Select>
-        <Select label={labels.chapter} value={chapter.chapter} className="w-[90px] shrink-0" onChange={(c) => router.push(href(t.id, book.id, Number(c)))}>
+        <Select dark label={labels.chapter} value={chapter.chapter} className="w-[110px] shrink-0" onChange={(c) => router.push(href(t.id, book.id, Number(c)))}>
           {Array.from({ length: book.numberOfChapters }, (_, i) => i + 1).map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}
         </Select>
-        <span className="mb-1 h-9 w-px shrink-0 bg-ink/10" aria-hidden="true" />
-        <SearchBox value={searchInput} onChange={setSearchInput} onSubmit={runSearch} />
+        <SearchBox dark value={searchInput} onChange={setSearchInput} onSubmit={runSearch} />
       </div>
 
       {/* Toolbar — phone/tablet */}
       <div className="sticky top-0 z-20 -mx-4 border-b border-ink/[0.06] bg-cream/95 px-4 py-3 backdrop-blur min-[900px]:hidden sm:-mx-6 sm:px-6">
         <div className="grid grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] gap-2.5">
-          <PassagePicker books={books} bookId={book.id} chapter={chapter.chapter} onPick={(b, c) => router.push(href(t.id, b, c))} />
-          <Select value={t.id} onChange={(id) => router.push(href(id, book.id, chapter.chapter))}>
+          <PassagePicker dark books={books} bookId={book.id} chapter={chapter.chapter} onPick={(b, c) => router.push(href(t.id, b, c))} />
+          <Select dark value={t.id} className="!py-2.5" onChange={(id) => router.push(href(id, book.id, chapter.chapter))}>
             {languages.map((lang) => {
               const list = translations.filter((x) => x.language === lang.code);
               if (!list.length) return null;
@@ -928,6 +1018,43 @@ export function BibleReader({
         </div>
       </div>
 
+      {/* Feature tabs (PLCC Bible): Bible · Parallel · Study · Listen · My notes, with reading tools on the right. */}
+      <div className="mt-4 flex items-center gap-2 rounded-2xl border border-ink/[0.07] bg-[#f4efe2] p-1.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]" role="toolbar" aria-label="Bible tools">
+          {[
+            { key: 'bible', label: 'Bible', icon: <I.book className="h-5 w-5" />, active: !compareOn && !listenOpen, onClick: () => { if (compareOn) toggleCompare(); setListenOpen(false); readerTop.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+            { key: 'parallel', label: 'Parallel', icon: <I.layers className="h-5 w-5" />, active: compareOn, onClick: toggleCompare },
+            { key: 'study', label: 'Study', icon: <I.study className="h-5 w-5" />, active: false, onClick: () => openPanel('understand') },
+            ...(chapter.audio.length ? [{ key: 'listen', label: 'Listen', icon: <I.headphones className="h-5 w-5" />, active: listenOpen, onClick: () => setListenOpen((v) => !v) }] : []),
+            { key: 'notes', label: 'My notes', icon: <I.pen className="h-5 w-5" />, active: false, onClick: () => openPanel('live') },
+          ].map((b) => (
+            <button
+              key={b.key}
+              type="button"
+              onClick={b.onClick}
+              aria-pressed={b.active}
+              className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-xl px-3.5 text-[15px] font-semibold transition ${focusRing} ${
+                b.active ? 'bg-gradient-to-b from-[#f3cd6b] to-[#d9a83a] text-forest-950 shadow-[0_4px_12px_rgba(201,163,90,0.45)]' : 'text-ink/80 hover:bg-white hover:text-ink'
+              }`}
+            >
+              {b.icon}
+              {b.label}
+            </button>
+          ))}
+        </div>
+        <div className="hidden shrink-0 items-center gap-0.5 border-l border-ink/10 pl-1.5 sm:flex">
+          {sizeControl}
+          <IconButton label={isSaved ? 'Remove from saved' : 'Save this chapter'} onClick={toggleSaved} pressed={isSaved}>
+            <I.bookmark className={`h-5 w-5 ${isSaved ? 'text-gold' : ''}`} filled={isSaved} />
+          </IconButton>
+          <span className="hidden sm:inline-flex">
+            <IconButton label="Focus mode" onClick={() => setFocusMode(true)}>
+              <I.focus className="h-5 w-5" />
+            </IconButton>
+          </span>
+        </div>
+      </div>
+
       {searchNote ? (
         <p className="mt-4 flex flex-wrap items-center gap-2 text-sm text-ink/70" role="status">
           {searchNote}
@@ -940,24 +1067,38 @@ export function BibleReader({
         <article ref={readerTop} className={`${card} scroll-mt-24 p-4 sm:p-8`} aria-label={ref}>
           <header className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <h2 className="font-display text-[44px] leading-none tracking-[-0.02em] text-ink sm:text-[56px]">{ref}</h2>
-              <p className="mt-2 font-display text-[17px] italic text-ink/70 sm:text-[19px]">{subtitleName}</p>
+              <h2 className="font-display text-[44px] font-semibold leading-none tracking-[-0.02em] text-forest-800 sm:text-[56px]">{ref}</h2>
+              <p className="mt-2 text-[16px] font-medium text-ink/75 sm:text-[18px]">{subtitleName}</p>
+              <span aria-hidden="true" className="mt-3 block h-[3px] w-16 rounded-full bg-gradient-to-r from-gold to-gold/30" />
             </div>
-            <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setFocusMode(true)}
+              className={`hidden h-10 shrink-0 items-center gap-2 rounded-full bg-ink/[0.05] px-4 text-[14px] font-semibold text-ink hover:bg-ink/[0.08] sm:inline-flex ${focusRing}`}
+            >
+              <I.focus className="h-4 w-4" /> Focus mode
+            </button>
+            {/* Phone: reading tools sit beside the title (the tab row keeps the feature tabs). */}
+            <div className="flex shrink-0 items-center gap-0.5 sm:hidden">
               {sizeControl}
-              <span className="h-6 w-px bg-ink/10" aria-hidden="true" />
               <IconButton label={isSaved ? 'Remove from saved' : 'Save this chapter'} onClick={toggleSaved} pressed={isSaved}>
                 <I.bookmark className={`h-5 w-5 ${isSaved ? 'text-gold' : ''}`} filled={isSaved} />
               </IconButton>
-              <button
-                type="button"
-                onClick={() => setFocusMode(true)}
-                className={`ml-1 hidden h-10 items-center gap-2 rounded-full bg-ink/[0.05] px-4 text-[14px] font-semibold text-ink hover:bg-ink/[0.08] sm:inline-flex ${focusRing}`}
-              >
-                <I.focus className="h-4 w-4" /> Focus mode
-              </button>
             </div>
           </header>
+
+          {listenOpen && chapter.audio.length ? (
+            <div className="mt-5 flex flex-wrap items-center gap-3 rounded-2xl border border-gold/40 bg-[#fbf5e8] px-4 py-3">
+              <I.headphones className="h-5 w-5 text-gold-text" />
+              <span className="text-sm font-semibold text-ink">Listen to {ref}</span>
+              <audio controls autoPlay preload="none" src={chapter.audio[0].url} className="h-10 min-w-0 flex-1">
+                <track kind="captions" />
+              </audio>
+              <button type="button" onClick={() => setListenOpen(false)} className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold text-ink/70 hover:text-ink ${focusRing}`}>
+                <I.close className="h-4 w-4" /> Close
+              </button>
+            </div>
+          ) : null}
 
           {compareBar}
 
@@ -981,14 +1122,24 @@ export function BibleReader({
         </article>
 
         {/* Walk the Word — computer */}
-        <aside className={`${card} hidden p-6 min-[1100px]:sticky min-[1100px]:top-6 min-[1100px]:block`} aria-label="Walk the Word">
-          <h2 className="font-display text-[34px] leading-tight text-ink">Walk the Word</h2>
-          <p className="mt-1 text-[15px] text-ink/65">From Scripture to everyday life.</p>
-          {panelBody}
-        </aside>
+        <div className="hidden gap-5 min-[1100px]:grid">
+          <VerseOfTheDay translationId={t.id} translationLabel={tLabel} />
+          {quickActions}
+          <aside ref={panelRef} className={`${card} scroll-mt-6 p-6`} aria-label="Walk the Word">
+            <h2 className="font-display text-[34px] leading-tight text-ink">Walk the Word</h2>
+            <p className="mt-1 text-[15px] text-ink/65">From Scripture to everyday life.</p>
+            {panelBody}
+          </aside>
+        </div>
+
+        {/* Verse of the Day and quick actions — phone/tablet */}
+        <div className="grid gap-5 min-[1100px]:hidden">
+          <VerseOfTheDay translationId={t.id} translationLabel={tLabel} />
+          {quickActions}
+        </div>
 
         {/* Walk the Word — phone/tablet (collapsible card) */}
-        <section className={`${card} p-5 min-[1100px]:hidden`} aria-label="Walk the Word">
+        <section ref={panelPhoneRef} className={`${card} scroll-mt-28 p-5 min-[1100px]:hidden`} aria-label="Walk the Word">
           <span className="mx-auto mb-3 block h-1 w-10 rounded-full bg-ink/15" aria-hidden="true" />
           <button type="button" onClick={() => setPanelOpen((v) => !v)} aria-expanded={panelOpen} className={`flex w-full items-start justify-between text-left ${focusRing}`}>
             <span>
@@ -1115,7 +1266,31 @@ export function BibleReader({
 
 /* ── Search box ─────────────────────────────────────────────────────────── */
 
-function SearchBox({ value, onChange, onSubmit }: { value: string; onChange: (v: string) => void; onSubmit: () => void }) {
+function SearchBox({ value, onChange, onSubmit, dark }: { value: string; onChange: (v: string) => void; onSubmit: () => void; dark?: boolean }) {
+  if (dark) {
+    return (
+      <form
+        role="search"
+        className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl bg-forest-900 p-2 pl-3 shadow-[0_6px_16px_rgba(13,26,20,0.18)] focus-within:ring-2 focus-within:ring-gold"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+      >
+        <input
+          type="search"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Search or go to John 3:16"
+          aria-label="Search this chapter, or type a passage like John 3:16"
+          className="h-10 min-w-0 flex-1 rounded-lg bg-white/[0.08] px-3 text-[15px] text-cream outline-none placeholder:text-cream/55"
+        />
+        <button type="submit" aria-label="Search" title="Search" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold text-forest-950 hover:brightness-105">
+          <I.search className="h-5 w-5" />
+        </button>
+      </form>
+    );
+  }
   return (
     <form
       role="search"
@@ -1140,7 +1315,7 @@ function SearchBox({ value, onChange, onSubmit }: { value: string; onChange: (v:
 
 /* ── Passage picker (phone): book list → chapter grid ───────────────────── */
 
-function PassagePicker({ books, bookId, chapter, onPick }: { books: ReaderBook[]; bookId: string; chapter: number; onPick: (b: string, c: number) => void }) {
+function PassagePicker({ books, bookId, chapter, onPick, dark, pill }: { books: ReaderBook[]; bookId: string; chapter: number; onPick: (b: string, c: number) => void; dark?: boolean; pill?: boolean }) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<ReaderBook | null>(null);
   const current = books.find((b) => b.id === bookId);
@@ -1165,11 +1340,17 @@ function PassagePicker({ books, bookId, chapter, onPick }: { books: ReaderBook[]
           setPicked(null);
           setOpen(true);
         }}
-        className="relative h-11 w-full truncate rounded-xl border border-ink/15 bg-white pl-3.5 pr-9 text-left text-[15px] font-medium text-ink"
+        className={
+          dark
+            ? 'relative h-[52px] w-full truncate rounded-2xl bg-forest-900 pl-3.5 pr-9 text-left text-[16px] font-semibold text-cream shadow-[0_6px_16px_rgba(13,26,20,0.18)]'
+            : pill
+              ? 'relative h-11 w-full truncate rounded-full border border-gold/60 bg-[#fbf3df] pl-5 pr-10 text-center text-[15px] font-semibold text-ink hover:border-gold'
+              : 'relative h-11 w-full truncate rounded-xl border border-ink/15 bg-white pl-3.5 pr-9 text-left text-[15px] font-medium text-ink'
+        }
         aria-haspopup="dialog"
       >
         {current?.name} {chapter}
-        <I.down className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/60" />
+        <I.down className={`pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 ${dark ? 'text-cream/80' : pill ? 'text-gold-text' : 'text-ink/60'}`} />
       </button>
       {open && typeof document !== 'undefined' ? createPortal(
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Choose a passage">
@@ -1301,5 +1482,59 @@ function Reflection({ refLabel, storageKey }: { refLabel: string; storageKey: st
         <I.lock className="h-3.5 w-3.5" /> Saved only on this device. No one else can see it.
       </p>
     </div>
+  );
+}
+
+/* ── Verse of the Day (same verse for everyone each day, in the reader's chosen Bible) ── */
+
+const DAILY_VERSES: { b: string; c: number; v: number }[] = [
+  { b: 'JHN', c: 1, v: 1 }, { b: 'JHN', c: 3, v: 16 }, { b: 'PSA', c: 23, v: 1 }, { b: 'PRO', c: 3, v: 5 }, { b: 'ISA', c: 40, v: 31 },
+  { b: 'JER', c: 29, v: 11 }, { b: 'PHP', c: 4, v: 13 }, { b: 'ROM', c: 8, v: 28 }, { b: 'MAT', c: 11, v: 28 }, { b: 'JOS', c: 1, v: 9 },
+  { b: 'PSA', c: 46, v: 1 }, { b: 'ISA', c: 41, v: 10 }, { b: 'PHP', c: 4, v: 6 }, { b: 'ROM', c: 12, v: 2 }, { b: 'GAL', c: 5, v: 22 },
+  { b: 'EPH', c: 2, v: 8 }, { b: 'HEB', c: 11, v: 1 }, { b: 'JAS', c: 1, v: 5 }, { b: '1PE', c: 5, v: 7 }, { b: '1JN', c: 4, v: 19 },
+  { b: 'PSA', c: 119, v: 105 }, { b: 'LAM', c: 3, v: 22 }, { b: 'MAT', c: 6, v: 33 }, { b: 'JHN', c: 14, v: 6 }, { b: '2TI', c: 1, v: 7 },
+  { b: 'PSA', c: 37, v: 4 }, { b: 'MIC', c: 6, v: 8 }, { b: 'ROM', c: 15, v: 13 }, { b: 'COL', c: 3, v: 23 }, { b: 'DEU', c: 31, v: 6 },
+  { b: '2CO', c: 5, v: 17 },
+];
+
+function VerseOfTheDay({ translationId, translationLabel }: { translationId: string; translationLabel: string }) {
+  const [state, setState] = useState<{ text: string; ref: string; link: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const now = new Date();
+    const day = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(2026, 0, 1)) / 86_400_000);
+    const pick = DAILY_VERSES[((day % DAILY_VERSES.length) + DAILY_VERSES.length) % DAILY_VERSES.length];
+    let alive = true;
+    setFailed(false);
+    fetch(`/api/bible/chapter?t=${encodeURIComponent(translationId)}&b=${pick.b}&c=${pick.c}`)
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!alive) return;
+        const text = r.ok && data?.ok ? String(data.verses?.[pick.v] ?? '').trim() : '';
+        if (!text) throw new Error('missing');
+        setState({ text, ref: `${data.bookName} ${pick.c}:${pick.v}`, link: href(translationId, pick.b, pick.c, pick.v) });
+      })
+      .catch(() => alive && setFailed(true));
+    return () => {
+      alive = false;
+    };
+  }, [translationId]);
+  if (failed) return null;
+  return (
+    <section className={`${card} bg-gradient-to-b from-[#fffaf0] to-[#fbf3df] p-5`} aria-label="Verse of the Day">
+      <h2 className="flex items-center gap-2 font-display text-[22px] font-semibold text-forest-800"><I.calendar className="h-5 w-5 text-gold-text" /> Verse of the Day</h2>
+      {state ? (
+        <Link href={state.link} className="mt-3 block text-center">
+          <span className="block font-display text-[18px] italic leading-snug text-ink">“{state.text}”</span>
+          <span className="mt-2 block text-[15px] font-semibold text-ink/80">{state.ref} ({translationLabel})</span>
+          <span aria-hidden="true" className="mx-auto mt-3 block h-[3px] w-28 rounded-full bg-gradient-to-r from-gold/20 via-gold to-gold/20" />
+        </Link>
+      ) : (
+        <div className="mt-3 space-y-2" aria-hidden="true">
+          <span className="block h-4 animate-pulse rounded bg-ink/[0.06]" />
+          <span className="block h-4 w-4/5 animate-pulse rounded bg-ink/[0.06]" />
+        </div>
+      )}
+    </section>
   );
 }
