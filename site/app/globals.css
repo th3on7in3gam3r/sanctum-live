@@ -43,6 +43,13 @@ body {
     linear-gradient(160deg, #1d372c, #12231c 55%, #0d1a14);
 }
 
+/* About hero: the photo meets the words along a soft curve on wider screens. */
+@media (min-width: 900px) {
+  .about-hero-photo {
+    clip-path: ellipse(100% 115% at 100% 50%);
+  }
+}
+
 /* The full header menu needs room for the longer Luganda / Kiswahili labels. */
 @media (min-width: 1300px) {
   .site-button.mobile-only {

@@ -2,7 +2,7 @@ import { PageHero } from '@/components/page/PageHero';
 import { PhotoTile } from '@/components/page/PhotoTile';
 import { cmsMetadata, loadCmsPage } from '@/components/CmsArticle';
 import { listLeaders } from '@/lib/api';
-import { leaderBio, leaderPhotoUrl } from '@/lib/leaders';
+import { leaderBio, leaderPhotoUrl, withBuiltInLeaders } from '@/lib/leaders';
 import { firstParagraph } from '@/lib/pages';
 import { getDictionary } from '@/lib/locale';
 import { label } from '@/lib/i18n';
@@ -18,12 +18,13 @@ export default async function LeadershipPage() {
       <PageHero variant="centered" eyebrow={label(t, 'Leadership')} title={page.title} lede={firstParagraph(page)} />
       <section className="bg-sand px-4 py-16 sm:px-6">
         <ul className="mx-auto grid max-w-6xl gap-8 min-[900px]:grid-cols-3">
-          {leaders.map((leader) => {
+          {withBuiltInLeaders(leaders).map((leader) => {
             const bio = leaderBio(leader);
             return (
               <li key={leader.id} className="text-ink">
                 <PhotoTile
                   src={leaderPhotoUrl(leader)}
+                  alt={leader.name}
                   sizes="(min-width: 900px) 30vw, 100vw"
                   className="aspect-[4/5] rounded-[22px]"
                 />

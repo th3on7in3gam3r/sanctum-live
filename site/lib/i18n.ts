@@ -211,6 +211,8 @@ const en = {
       fullStatement: 'Full statement of faith →',
       comeSee: 'Come and see for yourself.',
       joinLive: 'Join live prayer',
+      visitCta: 'Visit PLCC',
+      servingAlongside: 'Serving alongside',
     },
     events: {
       titleA: 'Save the',
@@ -535,6 +537,8 @@ const lg: Dict = {
       fullStatement: 'Bye tukkiriza byonna →',
       comeSee: 'Jjangu weerabireko.',
       joinLive: 'Yingira mu kusaba butereevu',
+      visitCta: 'Kyalira PLCC',
+      servingAlongside: 'Abaweereza naffe',
     },
     events: {
       titleA: 'Kuuma',
@@ -857,6 +861,8 @@ const sw: Dict = {
       fullStatement: 'Tamko kamili la imani →',
       comeSee: 'Njoo ujionee mwenyewe.',
       joinLive: 'Jiunge na maombi mubashara',
+      visitCta: 'Tembelea PLCC',
+      servingAlongside: 'Wanaohudumu pamoja nasi',
     },
     events: {
       titleA: 'Hifadhi',
