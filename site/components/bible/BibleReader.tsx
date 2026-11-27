@@ -29,7 +29,7 @@ export type ReaderChapter = {
   next: { book: string; chapter: number } | null;
   audio: { name: string; url: string }[];
 };
-type Labels = { language: string; translation: string; book: string; chapter: string };
+type Labels = { language: string; translation: string; book: string; chapter: string; verse: string };
 
 /* ── Small helpers ──────────────────────────────────────────────────────── */
 
@@ -361,6 +361,17 @@ export function BibleReader({
       /* ignore */
     }
   }, [usedDefaults, t.id, book.id, chapter.chapter, translations, router]);
+
+  /* Verse picker: highlight that verse, scroll to it, and put it in the link (shareable). */
+  const goToVerse = useCallback(
+    (n: number) => {
+      if (!Number.isFinite(n) || n < 1) return;
+      router.replace(href(t.id, book.id, chapter.chapter, n), { scroll: false });
+      setSelected([n]);
+      window.setTimeout(() => document.getElementById(`v${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
+    },
+    [router, t.id, book.id, chapter.chapter]
+  );
 
   /* New chapter → reset per-chapter state; jump to a linked verse */
   useEffect(() => {
@@ -992,6 +1003,12 @@ export function BibleReader({
             <option key={n} value={n}>{n}</option>
           ))}
         </Select>
+        <Select dark label={labels.verse} value={selected[0] ?? ''} className="w-[100px] shrink-0" onChange={(v) => goToVerse(Number(v))}>
+          <option value="" disabled>–</option>
+          {verses.map((v) => (
+            <option key={v.number} value={v.number}>{v.number}</option>
+          ))}
+        </Select>
         <SearchBox dark value={searchInput} onChange={setSearchInput} onSubmit={runSearch} />
       </div>
 
@@ -1013,7 +1030,13 @@ export function BibleReader({
             })}
           </Select>
         </div>
-        <div className="mt-2.5">
+        <div className="mt-2.5 grid grid-cols-[minmax(0,0.42fr)_minmax(0,1.58fr)] gap-2.5">
+          <Select dark value={selected[0] ?? ''} className="!py-2.5" onChange={(v) => goToVerse(Number(v))}>
+            <option value="" disabled>{labels.verse}</option>
+            {verses.map((v) => (
+              <option key={v.number} value={v.number}>{labels.verse} {v.number}</option>
+            ))}
+          </Select>
           <SearchBox value={searchInput} onChange={setSearchInput} onSubmit={runSearch} />
         </div>
       </div>

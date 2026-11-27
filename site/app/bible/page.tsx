@@ -156,6 +156,7 @@ export default async function BiblePage({ searchParams }: Search) {
                 translation: t.bible.translation,
                 book: t.bible.book,
                 chapter: t.bible.chapter,
+                verse: t.bible.verse,
               }}
               usedDefaults={data.usedDefaults}
               initialVerses={verses}
